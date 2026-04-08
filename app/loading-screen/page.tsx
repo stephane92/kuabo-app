@@ -3,13 +3,13 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-export default function Root() {
+export default function LoadingScreen() {
   const router = useRouter();
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.push("/language");
-    }, 2000);
+      router.push("/"); // 🔥 IMPORTANT (pas replace)
+    }, 3000);
 
     return () => clearTimeout(timer);
   }, []);
@@ -24,15 +24,15 @@ export default function Root() {
   );
 }
 
-const container = {
-  height: "100vh",
+const container: any = {
+  height: "100dvh",
   display: "flex",
   justifyContent: "center",
   alignItems: "center",
   background: "radial-gradient(circle at top, #0b1220, #06080a)",
 };
 
-const logo = {
-  fontSize: 40,
+const logo: any = {
+  fontSize: 36,
   fontWeight: "bold",
 };

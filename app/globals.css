@@ -1,26 +1,109 @@
-@import "tailwindcss";
-
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --black: #0b0f1a;
+  --surface: #141d2e;
+  --card: #1a2438;
+  --border: rgba(255,255,255,0.07);
+  --gold: #e8b84b;
+  --white: #f4f1ec;
+  --muted: rgba(244,241,236,0.45);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  font-family: 'Outfit', sans-serif;
+  background: radial-gradient(
+    ellipse 80% 50% at 50% 0%,
+    rgba(232,184,75,0.06), transparent 60%
+  ), var(--black);
+  color: var(--white);
+}
+
+.navbar {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  backdrop-filter: blur(20px);
+  background: rgba(11,15,26,0.96);
+  border-bottom: 1px solid var(--border);
+}
+
+.content {
+  padding: 100px 20px;
+  max-width: 420px;
+  margin: auto;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 15px;
+}
+
+.label {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.btn {
+  margin-top: 10px;
+  padding: 12px;
+  width: 100%;
+  background: var(--gold);
+  border-radius: 12px;
+  border: none;
+  font-weight: 600;
+}
+
+.item {
+  padding: 10px;
+  margin-top: 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.notif {
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.2);
+}
+
+.menuBtn {
+  cursor: pointer;
+  font-size: 22px;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+}
+
+.drawer {
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: 260px;
+  height: 100%;
+  background: var(--surface);
+  padding: 20px;
+}
+
+.menuItem {
+  padding: 12px;
+  cursor: pointer;
+}
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 15px 0;
 }
