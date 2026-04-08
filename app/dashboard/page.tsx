@@ -18,6 +18,9 @@ export default function Dashboard() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [ready, setReady] = useState(false);
 
+  const [toast, setToast] = useState<string | null>(null);
+  const [lastAction, setLastAction] = useState<string | null>(null);
+
   ////////////////////////////////////////////////////
   // TEXT
   ////////////////////////////////////////////////////
@@ -33,6 +36,7 @@ export default function Dashboard() {
       completed: "Completed",
       integration: "Integration",
       deadline: "Days left",
+      undo: "Undo",
     },
     fr: {
       done: "FAIT",
@@ -44,6 +48,7 @@ export default function Dashboard() {
       completed: "Complétées",
       integration: "Intégration",
       deadline: "Jours restants",
+      undo: "Annuler",
     },
     es: {
       done: "HECHO",
@@ -55,6 +60,7 @@ export default function Dashboard() {
       completed: "Completadas",
       integration: "Integración",
       deadline: "Días restantes",
+      undo: "Deshacer",
     },
   };
 
@@ -115,7 +121,7 @@ export default function Dashboard() {
   }, [router]);
 
   ////////////////////////////////////////////////////
-  // CLOSE MENU
+  // MENU CLOSE
   ////////////////////////////////////////////////////
 
   useEffect(() => {
@@ -141,15 +147,44 @@ export default function Dashboard() {
 
     if (completedSteps.includes(stepId)) {
       updated = completedSteps.filter((s) => s !== stepId);
+      setToast("Step undone");
     } else {
       updated = [...completedSteps, stepId];
+      setToast("Step completed 🎉");
     }
+
+    setLastAction(stepId);
+    setCompletedSteps(updated);
+
+    await updateDoc(doc(db, "users", user.uid), {
+      completedSteps: updated,
+    });
+
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  ////////////////////////////////////////////////////
+  // UNDO
+  ////////////////////////////////////////////////////
+
+  const undoLast = async () => {
+    if (!lastAction) return;
+
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const updated = completedSteps.filter((s) => s !== lastAction);
 
     setCompletedSteps(updated);
 
     await updateDoc(doc(db, "users", user.uid), {
       completedSteps: updated,
     });
+
+    setToast("Action undone");
+    setLastAction(null);
+
+    setTimeout(() => setToast(null), 3000);
   };
 
   ////////////////////////////////////////////////////
@@ -169,6 +204,55 @@ export default function Dashboard() {
   const nextStep = steps.find(
     (s) => !completedSteps.includes(s.id)
   );
+
+  ////////////////////////////////////////////////////
+  // PHASE SYSTEM (SMART)
+  ////////////////////////////////////////////////////
+
+  const phaseText = {
+    en: {
+      install: "🚀 Installation",
+      middle: "⚡ Stabilization",
+      end: "🔥 Independence",
+      start: "Start with your SSN",
+      progress: "You're doing great, keep going!",
+      done: "Almost done, finish strong!",
+    },
+    fr: {
+      install: "🚀 Installation",
+      middle: "⚡ Stabilisation",
+      end: "🔥 Indépendance",
+      start: "Commence par ton SSN",
+      progress: "Tu avances bien, continue !",
+      done: "Presque fini, continue !",
+    },
+    es: {
+      install: "🚀 Instalación",
+      middle: "⚡ Estabilización",
+      end: "🔥 Independencia",
+      start: "Empieza con tu SSN",
+      progress: "Vas muy bien, sigue así!",
+      done: "Casi terminado, sigue!",
+    },
+  };
+
+  const p = phaseText[lang as keyof typeof phaseText];
+
+  const hasSSN = completedSteps.includes("ssn");
+
+  let phase = "";
+  let message = "";
+
+  if (!hasSSN) {
+    phase = p.install;
+    message = p.start;
+  } else if (progress < 70) {
+    phase = p.middle;
+    message = p.progress;
+  } else {
+    phase = p.end;
+    message = p.done;
+  }
 
   ////////////////////////////////////////////////////
   // CIRCLE
@@ -211,7 +295,7 @@ export default function Dashboard() {
 
   return (
     <div style={container}>
-      
+
       {/* HEADER */}
       <div style={topBar}>
         <div style={logo}>
@@ -235,6 +319,12 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* PHASE */}
+      <div style={{ marginTop: 20 }}>
+        <div style={{ color: "#aaa" }}>{phase}</div>
+        <div style={{ fontSize: 18 }}>{message}</div>
+      </div>
+
       {/* STATS */}
       <div style={statsRow}>
         <div style={statCard}>
@@ -253,6 +343,11 @@ export default function Dashboard() {
           </div>
           <div style={statLabel}>{text.deadline}</div>
         </div>
+      </div>
+
+      {/* MOTIVATION */}
+      <div style={{ marginTop: 10, color: "#aaa" }}>
+        {completedCount}/{steps.length} steps completed 🔥
       </div>
 
       {/* PRIORITY */}
@@ -275,15 +370,7 @@ export default function Dashboard() {
       {/* PROGRESS */}
       <div style={progressCard}>
         <svg height={120} width={120}>
-          <circle
-            stroke="#2a344a"
-            fill="transparent"
-            strokeWidth={stroke}
-            r={normalizedRadius}
-            cx={60}
-            cy={60}
-          />
-
+          <circle stroke="#2a344a" fill="transparent" strokeWidth={stroke} r={normalizedRadius} cx={60} cy={60} />
           <circle
             stroke="#e8b84b"
             fill="transparent"
@@ -295,14 +382,7 @@ export default function Dashboard() {
             cx={60}
             cy={60}
           />
-
-          <text
-            x="50%"
-            y="50%"
-            textAnchor="middle"
-            dy=".3em"
-            fill="#e8b84b"
-          >
+          <text x="50%" y="50%" textAnchor="middle" dy=".3em" fill="#e8b84b">
             {progress}%
           </text>
         </svg>
@@ -343,13 +423,36 @@ export default function Dashboard() {
           </div>
         );
       })}
+
+      {/* TOAST */}
+      {toast && (
+        <div style={toastStyle}>
+          {toast}
+          {lastAction && (
+            <span
+              onClick={undoLast}
+              style={{ marginLeft: 10, cursor: "pointer", color: "#e8b84b" }}
+            >
+              {text.undo}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
 ////////////////////////////////////////////////////
-// STYLE (IDENTIQUE)
-////////////////////////////////////////////////////
+const toastStyle: React.CSSProperties = {
+  position: "fixed",
+  bottom: 20,
+  left: "50%",
+  transform: "translateX(-50%)",
+  background: "#1a2438",
+  padding: "10px 20px",
+  borderRadius: 10,
+};
+
 const container: React.CSSProperties = {
   background: "#0b0f1a",
   color: "#f4f1ec",
