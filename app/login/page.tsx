@@ -146,15 +146,8 @@ export default function Login() {
       );
 
       const user = userCredential.user;
-
-      ////////////////////////////////////////////////////
-      // 🔥 REFRESH USER
-      ////////////////////////////////////////////////////
       await user.reload();
 
-      ////////////////////////////////////////////////////
-      // 🔒 BLOCK NON VERIFIED
-      ////////////////////////////////////////////////////
       if (!user.emailVerified) {
         setResendUser(user);
         setError("verify");
@@ -162,9 +155,6 @@ export default function Login() {
         return;
       }
 
-      ////////////////////////////////////////////////////
-      // FIRESTORE
-      ////////////////////////////////////////////////////
       const snap = await getDoc(doc(db, "users", user.uid));
 
       if (!snap.exists()) {
@@ -175,24 +165,15 @@ export default function Login() {
 
       const data: any = snap.data();
 
-      ////////////////////////////////////////////////////
-      // 🔥 UPDATE VERIFIED FLAG
-      ////////////////////////////////////////////////////
       if (!data.emailVerified) {
         await updateDoc(doc(db, "users", user.uid), {
           emailVerified: true,
         });
       }
 
-      ////////////////////////////////////////////////////
-      // SAVE LOCAL
-      ////////////////////////////////////////////////////
       localStorage.setItem("userName", data.name || "User");
       localStorage.setItem("lang", data.lang || "en");
 
-      ////////////////////////////////////////////////////
-      // REDIRECT
-      ////////////////////////////////////////////////////
       if (!data.onboardingCompleted) {
         router.replace("/welcome");
       } else {
@@ -247,7 +228,6 @@ export default function Login() {
       <div style={box}>
         <h2>{current.title}</h2>
 
-        {/* VERIFY */}
         {error === "verify" && (
           <div style={errorStyle}>
             {current.verifyText}
@@ -257,27 +237,31 @@ export default function Login() {
           </div>
         )}
 
-        {/* ERROR */}
         {error && error !== "verify" && (
           <div style={errorStyle}>{error}</div>
         )}
 
-        {/* SUCCESS */}
         {success && <div style={successStyle}>{success}</div>}
 
+        {/* INPUT EMAIL */}
         <input
           placeholder={current.email}
           style={input}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          onFocus={(e) => (e.currentTarget.style.border = "1px solid #e8b84b")}
+          onBlur={(e) => (e.currentTarget.style.border = "1px solid #2a344a")}
         />
 
+        {/* INPUT PASSWORD */}
         <input
           type="password"
           placeholder={current.pass}
           style={input}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          onFocus={(e) => (e.currentTarget.style.border = "1px solid #e8b84b")}
+          onBlur={(e) => (e.currentTarget.style.border = "1px solid #2a344a")}
         />
 
         <button style={btn} onClick={handleLogin} disabled={loading}>
@@ -334,26 +318,27 @@ const back: React.CSSProperties = {
 
 const box: React.CSSProperties = {
   width: "100%",
-  maxWidth: 340,
+  maxWidth: 320,
   display: "flex",
   flexDirection: "column",
 };
 
 const input: React.CSSProperties = {
   width: "100%",
-  padding: "14px 16px",
-  marginBottom: 12,
-  borderRadius: 12,
-  border: "1px solid #333",
+  height: 44,
+  padding: "0 14px",
+  marginBottom: 10,
+  borderRadius: 10,
+  border: "1px solid #2a344a",
   background: "#0b1220",
   color: "white",
-  fontSize: 16,
+  fontSize: 14,
   outline: "none",
 };
 
 const btn: React.CSSProperties = {
   width: "100%",
-  padding: 14,
+  padding: 12,
   background: "#e8b84b",
   borderRadius: 10,
   border: "none",
@@ -375,7 +360,6 @@ const successStyle: React.CSSProperties = {
 };
 
 const resendLink: React.CSSProperties = {
-  color: "#fff",
   textDecoration: "underline",
   cursor: "pointer",
   fontWeight: "bold",
@@ -408,5 +392,4 @@ const loader: React.CSSProperties = {
   alignItems: "center",
   background: "#06080a",
   color: "#e8b84b",
-  fontWeight: "bold",
 };
