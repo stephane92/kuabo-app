@@ -355,8 +355,13 @@ export default function Dashboard() {
         <div style={priorityCard}>
           <div style={priorityTitle}>{text.next}</div>
           <div style={priorityMain}>{nextStep.label}</div>
-
-          <button style={primaryBtn}>{text.guide}</button>
+          
+          <button
+  style={primaryBtn}
+  onClick={() => router.push(`/guide/${nextStep?.id}`)}
+>
+  {text.guide}
+</button>
 
           <button
             style={secondaryBtn}
