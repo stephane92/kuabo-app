@@ -1152,7 +1152,7 @@ export default function GuidePage() {
 
         {/* ✅ Explorer button */}
         {guide.explorerFilter&&(
-          <button onClick={()=>window.location.href="/dashboard?tab=explorer&filter="+guide.explorerFilter} style={{width:"100%",marginBottom:12,padding:"13px 16px",background:"rgba(45,212,191,0.08)",border:"1px solid rgba(45,212,191,0.25)",borderRadius:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",fontFamily:"inherit"}}>
+  <button onClick={()=>window.location.href=`/near/${guide.explorerFilter}`} style={{width:"100%",marginBottom:12,padding:"13px 16px",background:"rgba(45,212,191,0.08)",border:"1px solid rgba(45,212,191,0.25)",borderRadius:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",fontFamily:"inherit"}}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <span style={{fontSize:20}}>🗺️</span>
               <span style={{fontSize:13,color:"#2dd4bf",fontWeight:600}}>

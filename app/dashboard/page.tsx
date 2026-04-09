@@ -550,9 +550,12 @@ function DocumentsTab({lang,completedSteps}:{lang:Lang;completedSteps:string[]})
                 </button>
               )}
               {EXPLORER_FILTERS[selectedDocData.id]&&(
-                <button onClick={()=>{setActiveDoc(null);window.location.href=`/dashboard?tab=explorer&filter=${EXPLORER_FILTERS[selectedDocData.id]}`;}} style={{width:"100%",padding:"12px",background:"rgba(45,212,191,0.1)",border:"1px solid rgba(45,212,191,0.3)",borderRadius:12,color:"#2dd4bf",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
-                  🗺️ {L.explorerBtn}
-                </button>
+               <button
+               onClick={()=>{setActiveDoc(null);window.location.href=`/near/${EXPLORER_FILTERS[selectedDocData.id]}`;}}
+               style={{width:"100%",padding:"12px",background:"rgba(45,212,191,0.1)",border:"1px solid rgba(45,212,191,0.3)",borderRadius:12,color:"#2dd4bf",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}
+             >
+               🗺️ {L.explorerBtn}
+             </button>
               )}
               <button onClick={()=>{setActiveDoc(null);setLostModal(selectedDocData.id);}} style={{width:"100%",padding:"12px",background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:12,color:"#ef4444",fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>
                 🆘 {L.lostBtn}
