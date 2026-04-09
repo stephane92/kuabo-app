@@ -8,30 +8,43 @@ import { doc, getDoc, updateDoc, collection, getDocs } from "firebase/firestore"
 type Lang = "fr" | "en" | "es";
 type Place = { id: string; name: string; address: string; lat: number; lng: number; rating: number | null; open: boolean | null; distance: string; };
 type FilterType = "ssn" | "dmv" | "bank" | "uscis" | "clinic" | "food";
-type CommunityUser = { id: string; situation: string; arrival: string; distance: string; lat: number; lng: number; };
+type CommunityUser = { id: string; situation: string; arrival: string; lat: number; lng: number; isNew: boolean; };
 type ExplorerSubTab = "services" | "community";
+type CommFilter = "all" | "dv" | "work" | "student" | "family" | "refugee";
 
 const FILTERS: { id: FilterType; icon: string; label: Record<Lang, string> }[] = [
-  { id: "ssn",    icon: "🪪", label: { fr: "SSA",       en: "SSA",     es: "SSA"      } },
-  { id: "dmv",    icon: "🚗", label: { fr: "DMV",       en: "DMV",     es: "DMV"      } },
-  { id: "bank",   icon: "🏦", label: { fr: "Banques",   en: "Banks",   es: "Bancos"   } },
-  { id: "uscis",  icon: "🛂", label: { fr: "USCIS",     en: "USCIS",   es: "USCIS"    } },
-  { id: "clinic", icon: "🏥", label: { fr: "Cliniques", en: "Clinics", es: "Clínicas" } },
-  { id: "food",   icon: "🍽️", label: { fr: "Nourriture",en: "Food",   es: "Comida"   } },
+  { id: "ssn",    icon: "🪪", label: { fr:"SSA",       en:"SSA",     es:"SSA"      } },
+  { id: "dmv",    icon: "🚗", label: { fr:"DMV",       en:"DMV",     es:"DMV"      } },
+  { id: "bank",   icon: "🏦", label: { fr:"Banques",   en:"Banks",   es:"Bancos"   } },
+  { id: "uscis",  icon: "🛂", label: { fr:"USCIS",     en:"USCIS",   es:"USCIS"    } },
+  { id: "clinic", icon: "🏥", label: { fr:"Cliniques", en:"Clinics", es:"Clínicas" } },
+  { id: "food",   icon: "🍽️", label: { fr:"Nourriture",en:"Food",   es:"Comida"   } },
+];
+
+const COMM_FILTERS: { id: CommFilter; label: Record<Lang, string> }[] = [
+  { id:"all",     label:{ fr:"Tous",     en:"All",      es:"Todos"    } },
+  { id:"dv",      label:{ fr:"DV Lottery",en:"DV Lottery",es:"Lotería DV"} },
+  { id:"work",    label:{ fr:"Travail",  en:"Work",     es:"Trabajo"  } },
+  { id:"student", label:{ fr:"Étudiant", en:"Student",  es:"Estudiante"} },
+  { id:"family",  label:{ fr:"Famille",  en:"Family",   es:"Familia"  } },
+  { id:"refugee", label:{ fr:"Réfugié",  en:"Refugee",  es:"Refugiado"} },
 ];
 
 const MARKER_COLORS: Record<FilterType, string> = { ssn:"#e8b84b", dmv:"#f97316", bank:"#22c55e", uscis:"#a78bfa", clinic:"#2dd4bf", food:"#f472b6" };
 
-const LABELS: Record<Lang, Record<string, string>> = {
-  fr: { title:"Explorer", services:"Services", community:"Communauté", sub:"Services près de toi", commSub:"Kuabo users près de toi", locating:"Localisation...", activate:"Activer la localisation", open:"Ouvert", closed:"Fermé", unknown:"?", noResults:"Aucun résultat", loading:"Recherche...", directions:"→", commEmpty:"Aucun Kuabo user dans ta zone", commVisible:"Apparaître sur la carte", commVisibleSub:"Les autres users peuvent te voir (anonyme)", km:"km de toi", situation:"Situation", arrival:"Arrivée" },
-  en: { title:"Explorer", services:"Services", community:"Community", sub:"Services near you", commSub:"Kuabo users near you", locating:"Locating...", activate:"Enable location", open:"Open", closed:"Closed", unknown:"?", noResults:"No results", loading:"Searching...", directions:"→", commEmpty:"No Kuabo users in your area", commVisible:"Appear on community map", commVisibleSub:"Other users can see you (anonymous)", km:"km away", situation:"Situation", arrival:"Arrival" },
-  es: { title:"Explorar", services:"Servicios", community:"Comunidad", sub:"Servicios cerca de ti", commSub:"Usuarios Kuabo cerca de ti", locating:"Ubicando...", activate:"Activar ubicación", open:"Abierto", closed:"Cerrado", unknown:"?", noResults:"Sin resultados", loading:"Buscando...", directions:"→", commEmpty:"No hay usuarios Kuabo en tu zona", commVisible:"Aparecer en el mapa", commVisibleSub:"Otros usuarios pueden verte (anónimo)", km:"km de distancia", situation:"Situación", arrival:"Llegada" },
+const SITUATION_MESSAGES: Record<string, Record<Lang, string>> = {
+  dv:      { fr:"🎰 Tu n'es pas seul — d'autres DV Lottery winners sont dans ton état !", en:"🎰 You're not alone — other DV Lottery winners are in your state!", es:"🎰 ¡No estás solo — otros ganadores de DV Lottery están en tu estado!" },
+  work:    { fr:"💼 Des immigrants en visa travail sont dans ta zone !", en:"💼 Work visa immigrants are in your area!", es:"💼 ¡Hay inmigrantes con visa de trabajo en tu zona!" },
+  student: { fr:"🎓 Des étudiants Kuabo sont dans ton état !", en:"🎓 Kuabo students are in your state!", es:"🎓 ¡Hay estudiantes Kuabo en tu estado!" },
+  family:  { fr:"👨‍👩‍👧 Des familles Kuabo sont près de toi !", en:"👨‍👩‍👧 Kuabo families are near you!", es:"👨‍👩‍👧 ¡Hay familias Kuabo cerca de ti!" },
+  refugee: { fr:"🤝 La communauté Kuabo est là pour toi !", en:"🤝 The Kuabo community is here for you!", es:"🤝 ¡La comunidad Kuabo está aquí para ti!" },
+  default: { fr:"🌍 Tu n'es pas seul dans cette aventure !", en:"🌍 You're not alone in this journey!", es:"🌍 ¡No estás solo en esta aventura!" },
 };
 
-const mapContainerStyle = { width: "100%", height: "220px" };
+const mapContainerStyle = { width:"100%", height:"260px" };
 const mapOptions = {
-  disableDefaultUI: true, zoomControl: false,
-  styles: [
+  disableDefaultUI:true, zoomControl:false,
+  styles:[
     { elementType:"geometry",           stylers:[{ color:"#0f1521" }] },
     { elementType:"labels.text.fill",   stylers:[{ color:"#aaa" }]   },
     { elementType:"labels.text.stroke", stylers:[{ color:"#0f1521" }]},
@@ -41,139 +54,191 @@ const mapOptions = {
   ],
 };
 
-function getDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371;
-  const dLat = (lat2-lat1)*Math.PI/180;
-  const dLng = (lng2-lng1)*Math.PI/180;
-  const a = Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
+function getDistanceKm(lat1:number, lng1:number, lat2:number, lng2:number):number {
+  const R=6371, dLat=(lat2-lat1)*Math.PI/180, dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
-function formatDistance(d: number): string {
-  return d < 1 ? Math.round(d*1000)+" m" : d.toFixed(1)+" km";
+function formatDistance(d:number):string {
+  return d<1 ? Math.round(d*1000)+" m" : d.toFixed(1)+" km";
+}
+
+// Arrondit à ~2km pour anonymat
+function anonLocation(lat:number, lng:number):{lat:number;lng:number} {
+  return { lat: Math.round(lat*50)/50, lng: Math.round(lng*50)/50 };
 }
 
 export default function ExplorerTab({ lang }: { lang: Lang }) {
   const [subTab, setSubTab]               = useState<ExplorerSubTab>("services");
-  const [userLocation, setUserLocation]   = useState<{ lat: number; lng: number } | null>(null);
+  const [userLocation, setUserLocation]   = useState<{lat:number;lng:number}|null>(null);
+  const [userState, setUserState]         = useState<string>("");
+  const [userCity, setUserCity]           = useState<string>("");
+  const [userSituation, setUserSituation] = useState<string>("default");
   const [locating, setLocating]           = useState(false);
   const [activeFilter, setActiveFilter]   = useState<FilterType>("ssn");
+  const [commFilter, setCommFilter]       = useState<CommFilter>("all");
   const [places, setPlaces]               = useState<Place[]>([]);
   const [loadingPlaces, setLoadingPlaces] = useState(false);
-  const [mapCenter, setMapCenter]         = useState({ lat: 20, lng: -20 });
+  const [mapCenter, setMapCenter]         = useState({lat:20,lng:-20});
   const [communityUsers, setCommunityUsers] = useState<CommunityUser[]>([]);
+  const [newUsersCount, setNewUsersCount] = useState(0);
   const [loadingComm, setLoadingComm]     = useState(false);
   const [commVisible, setCommVisible]     = useState(false);
   const [savingToggle, setSavingToggle]   = useState(false);
 
-  const { isLoaded } = useLoadScript({ googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || "" });
-  const label = LABELS[lang];
+  const { isLoaded } = useLoadScript({ googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY||"" });
   const activeColor = MARKER_COLORS[activeFilter];
 
-  const fetchPlaces = useCallback(async (loc: { lat: number; lng: number }, type: FilterType) => {
+  // Charge la situation du user
+  useEffect(() => {
+    const situation = localStorage.getItem("reason") || "default";
+    setUserSituation(situation);
+  }, []);
+
+  // Charge le toggle communauté
+  useEffect(() => {
+    const load = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      try {
+        const snap = await getDoc(doc(db,"users",user.uid));
+        if (snap.exists()) setCommVisible((snap.data() as any)?.communityVisible||false);
+      } catch { /* continue */ }
+    };
+    load();
+  }, []);
+
+  const fetchPlaces = useCallback(async (loc:{lat:number;lng:number}, type:FilterType) => {
     setLoadingPlaces(true);
     setPlaces([]);
     try {
-      const res  = await fetch("/api/places", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ lat:loc.lat, lng:loc.lng, type }) });
+      const res  = await fetch("/api/places",{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({lat:loc.lat,lng:loc.lng,type}) });
       const data = await res.json();
-      setPlaces(data.places || []);
+      setPlaces(data.places||[]);
     } catch { setPlaces([]); }
     setLoadingPlaces(false);
   }, []);
 
-  const fetchCommunity = useCallback(async (loc: { lat: number; lng: number }) => {
+  // Reverse geocoding — obtenir ville et état
+  const getLocationDetails = useCallback(async (lat:number, lng:number) => {
+    try {
+      const res  = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}`);
+      const data = await res.json();
+      const components = data.results?.[0]?.address_components || [];
+      const state = components.find((c:any) => c.types.includes("administrative_area_level_1"))?.short_name || "";
+      const city  = components.find((c:any) => c.types.includes("locality"))?.long_name || "";
+      setUserState(state);
+      setUserCity(city);
+    } catch { /* continue */ }
+  }, []);
+
+  const fetchCommunity = useCallback(async (loc:{lat:number;lng:number}, state:string) => {
     setLoadingComm(true);
     try {
       const user = auth.currentUser;
       if (!user) return;
-      const snap = await getDocs(collection(db, "users"));
-      const users: CommunityUser[] = [];
+      const snap = await getDocs(collection(db,"users"));
+      const users:CommunityUser[] = [];
+      let newCount = 0;
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate()-7);
+
       snap.forEach(d => {
         const data = d.data() as any;
-        if (d.id === user.uid) return;
+        if (d.id===user.uid) return;
         if (!data.communityVisible) return;
         if (!data.location?.lat) return;
-        const dist = getDistanceKm(loc.lat, loc.lng, data.location.lat, data.location.lng);
-        if (dist > 20) return;
-        // Arrondi position à ~1km pour anonymat
-        const anonLat = Math.round(data.location.lat * 100) / 100;
-        const anonLng = Math.round(data.location.lng * 100) / 100;
+
+        // Filtre par état seulement
+        if (state && data.location?.state && data.location.state !== state) return;
+
+        const dist = getDistanceKm(loc.lat,loc.lng,data.location.lat,data.location.lng);
+        if (dist > 50) return; // Max 50km
+
+        const isNew = data.createdAt ? new Date(data.createdAt) > oneWeekAgo : false;
+        if (isNew) newCount++;
+
+        const anon = anonLocation(data.location.lat, data.location.lng);
         users.push({
           id: d.id,
-          situation: data.reason || "unknown",
+          situation: data.reason || "other",
           arrival: data.arrival || "unknown",
-          distance: formatDistance(dist),
-          lat: anonLat,
-          lng: anonLng,
+          lat: anon.lat,
+          lng: anon.lng,
+          isNew,
         });
       });
-      users.sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
+
       setCommunityUsers(users);
+      setNewUsersCount(newCount);
     } catch { setCommunityUsers([]); }
     setLoadingComm(false);
   }, []);
 
-  const saveLocation = useCallback(async (loc: { lat: number; lng: number }) => {
+  const saveLocation = useCallback(async (loc:{lat:number;lng:number}, state:string, city:string) => {
     const user = auth.currentUser;
     if (!user) return;
     try {
-      await updateDoc(doc(db, "users", user.uid), {
-        location: { lat: loc.lat, lng: loc.lng, updatedAt: new Date().toISOString() }
+      await updateDoc(doc(db,"users",user.uid),{
+        location:{ lat:loc.lat, lng:loc.lng, state, city, updatedAt:new Date().toISOString() }
       });
     } catch { /* continue */ }
   }, []);
 
   useEffect(() => {
-    const loadCommVisible = async () => {
-      const user = auth.currentUser;
-      if (!user) return;
-      try {
-        const snap = await getDoc(doc(db, "users", user.uid));
-        if (snap.exists()) setCommVisible((snap.data() as any)?.communityVisible || false);
-      } catch { /* continue */ }
-    };
-    loadCommVisible();
-  }, []);
-
-  useEffect(() => {
     if (!navigator.geolocation) return;
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
-      pos => {
-        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      async pos => {
+        const loc = { lat:pos.coords.latitude, lng:pos.coords.longitude };
         setUserLocation(loc);
         setMapCenter(loc);
         setLocating(false);
-        fetchPlaces(loc, "ssn");
-        saveLocation(loc);
-        fetchCommunity(loc);
+        fetchPlaces(loc,"ssn");
+        const res  = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${loc.lat},${loc.lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}`);
+        const data = await res.json();
+        const components = data.results?.[0]?.address_components||[];
+        const state = components.find((c:any)=>c.types.includes("administrative_area_level_1"))?.short_name||"";
+        const city  = components.find((c:any)=>c.types.includes("locality"))?.long_name||"";
+        setUserState(state);
+        setUserCity(city);
+        saveLocation(loc,state,city);
+        fetchCommunity(loc,state);
       },
       () => setLocating(false),
-      { timeout: 10000 }
+      { timeout:10000 }
     );
-  }, [fetchPlaces, fetchCommunity, saveLocation]);
+  }, [fetchPlaces,fetchCommunity,saveLocation]);
 
   const getLocation = () => {
     if (!navigator.geolocation) return;
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
-      pos => {
-        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      async pos => {
+        const loc = { lat:pos.coords.latitude, lng:pos.coords.longitude };
         setUserLocation(loc);
         setMapCenter(loc);
         setLocating(false);
-        fetchPlaces(loc, activeFilter);
-        saveLocation(loc);
-        fetchCommunity(loc);
+        fetchPlaces(loc,activeFilter);
+        const res  = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${loc.lat},${loc.lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}`);
+        const data = await res.json();
+        const components = data.results?.[0]?.address_components||[];
+        const state = components.find((c:any)=>c.types.includes("administrative_area_level_1"))?.short_name||"";
+        const city  = components.find((c:any)=>c.types.includes("locality"))?.long_name||"";
+        setUserState(state);
+        setUserCity(city);
+        saveLocation(loc,state,city);
+        fetchCommunity(loc,state);
       },
       () => setLocating(false),
-      { timeout: 10000 }
+      { timeout:10000 }
     );
   };
 
-  const handleFilter = (f: FilterType) => {
+  const handleFilter = (f:FilterType) => {
     setActiveFilter(f);
-    if (userLocation) fetchPlaces(userLocation, f);
+    if (userLocation) fetchPlaces(userLocation,f);
   };
 
   const toggleCommVisible = async () => {
@@ -183,91 +248,73 @@ export default function ExplorerTab({ lang }: { lang: Lang }) {
     const newVal = !commVisible;
     setCommVisible(newVal);
     try {
-      await updateDoc(doc(db, "users", user.uid), { communityVisible: newVal });
-      if (newVal && userLocation) fetchCommunity(userLocation);
+      await updateDoc(doc(db,"users",user.uid),{ communityVisible:newVal });
+      if (newVal && userLocation) fetchCommunity(userLocation,userState);
     } catch { /* continue */ }
     setSavingToggle(false);
   };
 
-  const onMapLoad = useCallback(() => {}, []);
+  const filteredUsers = commFilter==="all"
+    ? communityUsers
+    : communityUsers.filter(u => u.situation===commFilter);
 
-  const situationLabels: Record<string, Record<Lang, string>> = {
-    dv:       { fr:"DV Lottery",           en:"DV Lottery",           es:"Lotería DV"        },
-    work:     { fr:"Visa travail",         en:"Work visa",            es:"Visa trabajo"      },
-    student:  { fr:"Étudiant",             en:"Student",              es:"Estudiante"        },
-    family:   { fr:"Regroupement familial",en:"Family reunification", es:"Reunificación"     },
-    refugee:  { fr:"Réfugié",             en:"Refugee",              es:"Refugiado"         },
-    tourist:  { fr:"Tourisme",            en:"Tourism",              es:"Turismo"           },
-    other:    { fr:"Autre",               en:"Other",                es:"Otro"              },
-  };
+  const onMapLoad = useCallback(()=>{}, []);
 
-  const arrivalLabels: Record<string, Record<Lang, string>> = {
-    "not-yet": { fr:"Pas encore arrivé", en:"Not yet arrived", es:"Aún no llegado" },
-    "just":    { fr:"Vient d'arriver",   en:"Just arrived",    es:"Recién llegado"  },
-    "months":  { fr:"Quelques mois",     en:"A few months",    es:"Pocos meses"     },
-    "settled": { fr:"Installé",          en:"Settled",         es:"Establecido"     },
-  };
+  const sitMsg = SITUATION_MESSAGES[userSituation]?.[lang] || SITUATION_MESSAGES.default[lang];
 
   return (
-    <div style={{ marginTop: 14 }}>
+    <div style={{ marginTop:14 }}>
 
       {/* Title */}
-      <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>{label.title}</div>
-        <div style={{ fontSize: 12, color: "#aaa" }}>{subTab === "services" ? label.sub : label.commSub}</div>
+      <div style={{ marginBottom:14 }}>
+        <div style={{ fontSize:20, fontWeight:700, color:"#fff" }}>Explorer</div>
+        <div style={{ fontSize:12, color:"#aaa" }}>
+          {subTab==="services" ? (lang==="fr"?"Services près de toi":lang==="es"?"Servicios cerca de ti":"Services near you") : (lang==="fr"?"Communauté Kuabo":lang==="es"?"Comunidad Kuabo":"Kuabo Community")}
+        </div>
       </div>
 
       {/* Sub tabs */}
       <div style={{ display:"flex", gap:8, marginBottom:16 }}>
-        {(["services","community"] as ExplorerSubTab[]).map(t => (
-          <button key={t} onClick={() => setSubTab(t)} style={{
-            flex:1, padding:"10px", borderRadius:12,
-            background: subTab===t ? "#e8b84b" : "#141d2e",
-            border: "1px solid " + (subTab===t ? "#e8b84b" : "#1e2a3a"),
-            color: subTab===t ? "#000" : "#aaa",
-            fontSize:13, fontWeight:subTab===t?700:400,
-            cursor:"pointer", fontFamily:"inherit",
-          }}>
-            {t === "services" ? "🏢 " + label.services : "👥 " + label.community}
+        {[
+          { id:"services",  label: lang==="fr"?"🏢 Services":lang==="es"?"🏢 Servicios":"🏢 Services"   },
+          { id:"community", label: lang==="fr"?"👥 Communauté":lang==="es"?"👥 Comunidad":"👥 Community" },
+        ].map(t => (
+          <button key={t.id} onClick={() => setSubTab(t.id as ExplorerSubTab)} style={{ flex:1, padding:"10px", borderRadius:12, background:subTab===t.id?"#e8b84b":"#141d2e", border:"1px solid "+(subTab===t.id?"#e8b84b":"#1e2a3a"), color:subTab===t.id?"#000":"#aaa", fontSize:13, fontWeight:subTab===t.id?700:400, cursor:"pointer", fontFamily:"inherit" }}>
+            {t.label}
           </button>
         ))}
       </div>
 
-      {/* ── SERVICES TAB ── */}
-      {subTab === "services" && (
+      {/* ══ SERVICES ══ */}
+      {subTab==="services" && (
         <>
-          {/* Carte */}
           <div style={{ borderRadius:16, overflow:"hidden", border:"1px solid #1e2a3a", marginBottom:12 }}>
             {isLoaded ? (
               <GoogleMap mapContainerStyle={mapContainerStyle} center={mapCenter} zoom={userLocation?13:2} options={mapOptions} onLoad={onMapLoad}>
-                {userLocation && (
-                  <Marker position={userLocation} icon={{ path:google.maps.SymbolPath.CIRCLE, scale:8, fillColor:"#e8b84b", fillOpacity:1, strokeColor:"#fff", strokeWeight:2 }} />
-                )}
+                {userLocation && <Marker position={userLocation} icon={{ path:google.maps.SymbolPath.CIRCLE, scale:8, fillColor:"#e8b84b", fillOpacity:1, strokeColor:"#fff", strokeWeight:2 }} />}
                 {places.map(p => (
-                  <Marker key={p.id} position={{ lat:p.lat, lng:p.lng }}
+                  <Marker key={p.id} position={{lat:p.lat,lng:p.lng}}
                     icon={{ path:google.maps.SymbolPath.CIRCLE, scale:7, fillColor:activeColor, fillOpacity:1, strokeColor:"#fff", strokeWeight:1.5 }}
                     onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.name)}&destination_place_id=${p.id}`,"_blank")}
                   />
                 ))}
               </GoogleMap>
             ) : (
-              <div style={{ height:220, background:"#0f1521", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <div style={{ height:260, background:"#0f1521", display:"flex", alignItems:"center", justifyContent:"center" }}>
                 <div style={{ color:"#555", fontSize:13 }}>Chargement...</div>
               </div>
             )}
           </div>
 
-          {/* Bouton localisation */}
           {!userLocation && (
             <button onClick={getLocation} disabled={locating} style={{ width:"100%", padding:"13px", background:"rgba(232,184,75,0.1)", border:"1px solid rgba(232,184,75,0.3)", borderRadius:14, color:"#e8b84b", fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"inherit", marginBottom:12, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-              📍 {locating ? label.locating : label.activate}
+              📍 {locating ? (lang==="fr"?"Localisation...":lang==="es"?"Ubicando...":"Locating...") : (lang==="fr"?"Activer la localisation":lang==="es"?"Activar ubicación":"Enable location")}
             </button>
           )}
 
-          {/* Filtres */}
           <div style={{ display:"flex", gap:8, overflowX:"auto", marginBottom:14, paddingBottom:4 }}>
             {FILTERS.map(f => {
-              const active = activeFilter === f.id;
+              const active = activeFilter===f.id;
               return (
                 <button key={f.id} onClick={() => handleFilter(f.id)} style={{ background:active?activeColor:"#141d2e", border:"1px solid "+(active?activeColor:"#1e2a3a"), borderRadius:20, padding:"6px 14px", color:active?"#000":"#aaa", fontSize:11, fontWeight:active?700:400, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" as const, flexShrink:0, display:"flex", alignItems:"center", gap:5 }}>
                   {f.icon} {f.label[lang]}
@@ -276,21 +323,21 @@ export default function ExplorerTab({ lang }: { lang: Lang }) {
             })}
           </div>
 
-          {loadingPlaces && <div style={{ textAlign:"center", padding:"24px", color:"#555", fontSize:13 }}>{label.loading}</div>}
-          {!loadingPlaces && places.length===0 && userLocation && <div style={{ textAlign:"center", padding:"24px", color:"#555", fontSize:13 }}>{label.noResults}</div>}
+          {loadingPlaces && <div style={{ textAlign:"center", padding:"24px", color:"#555", fontSize:13 }}>{lang==="fr"?"Recherche...":lang==="es"?"Buscando...":"Searching..."}</div>}
+          {!loadingPlaces && places.length===0 && userLocation && <div style={{ textAlign:"center", padding:"24px", color:"#555", fontSize:13 }}>{lang==="fr"?"Aucun résultat":lang==="es"?"Sin resultados":"No results"}</div>}
 
           <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
             {places.map(p => (
               <div key={p.id} style={{ background:"#141d2e", border:"1px solid "+activeColor+"33", borderRadius:14, padding:"14px", display:"flex", alignItems:"center", gap:12 }}>
                 <div style={{ width:42, height:42, borderRadius:12, background:activeColor+"18", border:"1px solid "+activeColor+"33", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>
-                  {FILTERS.find(f => f.id===activeFilter)?.icon}
+                  {FILTERS.find(f=>f.id===activeFilter)?.icon}
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontSize:13, fontWeight:600, color:"#f4f1ec", marginBottom:3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{p.name}</div>
                   <div style={{ fontSize:11, color:"#aaa", display:"flex", alignItems:"center", gap:6 }}>
-                    <span style={{ color:p.open===true?"#22c55e":p.open===false?"#ef4444":"#555", fontWeight:600 }}>{p.open===true?label.open:p.open===false?label.closed:label.unknown}</span>
+                    <span style={{ color:p.open===true?"#22c55e":p.open===false?"#ef4444":"#555", fontWeight:600 }}>{p.open===true?(lang==="fr"?"Ouvert":lang==="es"?"Abierto":"Open"):p.open===false?(lang==="fr"?"Fermé":lang==="es"?"Cerrado":"Closed"):"?"}</span>
                     <span>·</span><span>{p.distance}</span>
-                    {p.rating && <><span>·</span><span>⭐ {p.rating}</span></>}
+                    {p.rating&&<><span>·</span><span>⭐ {p.rating}</span></>}
                   </div>
                 </div>
                 <button onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.name)}&destination_place_id=${p.id}`,"_blank")} style={{ background:"none", border:"none", color:"#e8b84b", fontSize:18, cursor:"pointer", flexShrink:0, padding:4 }}>→</button>
@@ -300,98 +347,120 @@ export default function ExplorerTab({ lang }: { lang: Lang }) {
         </>
       )}
 
-      {/* ── COMMUNITY TAB ── */}
-      {subTab === "community" && (
+      {/* ══ COMMUNAUTÉ ══ */}
+      {subTab==="community" && (
         <>
-          {/* Toggle apparaître */}
-          <div style={{ background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:14, padding:"16px", marginBottom:16 }}>
+          {/* Toggle */}
+          <div style={{ background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:14, padding:"14px", marginBottom:12 }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
               <div>
-                <div style={{ fontSize:13, fontWeight:600, color:"#f4f1ec", marginBottom:3 }}>{label.commVisible}</div>
-                <div style={{ fontSize:11, color:"#aaa" }}>{label.commVisibleSub}</div>
+                <div style={{ fontSize:13, fontWeight:600, color:"#f4f1ec", marginBottom:2 }}>
+                  {lang==="fr"?"Apparaître sur la carte":lang==="es"?"Aparecer en el mapa":"Appear on map"}
+                </div>
+                <div style={{ fontSize:11, color:"#aaa" }}>
+                  {lang==="fr"?"Anonyme — position approximative (~2km)":lang==="es"?"Anónimo — posición aproximada (~2km)":"Anonymous — approximate position (~2km)"}
+                </div>
               </div>
-              <button
-                onClick={toggleCommVisible}
-                disabled={savingToggle}
-                style={{
-                  width:48, height:26, borderRadius:13,
-                  background: commVisible ? "#e8b84b" : "#2a3448",
-                  border:"none", cursor:"pointer", position:"relative",
-                  transition:"background 0.2s", flexShrink:0,
-                }}
-              >
-                <div style={{
-                  position:"absolute", top:3,
-                  left: commVisible ? 24 : 3,
-                  width:20, height:20, borderRadius:"50%",
-                  background:"#fff",
-                  transition:"left 0.2s",
-                }} />
+              <button onClick={toggleCommVisible} disabled={savingToggle} style={{ width:48, height:26, borderRadius:13, background:commVisible?"#e8b84b":"#2a3448", border:"none", cursor:"pointer", position:"relative", transition:"background 0.2s", flexShrink:0 }}>
+                <div style={{ position:"absolute", top:3, left:commVisible?24:3, width:20, height:20, borderRadius:"50%", background:"#fff", transition:"left 0.2s" }} />
               </button>
             </div>
           </div>
 
+          {/* Message rassurant */}
+          <div style={{ background:"rgba(45,212,191,0.06)", border:"1px solid rgba(45,212,191,0.2)", borderRadius:14, padding:"14px 16px", marginBottom:12 }}>
+            <div style={{ fontSize:13, color:"#f4f1ec", lineHeight:1.6 }}>{sitMsg}</div>
+          </div>
+
+          {/* Compteurs état + ville */}
+          {userLocation && (
+            <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+              <div style={{ flex:1, background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, padding:"12px", textAlign:"center" as const }}>
+                <div style={{ fontSize:22, fontWeight:800, color:"#e8b84b", lineHeight:1 }}>{communityUsers.length}</div>
+                <div style={{ fontSize:10, color:"#aaa", marginTop:3 }}>
+                  {lang==="fr"?`dans ${userState||"ton état"}`:lang==="es"?`en ${userState||"tu estado"}`:`in ${userState||"your state"}`}
+                </div>
+              </div>
+              <div style={{ flex:1, background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, padding:"12px", textAlign:"center" as const }}>
+                <div style={{ fontSize:22, fontWeight:800, color:"#2dd4bf", lineHeight:1 }}>{newUsersCount}</div>
+                <div style={{ fontSize:10, color:"#aaa", marginTop:3 }}>
+                  {lang==="fr"?"nouveaux cette semaine":lang==="es"?"nuevos esta semana":"new this week"}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Filtre par situation */}
+          <div style={{ display:"flex", gap:6, overflowX:"auto", marginBottom:12, paddingBottom:4 }}>
+            {COMM_FILTERS.map(f => {
+              const active = commFilter===f.id;
+              return (
+                <button key={f.id} onClick={() => setCommFilter(f.id)} style={{ background:active?"#2dd4bf":"#141d2e", border:"1px solid "+(active?"#2dd4bf":"#1e2a3a"), borderRadius:20, padding:"5px 12px", color:active?"#000":"#aaa", fontSize:10, fontWeight:active?700:400, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" as const, flexShrink:0 }}>
+                  {f.label[lang]}
+                </button>
+              );
+            })}
+          </div>
+
           {/* Carte communauté */}
-          <div style={{ borderRadius:16, overflow:"hidden", border:"1px solid #1e2a3a", marginBottom:12 }}>
+          <div style={{ borderRadius:16, overflow:"hidden", border:"1px solid rgba(45,212,191,0.2)", marginBottom:12 }}>
             {isLoaded ? (
-              <GoogleMap mapContainerStyle={mapContainerStyle} center={mapCenter} zoom={userLocation?12:2} options={mapOptions} onLoad={onMapLoad}>
+              <GoogleMap mapContainerStyle={mapContainerStyle} center={mapCenter} zoom={userLocation?11:2} options={mapOptions} onLoad={onMapLoad}>
+                {/* User marker — doré */}
                 {userLocation && (
-                  <Marker position={userLocation} icon={{ path:google.maps.SymbolPath.CIRCLE, scale:8, fillColor:"#e8b84b", fillOpacity:1, strokeColor:"#fff", strokeWeight:2 }} />
+                  <Marker position={userLocation} icon={{ path:google.maps.SymbolPath.CIRCLE, scale:9, fillColor:"#e8b84b", fillOpacity:1, strokeColor:"#fff", strokeWeight:2 }} />
                 )}
-                {communityUsers.map(u => (
-                  <Marker key={u.id} position={{ lat:u.lat, lng:u.lng }}
-                    icon={{ path:google.maps.SymbolPath.CIRCLE, scale:7, fillColor:"#2dd4bf", fillOpacity:0.8, strokeColor:"#fff", strokeWeight:1.5 }}
+                {/* Community markers — bleus */}
+                {filteredUsers.map(u => (
+                  <Marker key={u.id} position={{lat:u.lat,lng:u.lng}}
+                    icon={{ path:google.maps.SymbolPath.CIRCLE, scale:u.isNew?8:6, fillColor:u.isNew?"#2dd4bf":"#60a5fa", fillOpacity:0.85, strokeColor:"#fff", strokeWeight:1.5 }}
                   />
                 ))}
               </GoogleMap>
             ) : (
-              <div style={{ height:220, background:"#0f1521", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <div style={{ height:260, background:"#0f1521", display:"flex", alignItems:"center", justifyContent:"center" }}>
                 <div style={{ color:"#555", fontSize:13 }}>Chargement...</div>
               </div>
             )}
           </div>
 
-          {/* Bouton localisation */}
+          {/* Légende carte */}
+          <div style={{ display:"flex", gap:16, marginBottom:16, padding:"0 4px" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <div style={{ width:10, height:10, borderRadius:"50%", background:"#e8b84b" }} />
+              <span style={{ fontSize:11, color:"#aaa" }}>{lang==="fr"?"Toi":lang==="es"?"Tú":"You"}</span>
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <div style={{ width:10, height:10, borderRadius:"50%", background:"#2dd4bf" }} />
+              <span style={{ fontSize:11, color:"#aaa" }}>{lang==="fr"?"Nouveau cette semaine":lang==="es"?"Nuevo esta semana":"New this week"}</span>
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <div style={{ width:10, height:10, borderRadius:"50%", background:"#60a5fa" }} />
+              <span style={{ fontSize:11, color:"#aaa" }}>{lang==="fr"?"Kuabo user":lang==="es"?"Usuario Kuabo":"Kuabo user"}</span>
+            </div>
+          </div>
+
+          {/* Pas de localisation */}
           {!userLocation && (
-            <button onClick={getLocation} disabled={locating} style={{ width:"100%", padding:"13px", background:"rgba(45,212,191,0.1)", border:"1px solid rgba(45,212,191,0.3)", borderRadius:14, color:"#2dd4bf", fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"inherit", marginBottom:12, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-              📍 {locating ? label.locating : label.activate}
+            <button onClick={getLocation} disabled={locating} style={{ width:"100%", padding:"13px", background:"rgba(45,212,191,0.1)", border:"1px solid rgba(45,212,191,0.3)", borderRadius:14, color:"#2dd4bf", fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+              📍 {locating?(lang==="fr"?"Localisation...":lang==="es"?"Ubicando...":"Locating..."):(lang==="fr"?"Activer la localisation":lang==="es"?"Activar ubicación":"Enable location")}
             </button>
           )}
 
           {loadingComm && <div style={{ textAlign:"center", padding:"24px", color:"#555", fontSize:13 }}>Chargement...</div>}
 
-          {!loadingComm && communityUsers.length === 0 && (
-            <div style={{ textAlign:"center", padding:"32px 20px", color:"#555", fontSize:13 }}>
-              <div style={{ fontSize:32, marginBottom:12 }}>👥</div>
-              <div>{label.commEmpty}</div>
-              <div style={{ fontSize:11, color:"#444", marginTop:8 }}>
-                {lang==="fr"?"Active le toggle pour apparaître et inviter d'autres immigrants à rejoindre Kuabo.":lang==="es"?"Activa el toggle para aparecer e invitar a otros inmigrantes a unirse a Kuabo.":"Enable the toggle to appear and invite other immigrants to join Kuabo."}
+          {/* Vide */}
+          {!loadingComm && communityUsers.length===0 && userLocation && (
+            <div style={{ textAlign:"center", padding:"32px 20px" }}>
+              <div style={{ fontSize:40, marginBottom:12 }}>👥</div>
+              <div style={{ fontSize:14, color:"#f4f1ec", fontWeight:600, marginBottom:8 }}>
+                {lang==="fr"?"Sois le premier dans ta zone !":lang==="es"?"¡Sé el primero en tu zona!":"Be the first in your area!"}
+              </div>
+              <div style={{ fontSize:12, color:"#555" }}>
+                {lang==="fr"?"Active le toggle pour apparaître et montrer aux autres immigrants qu'ils ne sont pas seuls.":lang==="es"?"Activa el toggle para aparecer y mostrar a otros inmigrantes que no están solos.":"Enable the toggle to appear and show other immigrants they're not alone."}
               </div>
             </div>
           )}
-
-          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-            {communityUsers.map((u, i) => (
-              <div key={u.id} style={{ background:"#141d2e", border:"1px solid rgba(45,212,191,0.2)", borderRadius:14, padding:"14px", display:"flex", alignItems:"center", gap:12 }}>
-                <div style={{ width:42, height:42, borderRadius:"50%", background:"rgba(45,212,191,0.1)", border:"1px solid rgba(45,212,191,0.25)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>👤</div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:13, fontWeight:600, color:"#f4f1ec", marginBottom:3 }}>
-                    Kuabo User #{i+1}
-                  </div>
-                  <div style={{ fontSize:11, color:"#aaa", display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" as const }}>
-                    <span style={{ color:"#2dd4bf", fontWeight:600 }}>{situationLabels[u.situation]?.[lang] || u.situation}</span>
-                    <span>·</span>
-                    <span>{arrivalLabels[u.arrival]?.[lang] || u.arrival}</span>
-                    <span>·</span>
-                    <span>{u.distance}</span>
-                  </div>
-                </div>
-                <div style={{ padding:"4px 10px", borderRadius:20, background:"rgba(45,212,191,0.1)", border:"1px solid rgba(45,212,191,0.2)", fontSize:10, color:"#2dd4bf", fontWeight:600 }}>
-                  {u.distance}
-                </div>
-              </div>
-            ))}
-          </div>
         </>
       )}
 
