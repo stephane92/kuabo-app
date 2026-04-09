@@ -368,7 +368,6 @@ function CircularProgress({value}:{value:number}) {
     </div>
   );
 }
-
 function CountdownDeadline({nextStep,lang}:{nextStep:Step|undefined;lang:Lang}) {
   const [daysLeft,setDaysLeft] = useState<number|null>(null);
   useEffect(() => {
@@ -409,7 +408,13 @@ function CountdownDeadline({nextStep,lang}:{nextStep:Step|undefined;lang:Lang}) 
           <span style={{fontSize:10,color:"#555"}}>Jour {nextStep.time}</span>
         </div>
       </div>
-      <button style={{width:"100%",padding:"11px",background:color,color:"#fff",border:"none",borderRadius:24,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{L.cta}</button>
+      {/* ✅ Fix — bouton avec onClick */}
+      <button
+        onClick={()=>window.location.href=`/guide/${nextStep.id}`}
+        style={{width:"100%",padding:"11px",background:color,color:"#fff",border:"none",borderRadius:24,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}
+      >
+        {L.cta}
+      </button>
     </div>
   );
 }
