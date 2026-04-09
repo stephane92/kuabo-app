@@ -9,75 +9,27 @@ type Message = { role: "user" | "assistant"; content: string };
 const SUGGESTED: Record<Lang, { country: Record<string, string[]>; default: string[] }> = {
   fr: {
     country: {
-      us: [
-        "Comment obtenir mon SSN rapidement ?",
-        "Quelle banque choisir sans credit score ?",
-        "Comment trouver un logement au Maryland ?",
-      ],
-      fr: [
-        "Comment obtenir mon titre de séjour ?",
-        "Comment m'inscrire à la CAF ?",
-        "Comment ouvrir un compte bancaire en France ?",
-      ],
-      ca: [
-        "Comment obtenir mon NAS au Canada ?",
-        "Comment m'inscrire à l'assurance maladie ?",
-        "Quelles aides existe-t-il pour les nouveaux arrivants ?",
-      ],
+      us: ["Comment obtenir mon SSN rapidement ?", "Quelle banque choisir sans credit score ?", "Comment trouver un logement au Maryland ?"],
+      fr: ["Comment obtenir mon titre de séjour ?", "Comment m'inscrire à la CAF ?", "Comment ouvrir un compte bancaire en France ?"],
+      ca: ["Comment obtenir mon NAS au Canada ?", "Comment m'inscrire à l'assurance maladie ?", "Quelles aides existe-t-il pour les nouveaux arrivants ?"],
     },
-    default: [
-      "Par où commencer dès mon arrivée ?",
-      "Quels documents dois-je préparer ?",
-      "Comment trouver un logement rapidement ?",
-    ],
+    default: ["Par où commencer dès mon arrivée ?", "Quels documents dois-je préparer ?", "Comment trouver un logement rapidement ?"],
   },
   en: {
     country: {
-      us: [
-        "How do I get my SSN quickly?",
-        "Which bank to choose without a credit score?",
-        "How to find housing in Maryland?",
-      ],
-      fr: [
-        "How do I get my residence permit in France?",
-        "How do I apply for CAF benefits?",
-        "How do I open a bank account in France?",
-      ],
-      ca: [
-        "How do I get my SIN number in Canada?",
-        "How do I register for health insurance?",
-        "What help exists for newcomers in Canada?",
-      ],
+      us: ["How do I get my SSN quickly?", "Which bank to choose without a credit score?", "How to find housing in Maryland?"],
+      fr: ["How do I get my residence permit in France?", "How do I apply for CAF benefits?", "How do I open a bank account in France?"],
+      ca: ["How do I get my SIN number in Canada?", "How do I register for health insurance?", "What help exists for newcomers in Canada?"],
     },
-    default: [
-      "Where do I start when I arrive?",
-      "What documents should I prepare?",
-      "How do I find housing quickly?",
-    ],
+    default: ["Where do I start when I arrive?", "What documents should I prepare?", "How do I find housing quickly?"],
   },
   es: {
     country: {
-      us: [
-        "¿Cómo obtengo mi SSN rápidamente?",
-        "¿Qué banco elegir sin historial crediticio?",
-        "¿Cómo encontrar vivienda en Maryland?",
-      ],
-      fr: [
-        "¿Cómo obtengo mi permiso de residencia en Francia?",
-        "¿Cómo solicito la CAF?",
-        "¿Cómo abro una cuenta bancaria en Francia?",
-      ],
-      ca: [
-        "¿Cómo obtengo mi NAS en Canadá?",
-        "¿Cómo me registro en el seguro médico?",
-        "¿Qué ayudas existen para los recién llegados?",
-      ],
+      us: ["¿Cómo obtengo mi SSN rápidamente?", "¿Qué banco elegir sin historial crediticio?", "¿Cómo encontrar vivienda en Maryland?"],
+      fr: ["¿Cómo obtengo mi permiso de residencia en Francia?", "¿Cómo solicito la CAF?", "¿Cómo abro una cuenta bancaria en Francia?"],
+      ca: ["¿Cómo obtengo mi NAS en Canadá?", "¿Cómo me registro en el seguro médico?", "¿Qué ayudas existen para los recién llegados?"],
     },
-    default: [
-      "¿Por dónde empiezo al llegar?",
-      "¿Qué documentos debo preparar?",
-      "¿Cómo encuentro vivienda rápidamente?",
-    ],
+    default: ["¿Por dónde empiezo al llegar?", "¿Qué documentos debo preparar?", "¿Cómo encuentro vivienda rápidamente?"],
   },
 };
 
@@ -103,7 +55,6 @@ function buildSystemPrompt(profile: any, lang: Lang): string {
     uk: { fr: "Royaume-Uni", en: "United Kingdom", es: "Reino Unido" },
     other: { fr: "autre pays", en: "another country", es: "otro país" },
   };
-
   const reasonNames: Record<string, Record<Lang, string>> = {
     dv: { fr: "DV Lottery", en: "DV Lottery", es: "Lotería DV" },
     work: { fr: "visa travail", en: "work visa", es: "visa trabajo" },
@@ -114,7 +65,6 @@ function buildSystemPrompt(profile: any, lang: Lang): string {
     worldcup: { fr: "Coupe du monde", en: "World Cup", es: "Copa del Mundo" },
     other: { fr: "autre", en: "other", es: "otro" },
   };
-
   const country = countryNames[profile.country]?.[lang] || profile.country || "inconnu";
   const reason  = reasonNames[profile.reason]?.[lang]  || profile.reason  || "inconnu";
   const region  = profile.region || "";
@@ -176,7 +126,6 @@ Reglas absolutas:
 6. Si no sabes — dilo honestamente
 7. Nunca des consejos legales formales`,
   };
-
   return prompts[lang];
 }
 
@@ -189,13 +138,11 @@ export default function ChatPage() {
   const [mounted, setMounted]     = useState(false);
   const [showSuggested, setShowSuggested] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef  = useRef<HTMLTextAreaElement>(null);
+  const inputRef  = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Charge le profil depuis localStorage
     const savedLang = localStorage.getItem("lang") as Lang || "fr";
     setLang(savedLang);
-
     const p = {
       userName:       localStorage.getItem("userName") || "",
       country:        localStorage.getItem("country")  || "us",
@@ -215,7 +162,6 @@ export default function ChatPage() {
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || loading) return;
-
     const userMsg: Message = { role: "user", content: text.trim() };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
@@ -232,23 +178,20 @@ export default function ChatPage() {
           systemPrompt: buildSystemPrompt(profile, lang),
         }),
       });
-
       const data = await res.json();
-
       if (data.error) {
-        setMessages(prev => [...prev, { role: "assistant", content: "❌ " + (LABELS[lang].error) }]);
+        setMessages(prev => [...prev, { role: "assistant", content: "❌ " + LABELS[lang].error }]);
       } else {
         setMessages(prev => [...prev, { role: "assistant", content: data.text }]);
       }
     } catch {
       setMessages(prev => [...prev, { role: "assistant", content: "❌ " + LABELS[lang].error }]);
     }
-
     setLoading(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter") {
       e.preventDefault();
       sendMessage(input);
     }
@@ -262,7 +205,6 @@ export default function ChatPage() {
   return (
     <div style={container}>
 
-      {/* Background */}
       <div style={bgGlow} />
 
       {/* Header */}
@@ -284,13 +226,9 @@ export default function ChatPage() {
       {/* Messages */}
       <div style={messagesWrap}>
 
-        {/* Welcome message */}
+        {/* Welcome */}
         {messages.length === 0 && (
-          <div style={{
-            textAlign: "center", padding: "32px 20px 16px",
-            opacity: mounted ? 1 : 0,
-            transition: "opacity 0.5s ease",
-          }}>
+          <div style={{ textAlign: "center", padding: "32px 20px 16px", opacity: mounted ? 1 : 0, transition: "opacity 0.5s ease" }}>
             <div style={{ fontSize: 52, marginBottom: 12 }}>🤖</div>
             <div style={{ fontSize: 18, fontWeight: 700, color: "#f4f1ec", marginBottom: 8 }}>
               {lang === "fr" ? `Bonjour ${profile.userName || ""} !` : lang === "es" ? `¡Hola ${profile.userName || ""}!` : `Hello ${profile.userName || ""}!`}
@@ -309,25 +247,12 @@ export default function ChatPage() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {suggested.map((q, i) => (
-                <button
-                  key={i}
-                  onClick={() => sendMessage(q)}
-                  style={{
-                    background: "#0f1521",
-                    border: "1px solid #1e2a3a",
-                    borderRadius: 12,
-                    padding: "12px 14px",
-                    color: "#f4f1ec",
-                    fontSize: 13,
-                    cursor: "pointer",
-                    textAlign: "left" as const,
-                    fontFamily: "inherit",
-                    transition: "all 0.2s",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                  }}
-                >
+                <button key={i} onClick={() => sendMessage(q)} style={{
+                  background: "#0f1521", border: "1px solid #1e2a3a", borderRadius: 12,
+                  padding: "12px 14px", color: "#f4f1ec", fontSize: 13, cursor: "pointer",
+                  textAlign: "left" as const, fontFamily: "inherit",
+                  display: "flex", alignItems: "center", gap: 10,
+                }}>
                   <span style={{ color: "#e8b84b", flexShrink: 0 }}>→</span>
                   {q}
                 </button>
@@ -340,32 +265,19 @@ export default function ChatPage() {
         {messages.map((msg, i) => {
           const isUser = msg.role === "user";
           return (
-            <div key={i} style={{
-              display: "flex",
-              justifyContent: isUser ? "flex-end" : "flex-start",
-              padding: "4px 16px",
-              animation: "fadeUp 0.3s ease forwards",
-            }}>
+            <div key={i} style={{ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start", padding: "4px 16px", animation: "fadeUp 0.3s ease forwards" }}>
               {!isUser && (
-                <div style={{
-                  width: 28, height: 28, borderRadius: "50%",
-                  background: "rgba(232,184,75,0.15)",
-                  border: "1px solid rgba(232,184,75,0.3)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 14, flexShrink: 0, marginRight: 8, marginTop: 2,
-                }}>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(232,184,75,0.15)", border: "1px solid rgba(232,184,75,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0, marginRight: 8, marginTop: 2 }}>
                   🤖
                 </div>
               )}
               <div style={{
-                maxWidth: "78%",
-                padding: "12px 14px",
+                maxWidth: "78%", padding: "12px 14px",
                 borderRadius: isUser ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
                 background: isUser ? "#e8b84b" : "#0f1521",
                 border: isUser ? "none" : "1px solid #1e2a3a",
                 color: isUser ? "#000" : "#f4f1ec",
-                fontSize: 14,
-                lineHeight: 1.6,
+                fontSize: 14, lineHeight: 1.6,
                 fontWeight: isUser ? 500 : 400,
               }}>
                 {msg.content}
@@ -374,7 +286,7 @@ export default function ChatPage() {
           );
         })}
 
-        {/* Thinking indicator */}
+        {/* Thinking */}
         {loading && (
           <div style={{ display: "flex", alignItems: "center", padding: "4px 16px", gap: 8 }}>
             <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(232,184,75,0.15)", border: "1px solid rgba(232,184,75,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>🤖</div>
@@ -390,20 +302,29 @@ export default function ChatPage() {
       </div>
 
       {/* Disclaimer */}
-      <div style={disclaimer}>
-        {label.disclaimer}
-      </div>
+      <div style={disclaimer}>{label.disclaimer}</div>
 
-      {/* Input */}
+      {/* ✅ Input fixé en bas — input simple au lieu de textarea */}
       <div style={inputWrap}>
-        <textarea
+        <input
           ref={inputRef}
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={PLACEHOLDERS[lang]}
-          rows={1}
-          style={inputStyle}
+          type="text"
+          style={{
+            flex: 1,
+            background: "#0f1521",
+            border: "1px solid #1e2a3a",
+            borderRadius: 24,
+            padding: "12px 16px",
+            color: "#f4f1ec",
+            fontSize: 16,
+            fontFamily: "inherit",
+            outline: "none",
+            minWidth: 0,
+          }}
         />
         <button
           onClick={() => sendMessage(input)}
@@ -428,8 +349,8 @@ export default function ChatPage() {
           0%,100% { transform: translateY(0); }
           50%     { transform: translateY(-5px); }
         }
-        textarea { resize: none; }
-        textarea::placeholder { color: #444; }
+        input { font-size: 16px !important; }
+        input::placeholder { color: #444; }
         button:active { transform: scale(0.97); }
       `}</style>
     </div>
@@ -478,45 +399,33 @@ const messagesWrap: CSSProperties = {
   overflowY: "auto",
   paddingTop: 80,
   paddingBottom: 8,
+  // ✅ Fix iOS scroll
+  WebkitOverflowScrolling: "touch" as any,
 };
 const disclaimer: CSSProperties = {
-  fontSize: 10,
-  color: "#333",
-  textAlign: "center",
-  padding: "6px 20px",
-  lineHeight: 1.5,
+  fontSize: 10, color: "#333",
+  textAlign: "center", padding: "6px 20px",
+  lineHeight: 1.5, flexShrink: 0,
 };
 const inputWrap: CSSProperties = {
   display: "flex",
-  alignItems: "flex-end",
+  alignItems: "center",
   gap: 10,
-  padding: "12px 16px 28px",
-  background: "rgba(11,15,26,0.95)",
+  padding: "12px 16px",
+  paddingBottom: "max(12px, env(safe-area-inset-bottom))",
+  background: "rgba(11,15,26,0.98)",
   backdropFilter: "blur(12px)",
   borderTop: "1px solid #1e2a3a",
-};
-const inputStyle: CSSProperties = {
-  flex: 1,
-  background: "#0f1521",
-  border: "1px solid #1e2a3a",
-  borderRadius: 16,
-  padding: "12px 14px",
-  color: "#f4f1ec",
-  fontSize: 15,
-  fontFamily: "inherit",
-  outline: "none",
-  maxHeight: 120,
-  overflowY: "auto",
+  flexShrink: 0,
+  // ✅ Fix iOS keyboard
+  position: "sticky" as any,
+  bottom: 0,
 };
 const sendBtn: CSSProperties = {
   width: 44, height: 44,
   borderRadius: "50%",
   background: "#e8b84b",
-  border: "none",
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  flexShrink: 0,
-  transition: "opacity 0.2s",
+  border: "none", cursor: "pointer",
+  display: "flex", alignItems: "center", justifyContent: "center",
+  flexShrink: 0, transition: "opacity 0.2s",
 };

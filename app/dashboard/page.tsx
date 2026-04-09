@@ -8,12 +8,13 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import {
   CheckCircle2, Clock, ChevronRight, LogOut, Globe,
   Undo2, Target, AlertTriangle, Home, FileText,
-  User, Flame, Lightbulb, PhoneCall,
+  User, Flame, Lightbulb, PhoneCall, MapPin,
 } from "lucide-react";
 import type { CSSProperties } from "react";
+import ExplorerTab from "../components/ExplorerTab";
 
 type Lang = "fr" | "en" | "es";
-type Tab  = "home" | "documents" | "profile";
+type Tab  = "home" | "documents" | "profile" | "explorer";
 type Step = { id: string; label: string; time: number; weight: number; urgency: "critical" | "high" | "normal" };
 
 function useScrollToTop(activeTab: Tab) {
@@ -144,7 +145,6 @@ function DailyTip({ lang }: { lang: Lang }) {
   );
 }
 
-// ── BOUTON KUABO AI ──
 function KuaboAIButton({ lang, completedSteps }: { lang: Lang; completedSteps: string[] }) {
   const labels = {
     fr: { title: "Demande à Kuabo AI", sub: "Ton assistant immigration personnel" },
@@ -157,21 +157,10 @@ function KuaboAIButton({ lang, completedSteps }: { lang: Lang; completedSteps: s
         localStorage.setItem("completedSteps", JSON.stringify(completedSteps));
         window.location.href = "/chat";
       }}
-      style={{
-        width: "100%", marginTop: 12, padding: "14px 16px",
-        background: "linear-gradient(135deg, rgba(232,184,75,0.1), rgba(45,212,191,0.06))",
-        border: "1px solid rgba(232,184,75,0.3)",
-        borderRadius: 14, cursor: "pointer",
-        display: "flex", alignItems: "center",
-        justifyContent: "space-between",
-        fontFamily: "inherit",
-        transition: "all 0.2s",
-      }}
+      style={{ width:"100%", marginTop:12, padding:"14px 16px", background:"linear-gradient(135deg, rgba(232,184,75,0.1), rgba(45,212,191,0.06))", border:"1px solid rgba(232,184,75,0.3)", borderRadius:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"space-between", fontFamily:"inherit" }}
     >
       <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-        <div style={{ width:40, height:40, borderRadius:12, background:"rgba(232,184,75,0.12)", border:"1px solid rgba(232,184,75,0.25)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>
-          🤖
-        </div>
+        <div style={{ width:40, height:40, borderRadius:12, background:"rgba(232,184,75,0.12)", border:"1px solid rgba(232,184,75,0.25)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>🤖</div>
         <div style={{ textAlign:"left" as const }}>
           <div style={{ fontSize:14, fontWeight:600, color:"#f4f1ec" }}>{labels.title}</div>
           <div style={{ fontSize:11, color:"#aaa", marginTop:1 }}>{labels.sub}</div>
@@ -406,10 +395,15 @@ function ProfileTab({ userName, userEmail, lang, progress, doneCount, totalSteps
 }
 
 function BottomNav({ activeTab, setActiveTab, lang }: { activeTab:Tab; setActiveTab:(t:Tab)=>void; lang:Lang }) {
-  const L = { fr:{ home:"Accueil", documents:"Documents", profile:"Profil" }, en:{ home:"Home", documents:"Documents", profile:"Profile" }, es:{ home:"Inicio", documents:"Documentos", profile:"Perfil" } }[lang];
+  const L = {
+    fr: { home:"Accueil", documents:"Documents", explorer:"Explorer", profile:"Profil"    },
+    en: { home:"Home",    documents:"Documents", explorer:"Explorer", profile:"Profile"   },
+    es: { home:"Inicio",  documents:"Documentos",explorer:"Explorar", profile:"Perfil"   },
+  }[lang];
   const tabs: { id:Tab; icon:React.ReactNode; label:string }[] = [
     { id:"home",      icon:<Home size={22} />,     label:L.home      },
     { id:"documents", icon:<FileText size={22} />, label:L.documents },
+    { id:"explorer",  icon:<MapPin size={22} />,   label:L.explorer  },
     { id:"profile",   icon:<User size={22} />,     label:L.profile   },
   ];
   return (
@@ -459,7 +453,6 @@ export default function Dashboard() {
   const text  = T[lang];
   const steps = STEPS_BY_LANG[lang];
 
-  // ✅ FIX MOBILE — localStorage immédiat + timeout 5s
   useEffect(() => {
     const savedLang = localStorage.getItem("lang") as Lang;
     const savedName = localStorage.getItem("userName") || "";
@@ -614,8 +607,6 @@ export default function Dashboard() {
 
             <StreakCard streak={streak} lang={lang} />
             <DailyTip lang={lang} />
-
-            {/* ✅ BOUTON KUABO AI */}
             <KuaboAIButton lang={lang} completedSteps={completedSteps} />
 
             {nextStep ? (
@@ -681,6 +672,9 @@ export default function Dashboard() {
         )}
 
         {activeTab === "documents" && <div style={{ marginTop:14 }}><DocumentsTab lang={lang} completedSteps={completedSteps} /></div>}
+
+        {/* ✅ EXPLORER TAB */}
+        {activeTab === "explorer" && <ExplorerTab lang={lang} />}
 
         {activeTab === "profile" && (
           <div style={{ marginTop:14 }}>
