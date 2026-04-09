@@ -17,9 +17,7 @@ type Tab  = "home" | "documents" | "profile";
 type Step = { id: string; label: string; time: number; weight: number; urgency: "critical" | "high" | "normal" };
 
 function useScrollToTop(activeTab: Tab) {
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "auto" });
-  }, [activeTab]);
+  useEffect(() => { window.scrollTo({ top: 0, behavior: "auto" }); }, [activeTab]);
 }
 
 function useStreak(userId: string | undefined) {
@@ -72,17 +70,14 @@ const STEPS_BY_LANG: Record<Lang, Step[]> = {
   ],
 };
 
-// ══════════════════════════════════════════════
-// CELEBRATION
-// ══════════════════════════════════════════════
 const CELEB_MESSAGES: Record<string, Record<Lang, { emoji: string; title: string; sub: string }>> = {
   ssn:      { fr: { emoji: "🪪", title: "SSN complété !",       sub: "Document le plus important. Tu peux maintenant ouvrir un compte et travailler légalement." }, en: { emoji: "🪪", title: "SSN completed!",        sub: "Most important document. You can now open a bank account and work legally in the USA." }, es: { emoji: "🪪", title: "¡SSN completado!",      sub: "Documento más importante. Ahora puedes abrir cuenta y trabajar legalmente." } },
-  phone:    { fr: { emoji: "📱", title: "Téléphone activé !",   sub: "Tu es maintenant connecté aux USA. Tu peux être joint n'importe où." },                      en: { emoji: "📱", title: "Phone activated!",       sub: "You're now connected in the USA. You can be reached anywhere." },                      es: { emoji: "📱", title: "¡Teléfono activado!",    sub: "Ya estás conectado en EE.UU. Puedes ser contactado en cualquier lugar." } },
-  bank:     { fr: { emoji: "🏦", title: "Compte ouvert !",      sub: "Tu peux maintenant recevoir ton salaire et payer tes factures aux USA." },                   en: { emoji: "🏦", title: "Account opened!",        sub: "You can now receive your salary and pay your bills in the USA." },                   es: { emoji: "🏦", title: "¡Cuenta abierta!",       sub: "Ahora puedes recibir tu salario y pagar tus facturas en EE.UU." } },
-  greencard:{ fr: { emoji: "💳", title: "Green Card reçue !",   sub: "Tu es officiellement résident permanent des États-Unis. 🇺🇸" },                              en: { emoji: "💳", title: "Green Card received!",   sub: "You are officially a permanent US resident. 🇺🇸" },                              es: { emoji: "💳", title: "¡Green Card recibida!",  sub: "Eres oficialmente residente permanente de EE.UU. 🇺🇸" } },
-  housing:  { fr: { emoji: "🏠", title: "Logement trouvé !",    sub: "Tu as maintenant un chez-toi aux USA. Bienvenue !" },                                         en: { emoji: "🏠", title: "Housing found!",         sub: "You now have a home in the USA. Welcome!" },                                         es: { emoji: "🏠", title: "¡Vivienda encontrada!",  sub: "Ya tienes un hogar en EE.UU. ¡Bienvenido!" } },
-  job:      { fr: { emoji: "💼", title: "Emploi trouvé !",      sub: "Tu contribues à l'économie américaine. Félicitations !" },                                   en: { emoji: "💼", title: "Job found!",             sub: "You're contributing to the US economy. Congratulations!" },                          es: { emoji: "💼", title: "¡Trabajo encontrado!",   sub: "Estás contribuyendo a la economía de EE.UU. ¡Felicidades!" } },
-  license:  { fr: { emoji: "🚗", title: "Permis obtenu !",      sub: "Tu peux maintenant conduire légalement aux États-Unis." },                                   en: { emoji: "🚗", title: "License obtained!",      sub: "You can now drive legally in the United States." },                                  es: { emoji: "🚗", title: "¡Licencia obtenida!",    sub: "Ahora puedes conducir legalmente en los Estados Unidos." } },
+  phone:    { fr: { emoji: "📱", title: "Téléphone activé !",   sub: "Tu es maintenant connecté aux USA." },                                                         en: { emoji: "📱", title: "Phone activated!",       sub: "You're now connected in the USA." },                                                         es: { emoji: "📱", title: "¡Teléfono activado!",    sub: "Ya estás conectado en EE.UU." } },
+  bank:     { fr: { emoji: "🏦", title: "Compte ouvert !",      sub: "Tu peux maintenant recevoir ton salaire aux USA." },                                           en: { emoji: "🏦", title: "Account opened!",        sub: "You can now receive your salary in the USA." },                                           es: { emoji: "🏦", title: "¡Cuenta abierta!",       sub: "Ahora puedes recibir tu salario en EE.UU." } },
+  greencard:{ fr: { emoji: "💳", title: "Green Card reçue !",   sub: "Tu es officiellement résident permanent des États-Unis. 🇺🇸" },                                en: { emoji: "💳", title: "Green Card received!",   sub: "You are officially a permanent US resident. 🇺🇸" },                                es: { emoji: "💳", title: "¡Green Card recibida!",  sub: "Eres oficialmente residente permanente de EE.UU. 🇺🇸" } },
+  housing:  { fr: { emoji: "🏠", title: "Logement trouvé !",    sub: "Tu as maintenant un chez-toi aux USA. Bienvenue !" },                                          en: { emoji: "🏠", title: "Housing found!",         sub: "You now have a home in the USA. Welcome!" },                                          es: { emoji: "🏠", title: "¡Vivienda encontrada!",  sub: "Ya tienes un hogar en EE.UU. ¡Bienvenido!" } },
+  job:      { fr: { emoji: "💼", title: "Emploi trouvé !",      sub: "Tu contribues à l'économie américaine. Félicitations !" },                                    en: { emoji: "💼", title: "Job found!",             sub: "You're contributing to the US economy. Congratulations!" },                           es: { emoji: "💼", title: "¡Trabajo encontrado!",   sub: "Estás contribuyendo a la economía de EE.UU. ¡Felicidades!" } },
+  license:  { fr: { emoji: "🚗", title: "Permis obtenu !",      sub: "Tu peux maintenant conduire légalement aux États-Unis." },                                    en: { emoji: "🚗", title: "License obtained!",      sub: "You can now drive legally in the United States." },                                   es: { emoji: "🚗", title: "¡Licencia obtenida!",    sub: "Ahora puedes conducir legalmente en los Estados Unidos." } },
 };
 
 function CelebrationOverlay({ stepId, lang, onDone }: { stepId: string | null; lang: Lang; onDone: () => void }) {
@@ -91,15 +86,8 @@ function CelebrationOverlay({ stepId, lang, onDone }: { stepId: string | null; l
     const t = setTimeout(onDone, 3000);
     return () => clearTimeout(t);
   }, [stepId, onDone]);
-
   if (!stepId) return null;
-
-  const msg = CELEB_MESSAGES[stepId]?.[lang] ?? {
-    emoji: "✅",
-    title: lang === "fr" ? "Étape complétée !" : lang === "es" ? "¡Paso completado!" : "Step completed!",
-    sub: "",
-  };
-
+  const msg = CELEB_MESSAGES[stepId]?.[lang] ?? { emoji: "✅", title: lang === "fr" ? "Étape complétée !" : lang === "es" ? "¡Paso completado!" : "Step completed!", sub: "" };
   const isBig = stepId === "ssn" || stepId === "greencard";
   const particles = Array.from({ length: isBig ? 32 : 20 }, (_, i) => ({
     id: i, x: Math.random() * 100, delay: Math.random() * 0.6,
@@ -107,11 +95,10 @@ function CelebrationOverlay({ stepId, lang, onDone }: { stepId: string | null; l
     color: ["#e8b84b","#22c55e","#2dd4bf","#f97316","#a78bfa","#f472b6","#60a5fa"][i % 7],
     size: 7 + Math.random() * 9, rot: Math.random() * 360, isCircle: Math.random() > 0.5,
   }));
-
   return (
     <>
       <style>{`
-        @keyframes confettiFall { 0% { transform: translateY(-30px) rotate(0deg) scale(1); opacity:1; } 100% { transform: translateY(105vh) rotate(800deg) scale(0.5); opacity:0; } }
+        @keyframes confettiFall { 0% { transform:translateY(-30px) rotate(0deg) scale(1); opacity:1; } 100% { transform:translateY(105vh) rotate(800deg) scale(0.5); opacity:0; } }
         @keyframes celebPop { 0% { transform:translate(-50%,-50%) scale(0.4); opacity:0; } 18% { transform:translate(-50%,-50%) scale(1.1); opacity:1; } 50% { transform:translate(-50%,-50%) scale(1); opacity:1; } 78% { transform:translate(-50%,-50%) scale(1); opacity:1; } 100% { transform:translate(-50%,-50%) scale(0.85); opacity:0; } }
         @keyframes bgFade { 0% { opacity:0; } 8% { opacity:1; } 78% { opacity:1; } 100% { opacity:0; } }
         @keyframes emojiBounce { 0%,100% { transform:scale(1) rotate(-3deg); } 50% { transform:scale(1.2) rotate(3deg); } }
@@ -128,7 +115,7 @@ function CelebrationOverlay({ stepId, lang, onDone }: { stepId: string | null; l
           <div style={{ fontSize:18, marginBottom:12, letterSpacing:4 }}>⭐⭐⭐</div>
           <div style={{ fontSize:22, fontWeight:800, color:stepId==="ssn"?"#e8b84b":"#22c55e", marginBottom:10, lineHeight:1.2 }}>{msg.title}</div>
           {msg.sub && <div style={{ fontSize:13, color:"rgba(244,241,236,0.65)", lineHeight:1.6, marginBottom:20 }}>{msg.sub}</div>}
-          <div style={{ padding:"8px 16px", borderRadius:20, background:stepId==="ssn"?"rgba(232,184,75,0.1)":"rgba(34,197,94,0.08)", border:"1px solid "+(stepId==="ssn"?"rgba(232,184,75,0.25)":"rgba(34,197,94,0.2)"), fontSize:11, color:stepId==="ssn"?"#e8b84b":"#22c55e", fontWeight:600, letterSpacing:"0.05em" }}>
+          <div style={{ padding:"8px 16px", borderRadius:20, background:stepId==="ssn"?"rgba(232,184,75,0.1)":"rgba(34,197,94,0.08)", border:"1px solid "+(stepId==="ssn"?"rgba(232,184,75,0.25)":"rgba(34,197,94,0.2)"), fontSize:11, color:stepId==="ssn"?"#e8b84b":"#22c55e", fontWeight:600 }}>
             {lang==="fr"?"Tape pour continuer":lang==="es"?"Toca para continuar":"Tap to continue"}
           </div>
         </div>
@@ -137,9 +124,6 @@ function CelebrationOverlay({ stepId, lang, onDone }: { stepId: string | null; l
   );
 }
 
-// ══════════════════════════════════════════════
-// TIPS
-// ══════════════════════════════════════════════
 const TIPS: Record<Lang, string[]> = {
   fr: ["Attends 10 jours après l'arrivée avant d'aller au bureau SSA pour le SSN.","Achète une SIM T-Mobile ou Mint Mobile dès l'aéroport — pas besoin de SSN.","Tu peux ouvrir un compte Chase ou Bank of America avec ton passeport seulement.","Ta Green Card physique arrivera par courrier USCIS en 2 à 3 semaines.","Zillow et Apartments.com sont les meilleurs sites pour trouver un logement.","LinkedIn et Indeed sont les meilleurs sites pour chercher un emploi aux USA.","Commence à construire ton credit score avec une secured credit card.","Garde toujours une copie numérique de tes documents importants.","Medicaid est gratuit si tes revenus sont bas — renseigne-toi dès que possible.","Pour le permis de conduire, passe d'abord l'examen théorique en ligne sur le site du DMV."],
   en: ["Wait 10 days after arrival before going to the SSA office for your SSN.","Buy a T-Mobile or Mint Mobile SIM at the airport — no SSN needed.","You can open a Chase or Bank of America account with your passport only.","Your physical Green Card will arrive by USCIS mail in 2 to 3 weeks.","Zillow and Apartments.com are the best sites to find housing.","LinkedIn and Indeed are the best job search sites in the USA.","Start building your credit score with a secured credit card.","Always keep a digital copy of your important documents.","Medicaid is free if your income is low — check your eligibility as soon as possible.","For your driver's license, take the written test online on the DMV website first."],
@@ -148,7 +132,7 @@ const TIPS: Record<Lang, string[]> = {
 
 function DailyTip({ lang }: { lang: Lang }) {
   const idx = new Date().getDate() % TIPS[lang].length;
-  const label = { fr: "Conseil du jour", en: "Tip of the day", es: "Consejo del día" }[lang];
+  const label = { fr:"Conseil du jour", en:"Tip of the day", es:"Consejo del día" }[lang];
   return (
     <div style={{ marginTop:16, background:"rgba(45,212,191,0.06)", border:"1px solid rgba(45,212,191,0.18)", borderRadius:14, padding:"14px 16px", display:"flex", gap:12, alignItems:"flex-start" }}>
       <Lightbulb size={18} color="#2dd4bf" style={{ flexShrink:0, marginTop:1 }} />
@@ -160,8 +144,46 @@ function DailyTip({ lang }: { lang: Lang }) {
   );
 }
 
+// ── BOUTON KUABO AI ──
+function KuaboAIButton({ lang, completedSteps }: { lang: Lang; completedSteps: string[] }) {
+  const labels = {
+    fr: { title: "Demande à Kuabo AI", sub: "Ton assistant immigration personnel" },
+    en: { title: "Ask Kuabo AI",       sub: "Your personal immigration assistant" },
+    es: { title: "Pregunta a Kuabo AI",sub: "Tu asistente de inmigración personal" },
+  }[lang];
+  return (
+    <button
+      onClick={() => {
+        localStorage.setItem("completedSteps", JSON.stringify(completedSteps));
+        window.location.href = "/chat";
+      }}
+      style={{
+        width: "100%", marginTop: 12, padding: "14px 16px",
+        background: "linear-gradient(135deg, rgba(232,184,75,0.1), rgba(45,212,191,0.06))",
+        border: "1px solid rgba(232,184,75,0.3)",
+        borderRadius: 14, cursor: "pointer",
+        display: "flex", alignItems: "center",
+        justifyContent: "space-between",
+        fontFamily: "inherit",
+        transition: "all 0.2s",
+      }}
+    >
+      <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+        <div style={{ width:40, height:40, borderRadius:12, background:"rgba(232,184,75,0.12)", border:"1px solid rgba(232,184,75,0.25)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>
+          🤖
+        </div>
+        <div style={{ textAlign:"left" as const }}>
+          <div style={{ fontSize:14, fontWeight:600, color:"#f4f1ec" }}>{labels.title}</div>
+          <div style={{ fontSize:11, color:"#aaa", marginTop:1 }}>{labels.sub}</div>
+        </div>
+      </div>
+      <span style={{ color:"#e8b84b", fontSize:18 }}>→</span>
+    </button>
+  );
+}
+
 function StreakCard({ streak, lang }: { streak: number; lang: Lang }) {
-  const data = { fr: { label:"jours de suite", msg:streak>=7?"Tu es en feu 🔥":streak>=3?"Continue comme ça !":"Reviens chaque jour !" }, en: { label:"days in a row", msg:streak>=7?"You're on fire 🔥":streak>=3?"Keep it up!":"Come back every day!" }, es: { label:"días seguidos", msg:streak>=7?"¡Estás en llamas 🔥!":streak>=3?"¡Sigue así!":"¡Vuelve cada día!" } }[lang];
+  const data = { fr:{ label:"jours de suite", msg:streak>=7?"Tu es en feu 🔥":streak>=3?"Continue comme ça !":"Reviens chaque jour !" }, en:{ label:"days in a row", msg:streak>=7?"You're on fire 🔥":streak>=3?"Keep it up!":"Come back every day!" }, es:{ label:"días seguidos", msg:streak>=7?"¡Estás en llamas 🔥!":streak>=3?"¡Sigue así!":"¡Vuelve cada día!" } }[lang];
   const color = streak >= 7 ? "#ef4444" : streak >= 3 ? "#f97316" : "#e8b84b";
   return (
     <div style={{ marginTop:16, background:"#0f1521", border:"1px solid "+color+"30", borderRadius:14, padding:"14px 16px", display:"flex", alignItems:"center", gap:14 }}>
@@ -217,9 +239,7 @@ function SOSButton({ lang }: { lang: Lang }) {
 }
 
 function CircularProgress({ value }: { value: number }) {
-  const size = 140, sw = 10, r = (size - sw) / 2;
-  const circ = 2 * Math.PI * r;
-  const offset = circ - (value / 100) * circ;
+  const size=140, sw=10, r=(size-sw)/2, circ=2*Math.PI*r, offset=circ-(value/100)*circ;
   return (
     <div style={circleWrap}>
       <svg width={size} height={size} style={{ transform:"rotate(-90deg)" }}>
@@ -439,49 +459,31 @@ export default function Dashboard() {
   const text  = T[lang];
   const steps = STEPS_BY_LANG[lang];
 
-  // ══════════════════════════════════════════════
   // ✅ FIX MOBILE — localStorage immédiat + timeout 5s
-  // ══════════════════════════════════════════════
   useEffect(() => {
-    // ÉTAPE 1 — localStorage IMMÉDIAT
     const savedLang = localStorage.getItem("lang") as Lang;
     const savedName = localStorage.getItem("userName") || "";
     if (savedLang && ["fr","en","es"].includes(savedLang)) setLang(savedLang);
     if (savedName) setUserName(savedName);
 
-    // ÉTAPE 2 — Timeout 5s max
-    const timeout = setTimeout(() => {
-      setReady(true);
-    }, 5000);
+    const timeout = setTimeout(() => { setReady(true); }, 5000);
 
-    // ÉTAPE 3 — Firebase enrichit quand ça répond
     const unsub = onAuthStateChanged(auth, async user => {
       clearTimeout(timeout);
-
-      if (!user) {
-        window.location.href = "/login";
-        return;
-      }
-
+      if (!user) { window.location.href = "/login"; return; }
       setUserId(user.uid);
       setUserEmail(user.email || "");
-
       try {
         const snap = await getDoc(doc(db, "users", user.uid));
         const data = snap.exists() ? snap.data() as any : {};
-
         const name = data?.name || user.displayName || user.email?.split("@")[0] || "User";
         const userLang = (data?.lang as Lang) || savedLang || "fr";
-
         setUserName(name);
         setLang(userLang);
         setCompletedSteps(data?.completedSteps || []);
-
         localStorage.setItem("userName", name);
         localStorage.setItem("lang", userLang);
-
-      } catch { /* continue — garde localStorage */ }
-
+      } catch { /* continue */ }
       setReady(true);
     });
 
@@ -538,7 +540,6 @@ export default function Dashboard() {
     try { await signOut(auth); } catch { /* continue */ }
     window.location.href = "/login";
   };
-
   const handleCelebDone = useCallback(() => setCelebStep(null), []);
 
   const progress   = Math.round(steps.reduce((acc, s) => completedSteps.includes(s.id) ? acc + s.weight : acc, 0));
@@ -557,8 +558,7 @@ export default function Dashboard() {
   if (!ready) return (
     <div style={{ minHeight:"100dvh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"#0b0f1a", gap:16 }}>
       <div style={{ fontSize:28, fontWeight:900, fontFamily:"serif" }}>
-        <span style={{ color:"#e8b84b" }}>Ku</span>
-        <span style={{ color:"#f4f1ec" }}>abo</span>
+        <span style={{ color:"#e8b84b" }}>Ku</span><span style={{ color:"#f4f1ec" }}>abo</span>
       </div>
       <svg width="36" height="36" viewBox="0 0 36 36" style={{ animation:"spin 1s linear infinite" }}>
         <circle cx="18" cy="18" r="14" fill="none" stroke="#1e2a3a" strokeWidth="4" />
@@ -609,11 +609,14 @@ export default function Dashboard() {
             <div style={statsRow}>
               <div style={statCard}><div style={statNumber}>{doneCount}</div><div style={statLabel}>{text.completed}</div></div>
               <div style={statCard}><div style={statNumber}>{progress}%</div><div style={statLabel}>{text.integration}</div></div>
-              <div style={statCard}><div style={statNumber}>{totalSteps - doneCount}</div><div style={statLabel}>{text.remaining}</div></div>
+              <div style={statCard}><div style={statNumber}>{totalSteps-doneCount}</div><div style={statLabel}>{text.remaining}</div></div>
             </div>
 
             <StreakCard streak={streak} lang={lang} />
             <DailyTip lang={lang} />
+
+            {/* ✅ BOUTON KUABO AI */}
+            <KuaboAIButton lang={lang} completedSteps={completedSteps} />
 
             {nextStep ? (
               <div style={{ ...priorityCard, border:"1px solid "+(nextStep.urgency==="critical"?"rgba(239,68,68,0.4)":nextStep.urgency==="high"?"rgba(249,115,22,0.3)":"rgba(232,184,75,0.25)"), background:nextStep.urgency==="critical"?"rgba(239,68,68,0.05)":"#1a2438" }}>
@@ -625,10 +628,7 @@ export default function Dashboard() {
                 <div style={{ fontSize:17, fontWeight:600, marginBottom:6, color:"#fff" }}>{nextStep.label}</div>
                 <div style={{ fontSize:12, color:"#aaa", marginBottom:14, display:"flex", alignItems:"center", gap:4 }}>
                   <Clock size={11} color="#aaa" />
-                  {nextStep.time === 1
-                    ? (lang==="fr"?"Jour 1 — dès l'arrivée":lang==="es"?"Día 1 — al llegar":"Day 1 — upon arrival")
-                    : nextStep.time+" "+(lang==="fr"?"jours max":lang==="es"?"días máx":"days max")
-                  }
+                  {nextStep.time===1 ? (lang==="fr"?"Jour 1 — dès l'arrivée":lang==="es"?"Día 1 — al llegar":"Day 1 — upon arrival") : nextStep.time+" "+(lang==="fr"?"jours max":lang==="es"?"días máx":"days max")}
                 </div>
                 <button style={primaryBtn}>{text.guide}</button>
                 <button style={secondaryBtn} onClick={() => toggleStep(nextStep.id)}>✓ {text.mark}</button>
@@ -701,7 +701,6 @@ export default function Dashboard() {
 
       </div>
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} lang={lang} />
-
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
