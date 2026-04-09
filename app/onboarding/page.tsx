@@ -5,6 +5,15 @@ import { useState, useEffect } from "react";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
+import {
+  GraduationCap,
+  Briefcase,
+  Users,
+  Ticket,
+  Plane,
+  Trophy,
+  Loader2,
+} from "lucide-react";
 
 type Lang = "en" | "fr" | "es";
 
@@ -14,6 +23,7 @@ export default function Step1() {
   const [selected, setSelected] = useState<string>("");
   const [lang, setLang] = useState<Lang>("en");
   const [loading, setLoading] = useState(true);
+  const [redirecting, setRedirecting] = useState(false);
 
   ////////////////////////////////////////////////////
   // AUTH
@@ -79,10 +89,12 @@ export default function Step1() {
       next: "Continue",
       back: "Back",
       options: [
-        { label: "🎰 DV Lottery Winner", value: "dv" },
-        { label: "🎓 Student", value: "student" },
-        { label: "💼 Work", value: "work" },
-        { label: "👨‍👩‍👧 Family", value: "family" },
+        { label: "DV Lottery Winner", value: "dv", icon: <Ticket size={18}/> },
+        { label: "Student", value: "student", icon: <GraduationCap size={18}/> },
+        { label: "Work", value: "work", icon: <Briefcase size={18}/> },
+        { label: "Family", value: "family", icon: <Users size={18}/> },
+        { label: "Tourist", value: "tourist", icon: <Plane size={18}/> },
+        { label: "World Cup", value: "worldcup", icon: <Trophy size={18}/> },
       ],
     },
     fr: {
@@ -91,10 +103,12 @@ export default function Step1() {
       next: "Continuer",
       back: "Retour",
       options: [
-        { label: "🎰 DV Lottery", value: "dv" },
-        { label: "🎓 Étudiant", value: "student" },
-        { label: "💼 Travail", value: "work" },
-        { label: "👨‍👩‍👧 Famille", value: "family" },
+        { label: "DV Lottery", value: "dv", icon: <Ticket size={18}/> },
+        { label: "Étudiant", value: "student", icon: <GraduationCap size={18}/> },
+        { label: "Travail", value: "work", icon: <Briefcase size={18}/> },
+        { label: "Famille", value: "family", icon: <Users size={18}/> },
+        { label: "Touriste", value: "tourist", icon: <Plane size={18}/> },
+        { label: "Coupe du monde", value: "worldcup", icon: <Trophy size={18}/> },
       ],
     },
     es: {
@@ -103,10 +117,12 @@ export default function Step1() {
       next: "Continuar",
       back: "Atrás",
       options: [
-        { label: "🎰 Lotería DV", value: "dv" },
-        { label: "🎓 Estudiante", value: "student" },
-        { label: "💼 Trabajo", value: "work" },
-        { label: "👨‍👩‍👧 Familia", value: "family" },
+        { label: "Lotería DV", value: "dv", icon: <Ticket size={18}/> },
+        { label: "Estudiante", value: "student", icon: <GraduationCap size={18}/> },
+        { label: "Trabajo", value: "work", icon: <Briefcase size={18}/> },
+        { label: "Familia", value: "family", icon: <Users size={18}/> },
+        { label: "Turista", value: "tourist", icon: <Plane size={18}/> },
+        { label: "Copa del mundo", value: "worldcup", icon: <Trophy size={18}/> },
       ],
     },
   };
@@ -120,6 +136,8 @@ export default function Step1() {
   const handleNext = async () => {
     if (!selected) return;
 
+    setRedirecting(true);
+
     try {
       localStorage.setItem("reason", selected);
 
@@ -131,7 +149,10 @@ export default function Step1() {
         });
       }
 
-      router.push("/onboarding/step2");
+      setTimeout(() => {
+        router.push("/onboarding/step2");
+      }, 1200);
+
     } catch (e) {
       console.log(e);
     }
@@ -142,11 +163,7 @@ export default function Step1() {
   ////////////////////////////////////////////////////
 
   if (loading) {
-    return (
-      <div style={loader}>
-        Loading...
-      </div>
-    );
+    return <div style={loader}>Kuabo...</div>;
   }
 
   ////////////////////////////////////////////////////
@@ -155,7 +172,6 @@ export default function Step1() {
 
   return (
     <div style={container}>
-      {/* TOP */}
       <div style={topBar}>
         <div style={backBtn} onClick={() => router.push("/welcome")}>
           ← {current.back}
@@ -172,38 +188,57 @@ export default function Step1() {
         </div>
       </div>
 
-      {/* CENTER */}
       <div style={center}>
         <div style={box}>
           <h2>{current.title}</h2>
           <p style={subtitle}>{current.subtitle}</p>
 
-          {current.options.map((opt: any) => (
-            <div
-              key={opt.value}
-              onClick={() => setSelected(opt.value)}
-              style={{
-                ...item,
-                border:
-                  selected === opt.value ? "2px solid #e8b84b" : "none",
-              }}
-            >
-              {opt.label}
-            </div>
-          ))}
+          {current.options.map((opt: any) => {
+            const active = selected === opt.value;
+
+            return (
+              <div
+                key={opt.value}
+                onClick={() => setSelected(opt.value)}
+                style={{
+                  ...item,
+                  ...(active ? activeItem : {}),
+                }}
+              >
+                <div style={iconBox}>{opt.icon}</div>
+                {opt.label}
+              </div>
+            );
+          })}
 
           <button
             onClick={handleNext}
-            disabled={!selected}
+            disabled={!selected || redirecting}
             style={{
               ...btn,
               opacity: selected ? 1 : 0.5,
             }}
           >
-            {current.next}
+            {redirecting ? (
+              <Loader2 className="spin" size={18} />
+            ) : (
+              current.next
+            )}
           </button>
         </div>
       </div>
+
+      <style>
+        {`
+        .spin {
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}
+      </style>
     </div>
   );
 }
@@ -212,70 +247,84 @@ export default function Step1() {
 // STYLE
 ////////////////////////////////////////////////////
 
-const loader: React.CSSProperties = {
+const loader: any = {
   minHeight: "100vh",
   display: "flex",
   justifyContent: "center",
   alignItems: "center",
+  color: "#e8b84b",
 };
 
-const container: React.CSSProperties = {
+const container: any = {
   minHeight: "100vh",
-  background: "#05070a",
+  background: "radial-gradient(circle at top, #0b1220, #05070a)",
   color: "white",
   display: "flex",
   flexDirection: "column",
 };
 
-const topBar: React.CSSProperties = {
+const topBar: any = {
   display: "flex",
   justifyContent: "space-between",
   padding: 20,
 };
 
-const backBtn: React.CSSProperties = {
-  cursor: "pointer",
-};
+const backBtn: any = { cursor: "pointer" };
+const logo: any = { fontWeight: "bold" };
+const langBox: any = { display: "flex", gap: 10, cursor: "pointer" };
 
-const logo: React.CSSProperties = {
-  fontWeight: "bold",
-};
-
-const langBox: React.CSSProperties = {
-  display: "flex",
-  gap: 10,
-  cursor: "pointer",
-};
-
-const center: React.CSSProperties = {
+const center: any = {
   flex: 1,
   display: "flex",
   justifyContent: "center",
   alignItems: "center",
 };
 
-const box: React.CSSProperties = {
+const box: any = {
   width: "90%",
   maxWidth: 400,
 };
 
-const subtitle: React.CSSProperties = {
+const subtitle: any = {
   color: "#888",
 };
 
-const item: React.CSSProperties = {
-  padding: 15,
+const item: any = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  padding: 16,
   marginTop: 10,
-  borderRadius: 10,
-  background: "#0b1220",
+  borderRadius: 14,
+  background: "rgba(255,255,255,0.03)",
+  border: "1px solid rgba(255,255,255,0.08)",
   cursor: "pointer",
+  transition: "all 0.25s ease",
 };
 
-const btn: React.CSSProperties = {
+const activeItem: any = {
+  border: "1px solid #e8b84b",
+  background: "rgba(232,184,75,0.1)",
+  transform: "scale(1.02)",
+};
+
+const iconBox: any = {
+  width: 30,
+  height: 30,
+  borderRadius: 8,
+  background: "#1a2438",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
+const btn: any = {
   marginTop: 20,
   padding: 15,
   width: "100%",
   background: "#e8b84b",
+  color: "#000", // ✅ FIX TEXT BLACK
   border: "none",
-  borderRadius: 10,
+  borderRadius: 12,
+  fontWeight: "bold",
 };

@@ -7,32 +7,8 @@ export default function Root() {
   const router = useRouter();
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      router.push("/language");
-    }, 2000);
+    router.replace("/loading-screen");
+  }, [router]);
 
-    return () => clearTimeout(timer);
-  }, []);
-
-  return (
-    <div style={container}>
-      <h1 style={logo}>
-        <span style={{ color: "#e8b84b" }}>Ku</span>
-        <span style={{ color: "#fff" }}>abo</span>
-      </h1>
-    </div>
-  );
+  return <div style={{ minHeight: "100dvh", background: "#0b0f1a" }} />;
 }
-
-const container = {
-  height: "100vh",
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  background: "radial-gradient(circle at top, #0b1220, #06080a)",
-};
-
-const logo = {
-  fontSize: 40,
-  fontWeight: "bold",
-};

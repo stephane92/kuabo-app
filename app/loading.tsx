@@ -1,28 +1,19 @@
 export default function Loading() {
     return (
-      <div style={container}>
-        <h1 style={logo}>
-          <span style={{ color: "#e8b84b" }}>Ku</span>
-          <span style={{ color: "#fff" }}>abo</span>
-        </h1>
+      <div style={{
+        minHeight: "100dvh",
+        background: "#0b0f1a",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+      }}>
+        <svg width="40" height="40" viewBox="0 0 40 40"
+          style={{ animation: "spin 1s linear infinite" }}>
+          <circle cx="20" cy="20" r="16" fill="none" stroke="#1e2a3a" strokeWidth="4" />
+          <circle cx="20" cy="20" r="16" fill="none" stroke="#e8b84b" strokeWidth="4"
+            strokeLinecap="round" strokeDasharray="100" strokeDashoffset="75" />
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </svg>
       </div>
     );
   }
-  
-  ////////////////////////////////////////////////////
-  // STYLES
-  ////////////////////////////////////////////////////
-  
-  const container: any = {
-    height: "100dvh",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    background: "radial-gradient(circle at top, #0b1220, #06080a)",
-  };
-  
-  const logo: any = {
-    fontSize: 32,
-    fontWeight: "bold",
-    animation: "fade 1.5s ease-in-out infinite alternate",
-  };

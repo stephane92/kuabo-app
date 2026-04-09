@@ -5,14 +5,16 @@ import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
+import { Loader2 } from "lucide-react";
 
 type Lang = "en" | "fr" | "es";
 
 export default function LoadingPage() {
   const router = useRouter();
 
-  const [text, setText] = useState("Loading...");
-  const [lang, setLang] = useState<Lang>("en");
+  const [text, setText] = useState("");
+  const [lang, setLang] = useState<Lang | null>(null);
+  const [progress, setProgress] = useState(10);
 
   ////////////////////////////////////////////////////
   // TEXT
@@ -20,17 +22,20 @@ export default function LoadingPage() {
 
   const t = {
     en: {
-      loading: "Preparing your journey...",
+      step1: "Analyzing your profile...",
+      step2: "Preparing your journey...",
       ssn: "We will help you get your SSN step by step.",
       redirect: "Redirecting...",
     },
     fr: {
-      loading: "Préparation de ton parcours...",
+      step1: "Analyse de ton profil...",
+      step2: "Préparation de ton parcours...",
       ssn: "On va t’aider à obtenir ton SSN étape par étape.",
       redirect: "Redirection...",
     },
     es: {
-      loading: "Preparando tu camino...",
+      step1: "Analizando tu perfil...",
+      step2: "Preparando tu camino...",
       ssn: "Te ayudaremos a obtener tu SSN paso a paso.",
       redirect: "Redirigiendo...",
     },
@@ -42,18 +47,11 @@ export default function LoadingPage() {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        router.replace("/login");
-        return;
-      }
+      if (!user) return router.replace("/login");
 
       try {
         const snap = await getDoc(doc(db, "users", user.uid));
-
-        if (!snap.exists()) {
-          router.replace("/login");
-          return;
-        }
+        if (!snap.exists()) return router.replace("/login");
 
         const data = snap.data();
 
@@ -63,35 +61,27 @@ export default function LoadingPage() {
         setLang(userLang);
 
         ////////////////////////////////////////////////////
-        // STEP 1 → LOADING TEXT
+        // SEQUENCE (🔥 SMOOTH UX)
         ////////////////////////////////////////////////////
-        setText(t[userLang].loading);
 
-        ////////////////////////////////////////////////////
-        // STEP 2 → SSN CASE
-        ////////////////////////////////////////////////////
+        setText(t[userLang].step1);
+        setProgress(30);
+
         setTimeout(() => {
-          if (priority === "ssn") {
-            setText(t[userLang].ssn);
-          } else {
-            setText(t[userLang].loading);
-          }
-        }, 1500);
+          setText(priority === "ssn" ? t[userLang].ssn : t[userLang].step2);
+          setProgress(70);
+        }, 1400);
 
-        ////////////////////////////////////////////////////
-        // STEP 3 → REDIRECT
-        ////////////////////////////////////////////////////
         setTimeout(() => {
           setText(t[userLang].redirect);
+          setProgress(100);
+        }, 2800);
 
-          setTimeout(() => {
-            router.replace("/dashboard");
-          }, 1000);
+        setTimeout(() => {
+          router.replace("/dashboard");
+        }, 3800);
 
-        }, 3000);
-
-      } catch (e) {
-        console.log(e);
+      } catch {
         router.replace("/login");
       }
     });
@@ -100,18 +90,83 @@ export default function LoadingPage() {
   }, [router]);
 
   ////////////////////////////////////////////////////
+  // LOADING FIRST
+  ////////////////////////////////////////////////////
+
+  if (!lang) {
+    return (
+      <div style={container}>
+        <Loader2 className="spin" size={28} color="#e8b84b" />
+      </div>
+    );
+  }
+
+  ////////////////////////////////////////////////////
   // UI
   ////////////////////////////////////////////////////
 
   return (
     <div style={container}>
       <div style={box}>
+
+        {/* LOGO */}
         <h2 style={logo}>
           <span style={{ color: "#e8b84b" }}>Ku</span>abo
         </h2>
 
-        <p style={textStyle}>{text}</p>
+        {/* LOADER GLOW */}
+        <div style={loaderWrapper}>
+          <Loader2 className="spin glow" size={28} />
+        </div>
+
+        {/* TEXT */}
+        <p key={text} className="fadeText">
+          {text}
+        </p>
+
+        {/* PROGRESS BAR */}
+        <div style={progressBar}>
+          <div
+            style={{
+              ...progressFill,
+              width: `${progress}%`,
+            }}
+          />
+        </div>
+
       </div>
+
+      <style>
+        {`
+        .spin {
+          animation: spin 1s linear infinite;
+        }
+
+        .glow {
+          filter: drop-shadow(0 0 6px #e8b84b);
+        }
+
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        .fadeText {
+          animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(6px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        `}
+      </style>
     </div>
   );
 }
@@ -122,21 +177,39 @@ export default function LoadingPage() {
 
 const container: React.CSSProperties = {
   minHeight: "100vh",
-  background: "#05070a",
-  color: "white",
+  background: "radial-gradient(circle at top, #0b1220, #05070a)",
   display: "flex",
   justifyContent: "center",
   alignItems: "center",
+  color: "white",
 };
 
 const box: React.CSSProperties = {
   textAlign: "center",
+  width: "90%",
+  maxWidth: 300,
 };
 
 const logo: React.CSSProperties = {
+  marginBottom: 25,
+  fontWeight: "bold",
+};
+
+const loaderWrapper: React.CSSProperties = {
   marginBottom: 20,
 };
 
-const textStyle: React.CSSProperties = {
-  color: "#aaa",
+const progressBar: React.CSSProperties = {
+  marginTop: 20,
+  height: 4,
+  width: "100%",
+  background: "#1a2438",
+  borderRadius: 10,
+  overflow: "hidden",
+};
+
+const progressFill: React.CSSProperties = {
+  height: "100%",
+  background: "#e8b84b",
+  transition: "width 0.5s ease",
 };
