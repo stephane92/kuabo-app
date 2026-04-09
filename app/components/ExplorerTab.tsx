@@ -201,11 +201,11 @@ export default function ExplorerTab({ lang }: { lang: Lang }) {
                   strokeWeight: 1.5,
                 }}
                 onClick={() => {
-                  window.open(
-                    `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`,
-                    "_blank"
-                  );
-                }}
+                    window.open(
+                      `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.name)}&destination_place_id=${p.id}`,
+                      "_blank"
+                    );
+                  }}
               />
             ))}
           </GoogleMap>
