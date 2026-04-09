@@ -5,23 +5,27 @@ export async function POST(req: NextRequest) {
     const { lat, lng, type } = await req.json();
     const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
 
-    const queries: Record<string, string> = {
-      ssn:     "social security administration office",
-      dmv:     "motor vehicle administration",
-      bank:    "Chase Bank OR Bank of America",
-      uscis:   "USCIS immigration office",
-      clinic:  "free clinic community health center",
-      food:    "food bank",
+    const queries: Record<string, { keyword: string; type?: string }> = {
+      ssn:    { keyword: "social security administration",  type: "local_government_office" },
+      dmv:    { keyword: "motor vehicle administration DMV",type: "local_government_office" },
+      bank:   { keyword: "Bank of America",                 type: "bank"                    },
+      uscis:  { keyword: "USCIS immigration",               type: "local_government_office" },
+      clinic: { keyword: "community health center",         type: "health"                  },
+      food:   { keyword: "food bank pantry",                type: "food"                    },
     };
 
-    const query = queries[type] || type;
+    const q = queries[type] || { keyword: type };
 
-    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=10000&keyword=${encodeURIComponent(query)}&key=${key}`;
+    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=5000&keyword=${encodeURIComponent(q.keyword)}${q.type ? `&type=${q.type}` : ""}&rankby=prominence&key=${key}`;
 
     const res  = await fetch(url);
     const data = await res.json();
 
-    const places = (data.results || []).slice(0, 5).map((p: any) => ({
+    if (!data.results) {
+      return NextResponse.json({ places: [] });
+    }
+
+    const places = data.results.slice(0, 5).map((p: any) => ({
       id:       p.place_id,
       name:     p.name,
       address:  p.vicinity,
@@ -31,6 +35,13 @@ export async function POST(req: NextRequest) {
       open:     p.opening_hours?.open_now ?? null,
       distance: getDistance(lat, lng, p.geometry.location.lat, p.geometry.location.lng),
     }));
+
+    // ── Trie par distance — le plus proche en premier
+    places.sort((a: any, b: any) => {
+      const distA = parseFloat(a.distance.replace(" km", "").replace(" m", ""));
+      const distB = parseFloat(b.distance.replace(" km", "").replace(" m", ""));
+      return distA - distB;
+    });
 
     return NextResponse.json({ places });
 
