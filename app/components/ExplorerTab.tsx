@@ -315,7 +315,7 @@ export default function ExplorerTab({ lang }: { lang: Lang }) {
 
             {/* Directions */}
             <button
-              onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`, "_blank")}
+               onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.name)}&destination_place_id=${p.id}`, "_blank")}
               style={{
                 background: "none", border: "none",
                 color: "#e8b84b", fontSize: 18,
