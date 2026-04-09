@@ -385,7 +385,7 @@ export default function Step4() {
             setSsnStep("ssn");
             setHasSSN(null);
           } else {
-            window.location.href = "/onboarding/step3";
+            window.location.href = "/onboarding/step3b";
           }
         }}>
           ← {text.back}

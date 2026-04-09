@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, setDoc, collection, getDocs } from "firebase/firestore";
@@ -8,7 +7,7 @@ import { onAuthStateChanged, signOut, deleteUser, sendPasswordResetEmail } from 
 import {
   CheckCircle2, Clock, ChevronRight, LogOut, Globe,
   Undo2, Target, AlertTriangle, Home, FileText,
-  User, Flame, Lightbulb, PhoneCall, MapPin, Edit2, X,
+  User, Flame, PhoneCall, MapPin, Edit2,
 } from "lucide-react";
 import type { CSSProperties } from "react";
 import ExplorerTab from "../components/ExplorerTab";
@@ -19,19 +18,19 @@ type Step    = {id:string;label:string;time:number;weight:number;urgency:"critic
 type Arrival = "not-yet"|"just"|"months"|"settled";
 
 function useScrollToTop(activeTab:Tab) {
-  useEffect(() => { window.scrollTo({top:0,behavior:"auto"}); },[activeTab]);
+  useEffect(()=>{window.scrollTo({top:0,behavior:"auto"});},[activeTab]);
 }
 
 function useStreak(userId:string|undefined) {
   const [streak,setStreak] = useState(0);
-  useEffect(() => {
+  useEffect(()=>{
     if (!userId) return;
     const today   = new Date().toDateString();
     const key     = "kuabo_streak_"+userId;
     const dateKey = "kuabo_streak_date_"+userId;
     const lastDate = localStorage.getItem(dateKey);
     const saved    = parseInt(localStorage.getItem(key)||"0");
-    if (lastDate===today) { setStreak(saved); return; }
+    if (lastDate===today){setStreak(saved);return;}
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate()-1);
     const next = lastDate===yesterday.toDateString()?saved+1:1;
@@ -42,7 +41,7 @@ function useStreak(userId:string|undefined) {
   return streak;
 }
 
-const BADGES: Record<string,{emoji:string;label:Record<Lang,string>}> = {
+const BADGES:Record<string,{emoji:string;label:Record<Lang,string>}> = {
   ssn:      {emoji:"🪪",label:{fr:"SSN Done",    en:"SSN Done",    es:"SSN Listo"  }},
   phone:    {emoji:"📱",label:{fr:"Connecté",    en:"Connected",   es:"Conectado"  }},
   bank:     {emoji:"🏦",label:{fr:"Banquier",    en:"Banker",      es:"Banquero"   }},
@@ -99,11 +98,7 @@ const CELEB_MESSAGES:Record<string,Record<Lang,{emoji:string;title:string;sub:st
 };
 
 function CelebrationOverlay({stepId,lang,onDone}:{stepId:string|null;lang:Lang;onDone:()=>void}) {
-  useEffect(() => {
-    if (!stepId) return;
-    const t = setTimeout(onDone,3000);
-    return () => clearTimeout(t);
-  },[stepId,onDone]);
+  useEffect(()=>{if(!stepId)return;const t=setTimeout(onDone,3000);return()=>clearTimeout(t);},[stepId,onDone]);
   if (!stepId) return null;
   const msg = CELEB_MESSAGES[stepId]?.[lang]??{emoji:"✅",title:lang==="fr"?"Étape complétée !":lang==="es"?"¡Paso completado!":"Step completed!",sub:""};
   const isBig = stepId==="ssn"||stepId==="greencard";
@@ -153,20 +148,19 @@ const DEFAULT_TIPS:Record<Lang,string[]> = {
 function DailyTip({lang,userState,userCountry}:{lang:Lang;userState:string;userCountry:string}) {
   const [adminMsg,setAdminMsg] = useState<string|null>(null);
   const [loaded,setLoaded]     = useState(false);
-  useEffect(() => {
-    const fetch_msg = async () => {
+  useEffect(()=>{
+    const fetch_msg = async ()=>{
       try {
         const snap = await getDocs(collection(db,"admin_messages"));
         let found:string|null = null;
-        snap.forEach(d => {
+        snap.forEach(d=>{
           const data = d.data() as any;
           if (!data.active||data.type!=="conseil") return;
-          if ((data.state==="ALL"||data.state===userState)&&(data.country==="ALL"||data.country===userCountry)) {
+          if ((data.state==="ALL"||data.state===userState)&&(data.country==="ALL"||data.country===userCountry))
             found = data["text_"+lang]||data.text_fr||null;
-          }
         });
         setAdminMsg(found);
-      } catch { /* continue */ }
+      } catch {/*continue*/}
       setLoaded(true);
     };
     fetch_msg();
@@ -191,29 +185,28 @@ function AdminEvents({lang,userState,userCountry,userId}:{lang:Lang;userState:st
   const [events,setEvents]               = useState<any[]>([]);
   const [loaded,setLoaded]               = useState(false);
   const [participating,setParticipating] = useState<Record<string,boolean>>({});
-  useEffect(() => {
-    const fetch_events = async () => {
+  useEffect(()=>{
+    const fetch_events = async ()=>{
       try {
         const snap = await getDocs(collection(db,"admin_events"));
         const found:any[] = [];
-        snap.forEach(d => {
+        snap.forEach(d=>{
           const data = d.data() as any;
           if (!data.active) return;
-          if ((data.state==="ALL"||data.state===userState)&&(data.country==="ALL"||data.country===userCountry)) {
+          if ((data.state==="ALL"||data.state===userState)&&(data.country==="ALL"||data.country===userCountry))
             found.push({id:d.id,...data,isParticipating:(data.participants||[]).includes(userId)});
-          }
         });
         found.sort((a,b)=>new Date(a.date).getTime()-new Date(b.date).getTime());
         setEvents(found);
         const part:Record<string,boolean> = {};
         found.forEach(e=>{part[e.id]=e.isParticipating;});
         setParticipating(part);
-      } catch { /* continue */ }
+      } catch {/*continue*/}
       setLoaded(true);
     };
     fetch_events();
   },[lang,userState,userCountry,userId]);
-  const handleParticipate = async (eventId:string) => {
+  const handleParticipate = async (eventId:string)=>{
     if (!userId) return;
     const isIn = participating[eventId];
     setParticipating(prev=>({...prev,[eventId]:!isIn}));
@@ -224,7 +217,7 @@ function AdminEvents({lang,userState,userCountry,userId}:{lang:Lang;userState:st
       const data = snap.data() as any;
       const participants:string[] = data.participants||[];
       await updateDoc(eventRef,{participants:isIn?participants.filter((id:string)=>id!==userId):[...participants,userId]});
-    } catch { /* continue */ }
+    } catch {/*continue*/}
   };
   if (!loaded||events.length===0) return null;
   return (
@@ -368,47 +361,78 @@ function CircularProgress({value}:{value:number}) {
     </div>
   );
 }
-function CountdownDeadline({nextStep,lang}:{nextStep:Step|undefined;lang:Lang}) {
+
+// ✅ CountdownDeadline — utilise la vraie date d'arrivée
+function CountdownDeadline({nextStep,lang,arrivalDate}:{nextStep:Step|undefined;lang:Lang;arrivalDate:string|null}) {
   const [daysLeft,setDaysLeft] = useState<number|null>(null);
-  useEffect(() => {
+
+  useEffect(()=>{
     if (!nextStep) return;
-    const deadline = new Date();
+    // ✅ Si on a la vraie date d'arrivée → deadline réelle
+    // Sinon → on prend aujourd'hui comme base
+    const baseDate = arrivalDate ? new Date(arrivalDate) : new Date();
+    const deadline = new Date(baseDate);
     deadline.setDate(deadline.getDate()+nextStep.time);
-    const update = () => setDaysLeft(Math.ceil((deadline.getTime()-Date.now())/86400000));
+    const update = ()=>setDaysLeft(Math.ceil((deadline.getTime()-Date.now())/86400000));
     update();
     const iv = setInterval(update,60000);
-    return () => clearInterval(iv);
-  },[nextStep]);
+    return()=>clearInterval(iv);
+  },[nextStep,arrivalDate]);
+
   if (!nextStep||daysLeft===null) return null;
+
+  const isLate = daysLeft<0;
   const isCrit = daysLeft<=3||nextStep.urgency==="critical";
   const isUrg  = daysLeft<=7||nextStep.urgency==="high";
-  const color  = isCrit?"#ef4444":isUrg?"#f97316":"#e8b84b";
-  const bg     = isCrit?"rgba(239,68,68,0.07)":isUrg?"rgba(249,115,22,0.07)":"rgba(232,184,75,0.07)";
-  const border = isCrit?"rgba(239,68,68,0.25)":isUrg?"rgba(249,115,22,0.25)":"rgba(232,184,75,0.2)";
-  const L = {fr:{title:"Deadline",dl:daysLeft<=1?"jour restant":"jours restants",crit:"🔴 Urgent",urg:"⚠️ Important",norm:"📅 À venir",cta:"Agir maintenant →"},en:{title:"Deadline",dl:daysLeft<=1?"day left":"days left",crit:"🔴 Urgent",urg:"⚠️ Important",norm:"📅 Upcoming",cta:"Act now →"},es:{title:"Fecha límite",dl:daysLeft<=1?"día restante":"días restantes",crit:"🔴 Urgente",urg:"⚠️ Importante",norm:"📅 Próximo",cta:"Actuar ahora →"}}[lang];
-  const bar = Math.min(100,Math.max(0,((nextStep.time-daysLeft)/nextStep.time)*100));
+  const color  = isLate?"#ef4444":isCrit?"#ef4444":isUrg?"#f97316":"#e8b84b";
+  const bg     = isLate?"rgba(239,68,68,0.07)":isCrit?"rgba(239,68,68,0.07)":isUrg?"rgba(249,115,22,0.07)":"rgba(232,184,75,0.07)";
+  const border = isLate?"rgba(239,68,68,0.25)":isCrit?"rgba(239,68,68,0.25)":isUrg?"rgba(249,115,22,0.25)":"rgba(232,184,75,0.2)";
+
+  const L = {
+    fr:{title:"Deadline",dl:daysLeft<=1?"jour restant":"jours restants",late:"🔴 En retard !",crit:"🔴 Urgent",urg:"⚠️ Important",norm:"📅 À venir",cta:"Agir maintenant →",basedOn:arrivalDate?"Basé sur ta date d'arrivée":"Basé sur aujourd'hui",addDate:"→ Ajouter ta date"},
+    en:{title:"Deadline",dl:daysLeft<=1?"day left":"days left",late:"🔴 Overdue!",crit:"🔴 Urgent",urg:"⚠️ Important",norm:"📅 Upcoming",cta:"Act now →",basedOn:arrivalDate?"Based on your arrival date":"Based on today",addDate:"→ Add your date"},
+    es:{title:"Fecha límite",dl:daysLeft<=1?"día restante":"días restantes",late:"🔴 ¡Atrasado!",crit:"🔴 Urgente",urg:"⚠️ Importante",norm:"📅 Próximo",cta:"Actuar ahora →",basedOn:arrivalDate?"Basado en tu fecha de llegada":"Basado en hoy",addDate:"→ Agregar tu fecha"},
+  }[lang];
+
+  const bar = isLate?100:Math.min(100,Math.max(0,((nextStep.time-daysLeft)/nextStep.time)*100));
+
   return (
     <div style={{marginTop:16,background:bg,border:"1px solid "+border,borderRadius:16,padding:"16px",position:"relative",overflow:"hidden"}}>
-      {isCrit&&<div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(to right, transparent,"+color+", transparent)"}} />}
+      {(isCrit||isLate)&&<div style={{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(to right,transparent,"+color+",transparent)"}} />}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-        <div style={{display:"flex",alignItems:"center",gap:6}}><AlertTriangle size={14} color={color} /><span style={{fontSize:10,letterSpacing:"0.12em",textTransform:"uppercase" as const,color,fontWeight:600}}>{L.title}</span></div>
-        <span style={{fontSize:10,fontWeight:600,padding:"3px 8px",borderRadius:20,background:color+"18",color}}>{isCrit?L.crit:isUrg?L.urg:L.norm}</span>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <AlertTriangle size={14} color={color} />
+          <span style={{fontSize:10,letterSpacing:"0.12em",textTransform:"uppercase" as const,color,fontWeight:600}}>{L.title}</span>
+        </div>
+        <span style={{fontSize:10,fontWeight:600,padding:"3px 8px",borderRadius:20,background:color+"18",color}}>
+          {isLate?L.late:isCrit?L.crit:isUrg?L.urg:L.norm}
+        </span>
       </div>
       <div style={{fontSize:14,fontWeight:600,color:"#fff",marginBottom:14}}>{nextStep.label}</div>
       <div style={{display:"flex",alignItems:"flex-end",gap:6,marginBottom:14}}>
-        <span style={{fontSize:48,fontWeight:800,color,lineHeight:1}}>{daysLeft}</span>
-        <span style={{fontSize:14,color:"#aaa",marginBottom:6}}>{L.dl}</span>
+        <span style={{fontSize:48,fontWeight:800,color,lineHeight:1}}>{isLate?Math.abs(daysLeft):daysLeft}</span>
+        <span style={{fontSize:14,color:"#aaa",marginBottom:6}}>
+          {isLate?(lang==="fr"?"jours de retard":lang==="es"?"días de retraso":"days overdue"):L.dl}
+        </span>
       </div>
-      <div style={{marginBottom:14}}>
+      <div style={{marginBottom:10}}>
         <div style={{height:5,background:"rgba(255,255,255,0.06)",borderRadius:5,overflow:"hidden"}}>
           <div style={{height:"100%",width:bar+"%",background:"linear-gradient(to right,"+color+"88,"+color+")",borderRadius:5,transition:"width 0.6s ease"}} />
         </div>
         <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
-          <span style={{fontSize:10,color:"#555"}}>Jour 0</span>
-          <span style={{fontSize:10,color:"#555"}}>Jour {nextStep.time}</span>
+          <span style={{fontSize:10,color:"#555"}}>{lang==="fr"?"Jour 0":lang==="es"?"Día 0":"Day 0"}</span>
+          <span style={{fontSize:10,color:"#555"}}>{lang==="fr"?"Jour":lang==="es"?"Día":"Day"} {nextStep.time}</span>
         </div>
       </div>
-      {/* ✅ Fix — bouton avec onClick */}
+      {/* ✅ Indicateur basé sur date d'arrivée */}
+      <div style={{fontSize:10,color:"#555",marginBottom:12,display:"flex",alignItems:"center",gap:4}}>
+        {arrivalDate?"📅":"⚠️"} {L.basedOn}
+        {!arrivalDate&&(
+          <span onClick={()=>window.location.href="/onboarding/step3b"} style={{color:"#e8b84b",cursor:"pointer",textDecoration:"underline",marginLeft:4}}>
+            {L.addDate}
+          </span>
+        )}
+      </div>
       <button
         onClick={()=>window.location.href=`/guide/${nextStep.id}`}
         style={{width:"100%",padding:"11px",background:color,color:"#fff",border:"none",borderRadius:24,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}
@@ -420,102 +444,75 @@ function CountdownDeadline({nextStep,lang}:{nextStep:Step|undefined;lang:Lang}) 
 }
 
 // ══════════════════════════════════════════════
-// ✅ DOCUMENTS TAB — ENRICHI COMPLET
+// ✅ DOCUMENTS TAB
 // ══════════════════════════════════════════════
 function DocumentsTab({lang,completedSteps}:{lang:Lang;completedSteps:string[]}) {
-
-  const [activeDoc,    setActiveDoc]    = useState<string|null>(null);
-  const [lostModal,    setLostModal]    = useState<string|null>(null);
-  const [conservation, setConservation] = useState<Record<string,boolean>>(() => {
-    try { return JSON.parse(localStorage.getItem("doc_conservation")||"{}"); } catch { return {}; }
+  const [activeDoc,setActiveDoc]       = useState<string|null>(null);
+  const [lostModal,setLostModal]       = useState<string|null>(null);
+  const [conservation,setConservation] = useState<Record<string,boolean>>(()=>{
+    try{return JSON.parse(localStorage.getItem("doc_conservation")||"{}");}catch{return {};}
   });
-  const [saveAnim, setSaveAnim] = useState(false);
 
-  type DocItem = {
-    id:string; icon:string; label:string; desc:string;
-    linked:string|null; alwaysOk:boolean; guideId:string|null;
-    info:string; lostSteps:string[];
-  };
+  type DocItem = {id:string;icon:string;label:string;desc:string;linked:string|null;alwaysOk:boolean;guideId:string|null;info:string;lostSteps:string[];};
 
   const docs:Record<Lang,DocItem[]> = {
     fr:[
-      { id:"passport",  icon:"🛂", label:"Passeport",           desc:"Document d'identité international",      linked:null,        alwaysOk:true,  guideId:null,        info:"Ton passeport est valide 6 mois minimum. Garde-le toujours en lieu sûr. Fais-en une copie numérique sur Google Drive dès maintenant.",                          lostSteps:["Contacte l'ambassade de ton pays aux USA","Prends rendez-vous pour un passeport d'urgence","Apporte 2 photos d'identité + preuve de citoyenneté","Délai : 24-72h pour un passeport d'urgence"] },
-      { id:"visa",      icon:"🟩", label:"Visa immigrant (DV)", desc:"DV Lottery — tampon dans ton passeport", linked:null,        alwaysOk:true,  guideId:null,        info:"Le tampon DV dans ton passeport prouve ton entrée légale. Il sert de preuve de statut pendant 1 an, jusqu'à réception de ta Green Card physique.",          lostSteps:["Le visa est dans ton passeport","Si passeport perdu → contacte l'ambassade","Contacte USCIS au 1-800-375-5283 pour vérifier ton statut LPR"] },
-      { id:"ssn_card",  icon:"🪪", label:"Carte SSN",           desc:"Reçue 2 semaines après le bureau SSA",  linked:"ssn",       alwaysOk:false, guideId:"ssn",       info:"Ton SSN est permanent et ne change jamais. Ne partage ce numéro qu'avec ton employeur ou ta banque. Ne porte jamais la carte dans ton portefeuille au quotidien.", lostSteps:["Va sur ssa.gov/ssnumber","Clique sur 'Replace a Social Security Card'","Apporte passeport + Green Card au bureau SSA","C'est gratuit — 3 remplacements max par an"] },
-      { id:"sim",       icon:"📱", label:"SIM / Numéro US",     desc:"T-Mobile ou Mint Mobile — Jour 1",      linked:"phone",     alwaysOk:false, guideId:"phone",     info:"Ton numéro US est essentiel pour les vérifications bancaires, les employeurs et les services gouvernementaux. Garde-le actif en payant ton forfait à temps.",    lostSteps:["Va dans une boutique T-Mobile ou Mint Mobile","Montre une pièce d'identité","Un nouveau SIM est généralement gratuit ou $5-10","Tu gardes le même numéro"] },
-      { id:"greencard", icon:"💳", label:"Green Card physique", desc:"Courrier USCIS — 2 à 3 semaines",       linked:"greencard", alwaysOk:false, guideId:"greencard", info:"Ta Green Card est valide 10 ans. C'est la preuve officielle de ta résidence permanente. Ne la porte pas dans ton portefeuille — garde-la dans un endroit sûr.",  lostSteps:["Va sur uscis.gov/i90","Remplis le formulaire I-90 en ligne","Paye les frais de remplacement","Délai : 3-6 mois pour recevoir la nouvelle carte"] },
-      { id:"bank_card", icon:"🏦", label:"Carte bancaire",      desc:"Chase ou BofA — passeport seulement",   linked:"bank",      alwaysOk:false, guideId:"bank",      info:"Ta carte bancaire US te permet de payer partout et de recevoir ton salaire. Active les notifications de transaction pour détecter tout usage frauduleux.",         lostSteps:["Bloque immédiatement la carte via l'app bancaire","Appelle le numéro au dos de ta carte","Une nouvelle carte arrive par courrier en 3-5 jours","Vérifie les transactions récentes pour fraude"] },
-      { id:"license_c", icon:"🚗", label:"Permis de conduire",  desc:"Examen théorique + pratique DMV",       linked:"license",   alwaysOk:false, guideId:"license",   info:"Ton permis US est aussi une carte d'identité valable. Avec le REAL ID (étoile dorée), tu peux prendre l'avion intérieur sans passeport depuis mai 2025.",    lostSteps:["Va sur le site du DMV de ton état","Prends rendez-vous pour un remplacement","Apporte passeport + preuve d'adresse","Frais de remplacement : $20-$40 selon l'état"] },
+      {id:"passport",  icon:"🛂",label:"Passeport",           desc:"Document d'identité international",      linked:null,        alwaysOk:true,  guideId:null,        info:"Ton passeport est valide 6 mois minimum. Garde-le toujours en lieu sûr. Fais-en une copie numérique sur Google Drive dès maintenant.",                          lostSteps:["Contacte l'ambassade de ton pays aux USA","Prends rendez-vous pour un passeport d'urgence","Apporte 2 photos d'identité + preuve de citoyenneté","Délai : 24-72h pour un passeport d'urgence"]},
+      {id:"visa",      icon:"🟩",label:"Visa immigrant (DV)", desc:"DV Lottery — tampon dans ton passeport", linked:null,        alwaysOk:true,  guideId:null,        info:"Le tampon DV dans ton passeport prouve ton entrée légale. Il sert de preuve de statut pendant 1 an, jusqu'à réception de ta Green Card physique.",          lostSteps:["Le visa est dans ton passeport","Si passeport perdu → contacte l'ambassade","Contacte USCIS au 1-800-375-5283 pour vérifier ton statut LPR"]},
+      {id:"ssn_card",  icon:"🪪",label:"Carte SSN",           desc:"Reçue 2 semaines après le bureau SSA",  linked:"ssn",       alwaysOk:false, guideId:"ssn",       info:"Ton SSN est permanent et ne change jamais. Ne partage ce numéro qu'avec ton employeur ou ta banque. Ne porte jamais la carte dans ton portefeuille au quotidien.", lostSteps:["Va sur ssa.gov/ssnumber","Clique sur 'Replace a Social Security Card'","Apporte passeport + Green Card au bureau SSA","C'est gratuit — 3 remplacements max par an"]},
+      {id:"sim",       icon:"📱",label:"SIM / Numéro US",     desc:"T-Mobile ou Mint Mobile — Jour 1",      linked:"phone",     alwaysOk:false, guideId:"phone",     info:"Ton numéro US est essentiel pour les vérifications bancaires, les employeurs et les services gouvernementaux. Garde-le actif en payant ton forfait à temps.",    lostSteps:["Va dans une boutique T-Mobile ou Mint Mobile","Montre une pièce d'identité","Un nouveau SIM est généralement gratuit ou $5-10","Tu gardes le même numéro"]},
+      {id:"greencard", icon:"💳",label:"Green Card physique", desc:"Courrier USCIS — 2 à 3 semaines",       linked:"greencard", alwaysOk:false, guideId:"greencard", info:"Ta Green Card est valide 10 ans. C'est la preuve officielle de ta résidence permanente. Ne la porte pas dans ton portefeuille — garde-la dans un endroit sûr.",  lostSteps:["Va sur uscis.gov/i90","Remplis le formulaire I-90 en ligne","Paye les frais de remplacement","Délai : 3-6 mois pour recevoir la nouvelle carte"]},
+      {id:"bank_card", icon:"🏦",label:"Carte bancaire",      desc:"Chase ou BofA — passeport seulement",   linked:"bank",      alwaysOk:false, guideId:"bank",      info:"Ta carte bancaire US te permet de payer partout et de recevoir ton salaire. Active les notifications de transaction pour détecter tout usage frauduleux.",         lostSteps:["Bloque immédiatement la carte via l'app bancaire","Appelle le numéro au dos de ta carte","Une nouvelle carte arrive par courrier en 3-5 jours","Vérifie les transactions récentes pour fraude"]},
+      {id:"license_c", icon:"🚗",label:"Permis de conduire",  desc:"Examen théorique + pratique DMV",       linked:"license",   alwaysOk:false, guideId:"license",   info:"Ton permis US est aussi une carte d'identité valable. Avec le REAL ID (étoile dorée), tu peux prendre l'avion intérieur sans passeport depuis mai 2025.",    lostSteps:["Va sur le site du DMV de ton état","Prends rendez-vous pour un remplacement","Apporte passeport + preuve d'adresse","Frais de remplacement : $20-$40 selon l'état"]},
     ],
     en:[
-      { id:"passport",  icon:"🛂", label:"Passport",             desc:"International ID document",              linked:null,        alwaysOk:true,  guideId:null,        info:"Your passport is valid for 6 months minimum. Always keep it safe. Make a digital copy on Google Drive right now.",                                              lostSteps:["Contact your country's embassy in the USA","Schedule an emergency passport appointment","Bring 2 ID photos + proof of citizenship","Delay: 24-72h for an emergency passport"] },
-      { id:"visa",      icon:"🟩", label:"Immigrant Visa (DV)",  desc:"DV Lottery — stamp in your passport",   linked:null,        alwaysOk:true,  guideId:null,        info:"The DV stamp in your passport proves your legal entry. It serves as proof of status for 1 year, until you receive your physical Green Card.",                 lostSteps:["The visa is in your passport","If passport lost → contact the embassy","Contact USCIS at 1-800-375-5283 to verify your LPR status"] },
-      { id:"ssn_card",  icon:"🪪", label:"SSN Card",             desc:"Received 2 weeks after SSA office",     linked:"ssn",       alwaysOk:false, guideId:"ssn",       info:"Your SSN is permanent and never changes. Only share this number with your employer or bank. Never carry the card in your wallet daily.",                       lostSteps:["Go to ssa.gov/ssnumber","Click 'Replace a Social Security Card'","Bring passport + Green Card to SSA office","It's free — max 3 replacements per year"] },
-      { id:"sim",       icon:"📱", label:"SIM / US Phone Number",desc:"T-Mobile or Mint Mobile — Day 1",       linked:"phone",     alwaysOk:false, guideId:"phone",     info:"Your US number is essential for bank verifications, employers and government services. Keep it active by paying your plan on time.",                             lostSteps:["Go to a T-Mobile or Mint Mobile store","Show an ID","A new SIM is usually free or $5-10","You keep the same number"] },
-      { id:"greencard", icon:"💳", label:"Physical Green Card",  desc:"USCIS mail — 2 to 3 weeks",             linked:"greencard", alwaysOk:false, guideId:"greencard", info:"Your Green Card is valid for 10 years. It's official proof of your permanent residency. Don't carry it in your wallet — keep it somewhere safe.",            lostSteps:["Go to uscis.gov/i90","Fill out Form I-90 online","Pay the replacement fee","Delay: 3-6 months to receive the new card"] },
-      { id:"bank_card", icon:"🏦", label:"Bank Card",            desc:"Chase or BofA — passport only",         linked:"bank",      alwaysOk:false, guideId:"bank",      info:"Your US bank card lets you pay everywhere and receive your salary. Enable transaction notifications to detect any fraudulent use.",                              lostSteps:["Immediately block the card via your banking app","Call the number on the back of your card","A new card arrives by mail in 3-5 days","Check recent transactions for fraud"] },
-      { id:"license_c", icon:"🚗", label:"Driver's License",     desc:"Written + practical DMV test",          linked:"license",   alwaysOk:false, guideId:"license",   info:"Your US license is also a valid ID. With REAL ID (gold star), you can take domestic flights without a passport since May 2025.",                             lostSteps:["Go to your state's DMV website","Schedule a replacement appointment","Bring passport + proof of address","Replacement fee: $20-$40 depending on state"] },
+      {id:"passport",  icon:"🛂",label:"Passport",             desc:"International ID document",              linked:null,        alwaysOk:true,  guideId:null,        info:"Your passport is valid for 6 months minimum. Always keep it safe. Make a digital copy on Google Drive right now.",                                              lostSteps:["Contact your country's embassy in the USA","Schedule an emergency passport appointment","Bring 2 ID photos + proof of citizenship","Delay: 24-72h for an emergency passport"]},
+      {id:"visa",      icon:"🟩",label:"Immigrant Visa (DV)",  desc:"DV Lottery — stamp in your passport",   linked:null,        alwaysOk:true,  guideId:null,        info:"The DV stamp in your passport proves your legal entry. It serves as proof of status for 1 year, until you receive your physical Green Card.",                 lostSteps:["The visa is in your passport","If passport lost → contact the embassy","Contact USCIS at 1-800-375-5283 to verify your LPR status"]},
+      {id:"ssn_card",  icon:"🪪",label:"SSN Card",             desc:"Received 2 weeks after SSA office",     linked:"ssn",       alwaysOk:false, guideId:"ssn",       info:"Your SSN is permanent and never changes. Only share this number with your employer or bank. Never carry the card in your wallet daily.",                       lostSteps:["Go to ssa.gov/ssnumber","Click 'Replace a Social Security Card'","Bring passport + Green Card to SSA office","It's free — max 3 replacements per year"]},
+      {id:"sim",       icon:"📱",label:"SIM / US Phone Number",desc:"T-Mobile or Mint Mobile — Day 1",       linked:"phone",     alwaysOk:false, guideId:"phone",     info:"Your US number is essential for bank verifications, employers and government services. Keep it active by paying your plan on time.",                             lostSteps:["Go to a T-Mobile or Mint Mobile store","Show an ID","A new SIM is usually free or $5-10","You keep the same number"]},
+      {id:"greencard", icon:"💳",label:"Physical Green Card",  desc:"USCIS mail — 2 to 3 weeks",             linked:"greencard", alwaysOk:false, guideId:"greencard", info:"Your Green Card is valid for 10 years. It's official proof of your permanent residency. Don't carry it in your wallet — keep it somewhere safe.",            lostSteps:["Go to uscis.gov/i90","Fill out Form I-90 online","Pay the replacement fee","Delay: 3-6 months to receive the new card"]},
+      {id:"bank_card", icon:"🏦",label:"Bank Card",            desc:"Chase or BofA — passport only",         linked:"bank",      alwaysOk:false, guideId:"bank",      info:"Your US bank card lets you pay everywhere and receive your salary. Enable transaction notifications to detect any fraudulent use.",                              lostSteps:["Immediately block the card via your banking app","Call the number on the back of your card","A new card arrives by mail in 3-5 days","Check recent transactions for fraud"]},
+      {id:"license_c", icon:"🚗",label:"Driver's License",     desc:"Written + practical DMV test",          linked:"license",   alwaysOk:false, guideId:"license",   info:"Your US license is also a valid ID. With REAL ID (gold star), you can take domestic flights without a passport since May 2025.",                             lostSteps:["Go to your state's DMV website","Schedule a replacement appointment","Bring passport + proof of address","Replacement fee: $20-$40 depending on state"]},
     ],
     es:[
-      { id:"passport",  icon:"🛂", label:"Pasaporte",            desc:"Documento de identidad internacional",  linked:null,        alwaysOk:true,  guideId:null,        info:"Tu pasaporte es válido por 6 meses mínimo. Guárdalo siempre en un lugar seguro. Haz una copia digital en Google Drive ahora mismo.",                        lostSteps:["Contacta la embajada de tu país en EE.UU.","Programa una cita para pasaporte de emergencia","Lleva 2 fotos de identidad + prueba de ciudadanía","Plazo: 24-72h para un pasaporte de emergencia"] },
-      { id:"visa",      icon:"🟩", label:"Visa inmigrante (DV)", desc:"DV Lottery — sello en tu pasaporte",    linked:null,        alwaysOk:true,  guideId:null,        info:"El sello DV en tu pasaporte prueba tu entrada legal. Sirve como prueba de estatus durante 1 año, hasta recibir tu Green Card física.",                    lostSteps:["La visa está en tu pasaporte","Si pierdes el pasaporte → contacta la embajada","Contacta USCIS al 1-800-375-5283 para verificar tu estatus LPR"] },
-      { id:"ssn_card",  icon:"🪪", label:"Tarjeta SSN",          desc:"Recibida 2 semanas después SSA",        linked:"ssn",       alwaysOk:false, guideId:"ssn",       info:"Tu SSN es permanente y nunca cambia. Solo comparte este número con tu empleador o banco. Nunca lleves la tarjeta en tu billetera a diario.",                lostSteps:["Ve a ssa.gov/ssnumber","Haz clic en 'Replace a Social Security Card'","Lleva pasaporte + Green Card a la oficina SSA","Es gratis — máximo 3 reemplazos por año"] },
-      { id:"sim",       icon:"📱", label:"SIM / Número US",      desc:"T-Mobile o Mint Mobile — Día 1",       linked:"phone",     alwaysOk:false, guideId:"phone",     info:"Tu número de EE.UU. es esencial para verificaciones bancarias, empleadores y servicios gubernamentales. Mantenlo activo pagando tu plan a tiempo.",        lostSteps:["Ve a una tienda T-Mobile o Mint Mobile","Muestra una identificación","Un nuevo SIM es generalmente gratis o $5-10","Conservas el mismo número"] },
-      { id:"greencard", icon:"💳", label:"Green Card física",    desc:"Correo USCIS — 2 a 3 semanas",         linked:"greencard", alwaysOk:false, guideId:"greencard", info:"Tu Green Card es válida por 10 años. Es prueba oficial de tu residencia permanente. No la lleves en tu billetera — guárdala en un lugar seguro.",        lostSteps:["Ve a uscis.gov/i90","Completa el Formulario I-90 en línea","Paga la tarifa de reemplazo","Plazo: 3-6 meses para recibir la nueva tarjeta"] },
-      { id:"bank_card", icon:"🏦", label:"Tarjeta bancaria",     desc:"Chase o BofA — solo pasaporte",        linked:"bank",      alwaysOk:false, guideId:"bank",      info:"Tu tarjeta bancaria de EE.UU. te permite pagar en todas partes y recibir tu salario. Activa las notificaciones de transacciones para detectar uso fraudulento.", lostSteps:["Bloquea inmediatamente la tarjeta a través de la app bancaria","Llama al número al dorso de tu tarjeta","Una nueva tarjeta llega por correo en 3-5 días","Verifica transacciones recientes por fraude"] },
-      { id:"license_c", icon:"🚗", label:"Licencia de conducir", desc:"Examen teórico + práctico DMV",        linked:"license",   alwaysOk:false, guideId:"license",   info:"Tu licencia de EE.UU. también es un documento de identidad válido. Con REAL ID (estrella dorada), puedes tomar vuelos domésticos sin pasaporte desde mayo 2025.", lostSteps:["Ve al sitio web del DMV de tu estado","Programa una cita de reemplazo","Lleva pasaporte + prueba de domicilio","Tarifa de reemplazo: $20-$40 según el estado"] },
+      {id:"passport",  icon:"🛂",label:"Pasaporte",            desc:"Documento de identidad internacional",  linked:null,        alwaysOk:true,  guideId:null,        info:"Tu pasaporte es válido por 6 meses mínimo. Guárdalo siempre en un lugar seguro. Haz una copia digital en Google Drive ahora mismo.",                        lostSteps:["Contacta la embajada de tu país en EE.UU.","Programa una cita para pasaporte de emergencia","Lleva 2 fotos de identidad + prueba de ciudadanía","Plazo: 24-72h para un pasaporte de emergencia"]},
+      {id:"visa",      icon:"🟩",label:"Visa inmigrante (DV)", desc:"DV Lottery — sello en tu pasaporte",    linked:null,        alwaysOk:true,  guideId:null,        info:"El sello DV en tu pasaporte prueba tu entrada legal. Sirve como prueba de estatus durante 1 año, hasta recibir tu Green Card física.",                    lostSteps:["La visa está en tu pasaporte","Si pierdes el pasaporte → contacta la embajada","Contacta USCIS al 1-800-375-5283 para verificar tu estatus LPR"]},
+      {id:"ssn_card",  icon:"🪪",label:"Tarjeta SSN",          desc:"Recibida 2 semanas después SSA",        linked:"ssn",       alwaysOk:false, guideId:"ssn",       info:"Tu SSN es permanente y nunca cambia. Solo comparte este número con tu empleador o banco. Nunca lleves la tarjeta en tu billetera a diario.",                lostSteps:["Ve a ssa.gov/ssnumber","Haz clic en 'Replace a Social Security Card'","Lleva pasaporte + Green Card a la oficina SSA","Es gratis — máximo 3 reemplazos por año"]},
+      {id:"sim",       icon:"📱",label:"SIM / Número US",      desc:"T-Mobile o Mint Mobile — Día 1",       linked:"phone",     alwaysOk:false, guideId:"phone",     info:"Tu número de EE.UU. es esencial para verificaciones bancarias, empleadores y servicios gubernamentales. Mantenlo activo pagando tu plan a tiempo.",        lostSteps:["Ve a una tienda T-Mobile o Mint Mobile","Muestra una identificación","Un nuevo SIM es generalmente gratis o $5-10","Conservas el mismo número"]},
+      {id:"greencard", icon:"💳",label:"Green Card física",    desc:"Correo USCIS — 2 a 3 semanas",         linked:"greencard", alwaysOk:false, guideId:"greencard", info:"Tu Green Card es válida por 10 años. Es prueba oficial de tu residencia permanente. No la lleves en tu billetera — guárdala en un lugar seguro.",        lostSteps:["Ve a uscis.gov/i90","Completa el Formulario I-90 en línea","Paga la tarifa de reemplazo","Plazo: 3-6 meses para recibir la nueva tarjeta"]},
+      {id:"bank_card", icon:"🏦",label:"Tarjeta bancaria",     desc:"Chase o BofA — solo pasaporte",        linked:"bank",      alwaysOk:false, guideId:"bank",      info:"Tu tarjeta bancaria de EE.UU. te permite pagar en todas partes y recibir tu salario. Activa las notificaciones de transacciones para detectar uso fraudulento.", lostSteps:["Bloquea inmediatamente la tarjeta a través de la app bancaria","Llama al número al dorso de tu tarjeta","Una nueva tarjeta llega por correo en 3-5 días","Verifica transacciones recientes por fraude"]},
+      {id:"license_c", icon:"🚗",label:"Licencia de conducir", desc:"Examen teórico + práctico DMV",        linked:"license",   alwaysOk:false, guideId:"license",   info:"Tu licencia de EE.UU. también es un documento de identidad válido. Con REAL ID (estrella dorada), puedes tomar vuelos domésticos sin pasaporte desde mayo 2025.", lostSteps:["Ve al sitio web del DMV de tu estado","Programa una cita de reemplazo","Lleva pasaporte + prueba de domicilio","Tarifa de reemplazo: $20-$40 según el estado"]},
     ],
   };
 
   const CONSERVATION_ITEMS:Record<Lang,{id:string;label:string}[]> = {
-    fr:[
-      {id:"originals",    label:"Originaux dans un endroit sûr (pas le portefeuille)"},
-      {id:"google_drive", label:"Copies numériques sur Google Drive ou iCloud"},
-      {id:"family_copy",  label:"Copies physiques chez un proche de confiance"},
-      {id:"ssn_memorize", label:"SSN mémorisé — carte rangée en lieu sûr"},
-      {id:"gc_safe",      label:"Green Card rangée — pas dans le portefeuille"},
-    ],
-    en:[
-      {id:"originals",    label:"Originals in a safe place (not your wallet)"},
-      {id:"google_drive", label:"Digital copies on Google Drive or iCloud"},
-      {id:"family_copy",  label:"Physical copies with a trusted person"},
-      {id:"ssn_memorize", label:"SSN memorized — card stored safely"},
-      {id:"gc_safe",      label:"Green Card stored safely — not in wallet"},
-    ],
-    es:[
-      {id:"originals",    label:"Originales en un lugar seguro (no la billetera)"},
-      {id:"google_drive", label:"Copias digitales en Google Drive o iCloud"},
-      {id:"family_copy",  label:"Copias físicas con una persona de confianza"},
-      {id:"ssn_memorize", label:"SSN memorizado — tarjeta guardada en lugar seguro"},
-      {id:"gc_safe",      label:"Green Card guardada — no en la billetera"},
-    ],
+    fr:[{id:"originals",label:"Originaux dans un endroit sûr (pas le portefeuille)"},{id:"google_drive",label:"Copies numériques sur Google Drive ou iCloud"},{id:"family_copy",label:"Copies physiques chez un proche de confiance"},{id:"ssn_memorize",label:"SSN mémorisé — carte rangée en lieu sûr"},{id:"gc_safe",label:"Green Card rangée — pas dans le portefeuille"}],
+    en:[{id:"originals",label:"Originals in a safe place (not your wallet)"},{id:"google_drive",label:"Digital copies on Google Drive or iCloud"},{id:"family_copy",label:"Physical copies with a trusted person"},{id:"ssn_memorize",label:"SSN memorized — card stored safely"},{id:"gc_safe",label:"Green Card stored safely — not in wallet"}],
+    es:[{id:"originals",label:"Originales en un lugar seguro (no la billetera)"},{id:"google_drive",label:"Copias digitales en Google Drive o iCloud"},{id:"family_copy",label:"Copias físicas con una persona de confianza"},{id:"ssn_memorize",label:"SSN memorizado — tarjeta guardada en lugar seguro"},{id:"gc_safe",label:"Green Card guardada — no en la billetera"}],
   };
 
   const L = {
-    fr:{ title:"Mes Documents", sub:"Coche ce que tu as déjà — on t'aide pour le reste", ok:"OK", pending:"En attente", missing:"Manquant", score:"Score documentaire", infoTitle:"À savoir", lostTitle:"Si tu perds ce document", lostBtn:"J'ai perdu ce document", guideBtn:"Voir le guide →", explorerBtn:"Trouver un bureau", conservTitle:"📦 Check-list de conservation", conservSub:"Coche pour confirmer que tu as bien rangé tes documents" },
-    en:{ title:"My Documents", sub:"Check what you already have — we'll help with the rest", ok:"OK", pending:"Pending", missing:"Missing", score:"Document score", infoTitle:"Good to know", lostTitle:"If you lose this document", lostBtn:"I lost this document", guideBtn:"View guide →", explorerBtn:"Find an office", conservTitle:"📦 Storage checklist", conservSub:"Check to confirm you've safely stored your documents" },
-    es:{ title:"Mis Documentos", sub:"Marca lo que ya tienes — te ayudamos con el resto", ok:"OK", pending:"Pendiente", missing:"Faltante", score:"Puntuación documentos", infoTitle:"Bueno saber", lostTitle:"Si pierdes este documento", lostBtn:"Perdí este documento", guideBtn:"Ver guía →", explorerBtn:"Encontrar una oficina", conservTitle:"📦 Lista de conservación", conservSub:"Marca para confirmar que guardaste bien tus documentos" },
+    fr:{title:"Mes Documents",sub:"Coche ce que tu as déjà — on t'aide pour le reste",ok:"OK",pending:"En attente",missing:"Manquant",score:"Score documentaire",infoTitle:"À savoir",lostTitle:"Si tu perds ce document",lostBtn:"J'ai perdu ce document",guideBtn:"Voir le guide →",explorerBtn:"Trouver un bureau",conservTitle:"📦 Check-list de conservation",conservSub:"Coche pour confirmer que tu as bien rangé tes documents"},
+    en:{title:"My Documents",sub:"Check what you already have — we'll help with the rest",ok:"OK",pending:"Pending",missing:"Missing",score:"Document score",infoTitle:"Good to know",lostTitle:"If you lose this document",lostBtn:"I lost this document",guideBtn:"View guide →",explorerBtn:"Find an office",conservTitle:"📦 Storage checklist",conservSub:"Check to confirm you've safely stored your documents"},
+    es:{title:"Mis Documentos",sub:"Marca lo que ya tienes — te ayudamos con el resto",ok:"OK",pending:"Pendiente",missing:"Faltante",score:"Puntuación documentos",infoTitle:"Bueno saber",lostTitle:"Si pierdes este documento",lostBtn:"Perdí este documento",guideBtn:"Ver guía →",explorerBtn:"Encontrar una oficina",conservTitle:"📦 Lista de conservación",conservSub:"Marca para confirmar que guardaste bien tus documentos"},
   }[lang];
 
   const list = docs[lang];
-  const getStatus = (d:DocItem) => {
+  const getStatus = (d:DocItem)=>{
     if (d.alwaysOk) return "ok";
     if (d.linked&&completedSteps.includes(d.linked)) return "ok";
     if (d.linked) return "pending";
     return "missing";
   };
-
   const sColor  = {ok:"#22c55e",pending:"#e8b84b",missing:"#ef4444"};
   const sBg     = {ok:"rgba(34,197,94,0.08)",pending:"rgba(232,184,75,0.08)",missing:"rgba(239,68,68,0.05)"};
   const sBorder = {ok:"rgba(34,197,94,0.2)",pending:"rgba(232,184,75,0.2)",missing:"rgba(239,68,68,0.15)"};
   const sLabel  = {ok:L.ok,pending:L.pending,missing:L.missing};
-
   const counts  = {ok:0,pending:0,missing:0};
   list.forEach(d=>{counts[getStatus(d) as keyof typeof counts]++;});
+  const docScore = Math.round((counts.ok/list.length)*100);
 
-  const docScore = Math.round((counts.ok / list.length) * 100);
-
-  const toggleConservation = (id:string) => {
+  const toggleConservation = (id:string)=>{
     const updated = {...conservation,[id]:!conservation[id]};
     setConservation(updated);
     localStorage.setItem("doc_conservation",JSON.stringify(updated));
@@ -523,16 +520,11 @@ function DocumentsTab({lang,completedSteps}:{lang:Lang;completedSteps:string[]})
 
   const selectedDocData = list.find(d=>d.id===activeDoc);
   const lostDocData     = list.find(d=>d.id===lostModal);
-
-  // Explorer filter map
-  const EXPLORER_FILTERS:Record<string,string> = {
-    ssn_card:"ssn", greencard:"uscis", bank_card:"bank", license_c:"dmv", sim:"", passport:"", visa:""
-  };
+  const EXPLORER_FILTERS:Record<string,string> = {ssn_card:"ssn",greencard:"uscis",bank_card:"bank",license_c:"dmv",sim:"",passport:"",visa:""};
 
   return (
     <div>
-
-      {/* ✅ Doc info modal */}
+      {/* Doc info modal */}
       {activeDoc&&selectedDocData&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center",backdropFilter:"blur(4px)"}} onClick={()=>setActiveDoc(null)}>
           <div style={{background:"#0f1521",border:"1px solid #1e2a3a",borderRadius:"20px 20px 0 0",padding:"24px 20px 48px",width:"100%",maxWidth:480,animation:"slideUp 0.3s ease"}} onClick={e=>e.stopPropagation()}>
@@ -555,12 +547,9 @@ function DocumentsTab({lang,completedSteps}:{lang:Lang;completedSteps:string[]})
                 </button>
               )}
               {EXPLORER_FILTERS[selectedDocData.id]&&(
-               <button
-               onClick={()=>{setActiveDoc(null);window.location.href=`/near/${EXPLORER_FILTERS[selectedDocData.id]}`;}}
-               style={{width:"100%",padding:"12px",background:"rgba(45,212,191,0.1)",border:"1px solid rgba(45,212,191,0.3)",borderRadius:12,color:"#2dd4bf",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}
-             >
-               🗺️ {L.explorerBtn}
-             </button>
+                <button onClick={()=>{setActiveDoc(null);window.location.href=`/near/${EXPLORER_FILTERS[selectedDocData.id]}`;}} style={{width:"100%",padding:"12px",background:"rgba(45,212,191,0.1)",border:"1px solid rgba(45,212,191,0.3)",borderRadius:12,color:"#2dd4bf",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
+                  🗺️ {L.explorerBtn}
+                </button>
               )}
               <button onClick={()=>{setActiveDoc(null);setLostModal(selectedDocData.id);}} style={{width:"100%",padding:"12px",background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:12,color:"#ef4444",fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>
                 🆘 {L.lostBtn}
@@ -570,7 +559,7 @@ function DocumentsTab({lang,completedSteps}:{lang:Lang;completedSteps:string[]})
         </div>
       )}
 
-      {/* ✅ Lost doc modal */}
+      {/* Lost doc modal */}
       {lostModal&&lostDocData&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center",backdropFilter:"blur(4px)"}} onClick={()=>setLostModal(null)}>
           <div style={{background:"#0f1521",border:"1px solid #1e2a3a",borderRadius:"20px 20px 0 0",padding:"24px 20px 48px",width:"100%",maxWidth:480,animation:"slideUp 0.3s ease"}} onClick={e=>e.stopPropagation()}>
@@ -592,13 +581,12 @@ function DocumentsTab({lang,completedSteps}:{lang:Lang;completedSteps:string[]})
         </div>
       )}
 
-      {/* Header */}
       <div style={{marginBottom:16}}>
         <div style={{fontSize:20,fontWeight:700,color:"#fff",marginBottom:4}}>{L.title}</div>
         <div style={{fontSize:12,color:"#aaa"}}>{L.sub}</div>
       </div>
 
-      {/* ✅ Score documentaire */}
+      {/* Score documentaire */}
       <div style={{background:"#141d2e",border:"1px solid #1e2a3a",borderRadius:14,padding:"14px 16px",marginBottom:16}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
           <div style={{fontSize:12,color:"#aaa",fontWeight:500}}>{L.score}</div>
@@ -617,7 +605,7 @@ function DocumentsTab({lang,completedSteps}:{lang:Lang;completedSteps:string[]})
         </div>
       </div>
 
-      {/* ✅ Liste documents — cliquables */}
+      {/* Liste documents */}
       <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
         {list.map(d=>{
           const s = getStatus(d);
@@ -640,7 +628,7 @@ function DocumentsTab({lang,completedSteps}:{lang:Lang;completedSteps:string[]})
         })}
       </div>
 
-      {/* ✅ Checklist conservation */}
+      {/* Checklist conservation */}
       <div style={{background:"rgba(45,212,191,0.04)",border:"1px solid rgba(45,212,191,0.15)",borderRadius:14,padding:"16px"}}>
         <div style={{fontSize:14,fontWeight:700,color:"#2dd4bf",marginBottom:4}}>{L.conservTitle}</div>
         <div style={{fontSize:12,color:"#aaa",marginBottom:14}}>{L.conservSub}</div>
@@ -664,13 +652,12 @@ function DocumentsTab({lang,completedSteps}:{lang:Lang;completedSteps:string[]})
           {Object.values(conservation).filter(Boolean).length}/{CONSERVATION_ITEMS[lang].length}
         </div>
       </div>
-
     </div>
   );
 }
 
 // ══════════════════════════════════════════════
-// ✅ PROFILE TAB — FIX NOM MODAL RESPONSIVE
+// ✅ PROFILE TAB
 // ══════════════════════════════════════════════
 function ProfileTab({userName,userEmail,userCountry,userState,userCity,lang,progress,doneCount,totalSteps,completedSteps,changeLang,onLogout,onDeleteAccount}:{
   userName:string;userEmail:string;userCountry:string;userState:string;userCity:string;
@@ -689,37 +676,36 @@ function ProfileTab({userName,userEmail,userCountry,userState,userCity,lang,prog
   const [profileLoaded,setProfileLoaded] = useState(false);
   const [displayName,setDisplayName]     = useState(userName);
 
-  useEffect(() => {
+  useEffect(()=>{
     if (profileLoaded) return;
-    const load = async () => {
+    const load = async ()=>{
       const user = auth.currentUser;
       if (!user) return;
       try {
         const snap = await getDoc(doc(db,"users",user.uid));
-        if (snap.exists()) {
+        if (snap.exists()){
           const data = snap.data() as any;
           setCommVisible(data?.communityVisible||false);
           setNotifEnabled(data?.notifEnabled||false);
           setMsgEnabled(data?.msgEnabled!==false);
         }
-      } catch { /* continue */ }
+      } catch {/*continue*/}
       setProfileLoaded(true);
     };
     load();
   },[profileLoaded]);
 
-  const saveToggle = useCallback(async (field:string,value:boolean) => {
+  const saveToggle = useCallback(async (field:string,value:boolean)=>{
     const user = auth.currentUser;
     if (!user) return;
-    try { await updateDoc(doc(db,"users",user.uid),{[field]:value}); } catch { /* continue */ }
+    try{await updateDoc(doc(db,"users",user.uid),{[field]:value});}catch{/*continue*/}
   },[]);
 
-  const handleCommToggle  = useCallback(()=>{ const v=!commVisible;  setCommVisible(v);  saveToggle("communityVisible",v); },[commVisible,saveToggle]);
-  const handleNotifToggle = useCallback(()=>{ const v=!notifEnabled; setNotifEnabled(v); saveToggle("notifEnabled",v);      },[notifEnabled,saveToggle]);
-  const handleMsgToggle   = useCallback(()=>{ const v=!msgEnabled;   setMsgEnabled(v);   saveToggle("msgEnabled",v);         },[msgEnabled,saveToggle]);
+  const handleCommToggle  = useCallback(()=>{const v=!commVisible; setCommVisible(v); saveToggle("communityVisible",v);},[commVisible,saveToggle]);
+  const handleNotifToggle = useCallback(()=>{const v=!notifEnabled;setNotifEnabled(v);saveToggle("notifEnabled",v);     },[notifEnabled,saveToggle]);
+  const handleMsgToggle   = useCallback(()=>{const v=!msgEnabled;  setMsgEnabled(v);  saveToggle("msgEnabled",v);        },[msgEnabled,saveToggle]);
 
-  // ✅ Save nom avec animation
-  const saveName = useCallback(async () => {
+  const saveName = useCallback(async ()=>{
     if (!newName.trim()) return;
     const user = auth.currentUser;
     if (!user) return;
@@ -729,24 +715,20 @@ function ProfileTab({userName,userEmail,userCountry,userState,userCity,lang,prog
       localStorage.setItem("userName",newName.trim());
       setDisplayName(newName.trim());
       setNameSaved(true);
-      setTimeout(()=>{
-        setNameSaved(false);
-        setEditingName(false);
-      },1500);
-    } catch { /* continue */ }
+      setTimeout(()=>{setNameSaved(false);setEditingName(false);},1500);
+    } catch{/*continue*/}
     setSavingName(false);
   },[newName]);
 
-  const handlePasswordReset = useCallback(async () => {
+  const handlePasswordReset = useCallback(async ()=>{
     const user = auth.currentUser;
     if (!user?.email) return;
-    setPasswordSent(false);
-    setPasswordError("");
-    try { await sendPasswordResetEmail(auth,user.email); setPasswordSent(true); }
-    catch { setPasswordError(lang==="fr"?"Erreur — réessaie":lang==="es"?"Error — inténtalo de nuevo":"Error — try again"); }
+    setPasswordSent(false);setPasswordError("");
+    try{await sendPasswordResetEmail(auth,user.email);setPasswordSent(true);}
+    catch{setPasswordError(lang==="fr"?"Erreur — réessaie":lang==="es"?"Error — inténtalo de nuevo":"Error — try again");}
   },[lang]);
 
-  const handleShare = useCallback(() => {
+  const handleShare = useCallback(()=>{
     const CN:Record<string,Record<Lang,string>> = {
       us:{fr:"aux États-Unis",en:"in the USA",es:"en EE.UU."},
       fr:{fr:"en France",en:"in France",es:"en Francia"},
@@ -765,70 +747,48 @@ function ProfileTab({userName,userEmail,userCountry,userState,userCity,lang,prog
     else navigator.clipboard.writeText(messages[lang]).catch(()=>{});
   },[lang,userCountry]);
 
-  const Toggle = useCallback(({value,onToggle}:{value:boolean;onToggle:()=>void}) => (
+  const Toggle = useCallback(({value,onToggle}:{value:boolean;onToggle:()=>void})=>(
     <button onClick={onToggle} style={{width:48,height:26,borderRadius:13,background:value?"#e8b84b":"#2a3448",border:"none",cursor:"pointer",position:"relative",transition:"background 0.15s",flexShrink:0}}>
       <div style={{position:"absolute",top:3,left:value?24:3,width:20,height:20,borderRadius:"50%",background:"#fff",transition:"left 0.15s"}} />
     </button>
   ),[]);
 
   const L = {
-    fr:{title:"Mon Profil",score:"Score d'intégration",steps:"étapes complétées",editName:"Modifier",saveName:"Sauvegarder",cancelName:"Annuler",nameSaved:"✅ Nom modifié !",editNameTitle:"Modifier ton nom",editNameSub:"Entre ton nouveau nom",security:"Sécurité",changePass:"Changer le mot de passe",passSent:"✅ Email envoyé ! Vérifie ta boîte mail.",preferences:"Préférences",language:"Langue",privacy:"Confidentialité",commMap:"Carte communauté",commSub:"Apparaître anonymement",messages:"Messages",msgSub:"Recevoir des messages",notifications:"Notifications",notifSub:"Rappels quotidiens",share:"Partager Kuabo",shareSub:"Inviter un ami immigrant",help:"Aide",reportBug:"Signaler un bug",suggest:"Suggérer une fonctionnalité",legal:"Légal",terms:"Conditions d'utilisation",privacy2:"Politique de confidentialité",account:"Compte",logout:"Déconnexion",deleteAccount:"Supprimer mon compte",deleteSub:"Action irréversible",version:"Version 1.0 · Kuabo",badges:"Mes badges"},
-    en:{title:"My Profile",score:"Integration score",steps:"steps completed",editName:"Edit",saveName:"Save",cancelName:"Cancel",nameSaved:"✅ Name updated!",editNameTitle:"Edit your name",editNameSub:"Enter your new name",security:"Security",changePass:"Change password",passSent:"✅ Email sent! Check your inbox.",preferences:"Preferences",language:"Language",privacy:"Privacy",commMap:"Community map",commSub:"Appear anonymously",messages:"Messages",msgSub:"Receive messages",notifications:"Notifications",notifSub:"Daily reminders",share:"Share Kuabo",shareSub:"Invite an immigrant friend",help:"Help",reportBug:"Report a bug",suggest:"Suggest a feature",legal:"Legal",terms:"Terms of Service",privacy2:"Privacy Policy",account:"Account",logout:"Logout",deleteAccount:"Delete my account",deleteSub:"Irreversible action",version:"Version 1.0 · Kuabo",badges:"My badges"},
-    es:{title:"Mi Perfil",score:"Puntuación integración",steps:"pasos completados",editName:"Editar",saveName:"Guardar",cancelName:"Cancelar",nameSaved:"✅ ¡Nombre actualizado!",editNameTitle:"Editar tu nombre",editNameSub:"Ingresa tu nuevo nombre",security:"Seguridad",changePass:"Cambiar contraseña",passSent:"✅ ¡Email enviado! Revisa tu bandeja.",preferences:"Preferencias",language:"Idioma",privacy:"Privacidad",commMap:"Mapa comunidad",commSub:"Aparecer anónimamente",messages:"Mensajes",msgSub:"Recibir mensajes",notifications:"Notificaciones",notifSub:"Recordatorios diarios",share:"Compartir Kuabo",shareSub:"Invitar un amigo inmigrante",help:"Ayuda",reportBug:"Reportar un error",suggest:"Sugerir una función",legal:"Legal",terms:"Términos de Servicio",privacy2:"Política de Privacidad",account:"Cuenta",logout:"Cerrar sesión",deleteAccount:"Eliminar mi cuenta",deleteSub:"Acción irreversible",version:"Versión 1.0 · Kuabo",badges:"Mis insignias"},
+    fr:{title:"Mon Profil",score:"Score d'intégration",steps:"étapes complétées",saveName:"Sauvegarder",cancelName:"Annuler",nameSaved:"✅ Nom modifié !",editNameTitle:"Modifier ton nom",editNameSub:"Entre ton nouveau nom",security:"Sécurité",changePass:"Changer le mot de passe",passSent:"✅ Email envoyé ! Vérifie ta boîte mail.",preferences:"Préférences",language:"Langue",privacy:"Confidentialité",commMap:"Carte communauté",commSub:"Apparaître anonymement",messages:"Messages",msgSub:"Recevoir des messages",notifications:"Notifications",notifSub:"Rappels quotidiens",share:"Partager Kuabo",shareSub:"Inviter un ami immigrant",help:"Aide",reportBug:"Signaler un bug",suggest:"Suggérer une fonctionnalité",legal:"Légal",terms:"Conditions d'utilisation",privacy2:"Politique de confidentialité",account:"Compte",logout:"Déconnexion",deleteAccount:"Supprimer mon compte",deleteSub:"Action irréversible",version:"Version 1.0 · Kuabo",badges:"Mes badges"},
+    en:{title:"My Profile",score:"Integration score",steps:"steps completed",saveName:"Save",cancelName:"Cancel",nameSaved:"✅ Name updated!",editNameTitle:"Edit your name",editNameSub:"Enter your new name",security:"Security",changePass:"Change password",passSent:"✅ Email sent! Check your inbox.",preferences:"Preferences",language:"Language",privacy:"Privacy",commMap:"Community map",commSub:"Appear anonymously",messages:"Messages",msgSub:"Receive messages",notifications:"Notifications",notifSub:"Daily reminders",share:"Share Kuabo",shareSub:"Invite an immigrant friend",help:"Help",reportBug:"Report a bug",suggest:"Suggest a feature",legal:"Legal",terms:"Terms of Service",privacy2:"Privacy Policy",account:"Account",logout:"Logout",deleteAccount:"Delete my account",deleteSub:"Irreversible action",version:"Version 1.0 · Kuabo",badges:"My badges"},
+    es:{title:"Mi Perfil",score:"Puntuación integración",steps:"pasos completados",saveName:"Guardar",cancelName:"Cancelar",nameSaved:"✅ ¡Nombre actualizado!",editNameTitle:"Editar tu nombre",editNameSub:"Ingresa tu nuevo nombre",security:"Seguridad",changePass:"Cambiar contraseña",passSent:"✅ ¡Email enviado! Revisa tu bandeja.",preferences:"Preferencias",language:"Idioma",privacy:"Privacidad",commMap:"Mapa comunidad",commSub:"Aparecer anónimamente",messages:"Mensajes",msgSub:"Recibir mensajes",notifications:"Notificaciones",notifSub:"Recordatorios diarios",share:"Compartir Kuabo",shareSub:"Invitar un amigo inmigrante",help:"Ayuda",reportBug:"Reportar un error",suggest:"Sugerir una función",legal:"Legal",terms:"Términos de Servicio",privacy2:"Política de Privacidad",account:"Cuenta",logout:"Cerrar sesión",deleteAccount:"Eliminar mi cuenta",deleteSub:"Acción irreversible",version:"Versión 1.0 · Kuabo",badges:"Mis insignias"},
   }[lang];
 
   const size=96,sw=6,r=(size-sw)/2,circ=2*Math.PI*r,offset=circ-(progress/100)*circ;
   const initials = displayName.split(" ").map((n:string)=>n[0]).join("").toUpperCase().slice(0,2)||"👤";
   const allDone  = Object.keys(BADGES).every(id=>completedSteps.includes(id));
-
-  const Section = ({title}:{title:string}) => (
+  const Section  = ({title}:{title:string})=>(
     <div style={{fontSize:10,color:"#555",letterSpacing:"0.12em",textTransform:"uppercase" as const,marginBottom:8,marginTop:18,paddingLeft:2}}>{title}</div>
   );
 
   return (
     <div style={{paddingBottom:20}}>
 
-      {/* ✅ Modal modifier nom — du bas, responsive */}
+      {/* Modal modifier nom */}
       {editingName&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",zIndex:600,display:"flex",alignItems:"flex-end",justifyContent:"center",backdropFilter:"blur(4px)"}} onClick={()=>setEditingName(false)}>
           <div style={{background:"#0f1521",border:"1px solid #1e2a3a",borderRadius:"20px 20px 0 0",padding:"24px 20px 48px",width:"100%",maxWidth:480,animation:"slideUp 0.3s ease"}} onClick={e=>e.stopPropagation()}>
             <div style={{width:36,height:4,background:"#2a3448",borderRadius:4,margin:"0 auto 20px"}} />
-
-            {nameSaved ? (
-              // ✅ Animation confirmation
+            {nameSaved?(
               <div style={{textAlign:"center",padding:"20px 0",animation:"fadeIn 0.3s ease"}}>
                 <div style={{fontSize:60,marginBottom:12,animation:"checkPop 0.4s cubic-bezier(.34,1.56,.64,1)"}}>✅</div>
                 <div style={{fontSize:18,fontWeight:700,color:"#22c55e"}}>{L.nameSaved}</div>
                 <div style={{fontSize:13,color:"#aaa",marginTop:8}}>{displayName}</div>
               </div>
-            ) : (
+            ):(
               <>
                 <div style={{fontSize:16,fontWeight:700,color:"#f4f1ec",marginBottom:4}}>{L.editNameTitle}</div>
                 <div style={{fontSize:13,color:"#aaa",marginBottom:20}}>{L.editNameSub}</div>
-                <input
-                  value={newName}
-                  onChange={e=>setNewName(e.target.value)}
-                  placeholder={displayName}
-                  autoFocus
+                <input value={newName} onChange={e=>setNewName(e.target.value)} placeholder={displayName} autoFocus
                   onKeyDown={e=>{if(e.key==="Enter")saveName();if(e.key==="Escape")setEditingName(false);}}
-                  style={{
-                    width:"100%",
-                    padding:"14px 16px",
-                    background:"#141d2e",
-                    border:"1px solid #e8b84b",
-                    borderRadius:12,
-                    color:"#f4f1ec",
-                    fontSize:16,
-                    fontFamily:"inherit",
-                    outline:"none",
-                    marginBottom:16,
-                    boxSizing:"border-box" as const,
-                  }}
-                />
+                  style={{width:"100%",padding:"14px 16px",background:"#141d2e",border:"1px solid #e8b84b",borderRadius:12,color:"#f4f1ec",fontSize:16,fontFamily:"inherit",outline:"none",marginBottom:16,boxSizing:"border-box" as const}} />
                 <div style={{display:"flex",gap:10}}>
-                  <button onClick={()=>setEditingName(false)} style={{flex:1,padding:"13px",background:"#141d2e",border:"1px solid #1e2a3a",borderRadius:12,color:"#aaa",fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>
-                    {L.cancelName}
-                  </button>
+                  <button onClick={()=>setEditingName(false)} style={{flex:1,padding:"13px",background:"#141d2e",border:"1px solid #1e2a3a",borderRadius:12,color:"#aaa",fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>{L.cancelName}</button>
                   <button onClick={saveName} disabled={savingName||!newName.trim()} style={{flex:1,padding:"13px",background:"#e8b84b",border:"none",borderRadius:12,color:"#000",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:savingName?0.7:1}}>
                     {savingName?"...":L.saveName}
                   </button>
@@ -852,15 +812,12 @@ function ProfileTab({userName,userEmail,userCountry,userState,userCity,lang,prog
             <div style={{width:64,height:64,borderRadius:"50%",background:"#1a2438",border:"2px solid #e8b84b",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:"#e8b84b"}}>{initials}</div>
           </div>
         </div>
-
-        {/* Nom — bouton simple, modal gère le reste */}
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
           <div style={{fontSize:16,fontWeight:700,color:"#fff"}}>{displayName}</div>
           <button onClick={()=>{setNewName(displayName);setNameSaved(false);setEditingName(true);}} style={{background:"none",border:"none",cursor:"pointer",padding:4,color:"#aaa",display:"flex",alignItems:"center"}}>
             <Edit2 size={13} color="#aaa" />
           </button>
         </div>
-
         <div style={{fontSize:12,color:"#aaa",marginBottom:6}}>{userEmail}</div>
         <div style={{display:"flex",gap:6,flexWrap:"wrap" as const,justifyContent:"center"}}>
           <div style={{padding:"3px 10px",borderRadius:20,background:"rgba(232,184,75,0.1)",border:"1px solid rgba(232,184,75,0.25)",fontSize:11,color:"#e8b84b",fontWeight:600}}>🎰 DV Lottery</div>
@@ -940,10 +897,7 @@ function ProfileTab({userName,userEmail,userCountry,userState,userCity,lang,prog
           <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <div style={{width:32,height:32,borderRadius:8,background:"#1a2438",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15}}>{item.icon}</div>
-              <div>
-                <div style={{fontSize:13,color:"#fff"}}>{item.label}</div>
-                <div style={{fontSize:11,color:"#555"}}>{item.sub}</div>
-              </div>
+              <div><div style={{fontSize:13,color:"#fff"}}>{item.label}</div><div style={{fontSize:11,color:"#555"}}>{item.sub}</div></div>
             </div>
             <Toggle value={item.value} onToggle={item.onToggle} />
           </div>
@@ -967,11 +921,11 @@ function ProfileTab({userName,userEmail,userCountry,userState,userCity,lang,prog
       <Section title={L.help} />
       <div style={{display:"flex",flexDirection:"column",gap:6}}>
         {[
-          {icon:"📧",label:"support@kuabo.co",        action:()=>{window.location.href="mailto:support@kuabo.co";}},
-          {icon:"💬",label:"WhatsApp +1 (970) 534-0694",action:()=>{window.open("https://wa.me/19705340694","_blank");}},
-          {icon:"🌐",label:"kuabo.co",                action:()=>{window.open("https://kuabo.co","_blank");}},
-          {icon:"🐛",label:L.reportBug,               action:()=>{window.location.href="mailto:support@kuabo.co?subject=Bug Kuabo";}},
-          {icon:"💡",label:L.suggest,                 action:()=>{window.location.href="mailto:support@kuabo.co?subject=Suggestion Kuabo";}},
+          {icon:"📧",label:"support@kuabo.co",          action:()=>{window.location.href="mailto:support@kuabo.co";}},
+          {icon:"💬",label:"WhatsApp +1 (970) 534-0694", action:()=>{window.open("https://wa.me/19705340694","_blank");}},
+          {icon:"🌐",label:"kuabo.co",                  action:()=>{window.open("https://kuabo.co","_blank");}},
+          {icon:"🐛",label:L.reportBug,                 action:()=>{window.location.href="mailto:support@kuabo.co?subject=Bug Kuabo";}},
+          {icon:"💡",label:L.suggest,                   action:()=>{window.location.href="mailto:support@kuabo.co?subject=Suggestion Kuabo";}},
         ].map((item,i)=>(
           <button key={i} onClick={item.action} style={{width:"100%",background:"#141d2e",border:"1px solid #1e2a3a",borderRadius:12,padding:"11px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",fontFamily:"inherit"}}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -987,8 +941,8 @@ function ProfileTab({userName,userEmail,userCountry,userState,userCity,lang,prog
       <Section title={L.legal} />
       <div style={{display:"flex",flexDirection:"column",gap:6}}>
         {[
-          {icon:"📄",label:L.terms,   action:()=>{window.open("/terms","_blank");}},
-          {icon:"🔒",label:L.privacy2,action:()=>{window.open("/privacy","_blank");}},
+          {icon:"📄",label:L.terms,    action:()=>{window.open("/terms","_blank");}},
+          {icon:"🔒",label:L.privacy2, action:()=>{window.open("/privacy","_blank");}},
         ].map((item,i)=>(
           <button key={i} onClick={item.action} style={{width:"100%",background:"#141d2e",border:"1px solid #1e2a3a",borderRadius:12,padding:"11px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",fontFamily:"inherit"}}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -1021,7 +975,6 @@ function ProfileTab({userName,userEmail,userCountry,userState,userCity,lang,prog
           <ChevronRight size={15} color="#ef4444" />
         </button>
       </div>
-
       <div style={{textAlign:"center" as const,fontSize:11,color:"#333",paddingTop:12}}>{L.version}</div>
     </div>
   );
@@ -1073,6 +1026,8 @@ export default function Dashboard() {
   const [activeTab,setActiveTab]           = useState<Tab>("home");
   const [celebStep,setCelebStep]           = useState<string|null>(null);
   const [arrival,setArrival]               = useState<Arrival>("just");
+  // ✅ NOUVEAU — date d'arrivée réelle
+  const [arrivalDate,setArrivalDate]       = useState<string|null>(null);
 
   const [showDeleteModal,setShowDeleteModal] = useState(false);
   const [deleteStep,setDeleteStep]           = useState(1);
@@ -1099,7 +1054,7 @@ export default function Dashboard() {
     es:[{id:"passport",label:"Pasaporte válido (6 meses mínimo)"},{id:"visa",label:"Visa de inmigrante aprobada"},{id:"ticket",label:"Billete de avión confirmado"},{id:"cash",label:"Efectivo ($500 mínimo)"},{id:"insurance",label:"Seguro de viaje contratado"},{id:"contacts",label:"Contactos de emergencia anotados"},{id:"address",label:"Dirección temporal en EE.UU."},{id:"copies",label:"Copias de documentos importantes"}],
   };
 
-  useEffect(() => {
+  useEffect(()=>{
     const savedLang = localStorage.getItem("lang") as Lang;
     const savedName = localStorage.getItem("userName")||"";
     if (savedLang&&["fr","en","es"].includes(savedLang)) setLang(savedLang);
@@ -1124,18 +1079,18 @@ export default function Dashboard() {
         setUserCountry(data?.country||localStorage.getItem("country")||"us");
         setUserState(data?.location?.state||localStorage.getItem("userState")||"");
         setUserCity(data?.location?.city||localStorage.getItem("userCity")||"");
+        // ✅ Charge la vraie date d'arrivée
+        setArrivalDate(data?.arrivalDate||null);
         localStorage.setItem("userName",name);
         localStorage.setItem("lang",userLang);
-      } catch {/* continue */}
+      } catch{/*continue*/}
       setReady(true);
     });
-    return ()=>{clearTimeout(timeout);unsub();};
+    return()=>{clearTimeout(timeout);unsub();};
   },[]);
 
   const changeLang = useCallback(async (l:Lang)=>{
-    setLang(l);
-    localStorage.setItem("lang",l);
-    setMenuOpen(false);
+    setLang(l);localStorage.setItem("lang",l);setMenuOpen(false);
     const user = auth.currentUser;
     if (user){try{await updateDoc(doc(db,"users",user.uid),{lang:l});}catch{/*continue*/}}
   },[]);
@@ -1165,8 +1120,7 @@ export default function Dashboard() {
       updateDoc(doc(db,"users",user.uid),{completedSteps:updated}).catch(()=>{});
       return updated;
     });
-    setToast(null);
-    setLastAction(null);
+    setToast(null);setLastAction(null);
   },[lastAction]);
 
   const handleLogout = useCallback(async ()=>{
@@ -1395,7 +1349,8 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <CountdownDeadline nextStep={nextStep} lang={lang} />
+            {/* ✅ Countdown avec vraie date d'arrivée */}
+            <CountdownDeadline nextStep={nextStep} lang={lang} arrivalDate={arrivalDate} />
 
             <div style={{marginTop:16}}>
               {steps.map(step=>{
@@ -1431,19 +1386,11 @@ export default function Dashboard() {
         {activeTab==="profile"&&(
           <div style={{marginTop:14}}>
             <ProfileTab
-              userName={userName}
-              userEmail={userEmail}
-              userCountry={userCountry}
-              userState={userState}
-              userCity={userCity}
-              lang={lang}
-              progress={progress}
-              doneCount={doneCount}
-              totalSteps={totalSteps}
-              completedSteps={completedSteps}
-              changeLang={changeLang}
-              onLogout={handleLogout}
-              onDeleteAccount={()=>setShowDeleteModal(true)}
+              userName={userName} userEmail={userEmail} userCountry={userCountry}
+              userState={userState} userCity={userCity} lang={lang}
+              progress={progress} doneCount={doneCount} totalSteps={totalSteps}
+              completedSteps={completedSteps} changeLang={changeLang}
+              onLogout={handleLogout} onDeleteAccount={()=>setShowDeleteModal(true)}
             />
           </div>
         )}
