@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-5",
         max_tokens: 1024,
         system: systemPrompt,
         messages,
@@ -20,6 +20,9 @@ export async function POST(req: NextRequest) {
     });
 
     const data = await response.json();
+
+    console.log("Anthropic response status:", response.status);
+    console.log("Anthropic response data:", JSON.stringify(data));
 
     if (!response.ok) {
       return NextResponse.json(
