@@ -338,12 +338,59 @@ function DocumentsTab({ lang, completedSteps }: { lang: Lang; completedSteps: st
   );
 }
 
-function ProfileTab({ userName, userEmail, lang, progress, doneCount, totalSteps, changeLang, onLogout }: { userName:string; userEmail:string; lang:Lang; progress:number; doneCount:number; totalSteps:number; changeLang:(l:Lang)=>void; onLogout:()=>void }) {
-  const L = { fr:{ title:"Mon Profil", situation:"DV Lottery", phase:"Phase 1 — Installation", score:"Score d'intégration", steps:"étapes complétées", lang:"Langue", privacy:"Confidentialité", notif:"Notifications", help:"Aide", logout:"Déconnexion" }, en:{ title:"My Profile", situation:"DV Lottery", phase:"Phase 1 — Installation", score:"Integration score", steps:"steps completed", lang:"Language", privacy:"Privacy", notif:"Notifications", help:"Help", logout:"Logout" }, es:{ title:"Mi Perfil", situation:"DV Lottery", phase:"Fase 1 — Instalación", score:"Puntuación integración", steps:"pasos completados", lang:"Idioma", privacy:"Privacidad", notif:"Notificaciones", help:"Ayuda", logout:"Cerrar sesión" } }[lang];
+function ProfileTab({ userName, userEmail, lang, progress, doneCount, totalSteps, changeLang, onLogout }: {
+  userName:string; userEmail:string; lang:Lang; progress:number; doneCount:number; totalSteps:number; changeLang:(l:Lang)=>void; onLogout:()=>void;
+}) {
+  const [commVisible, setCommVisible]       = useState(false);
+  const [notifEnabled, setNotifEnabled]     = useState(false);
+  const [msgEnabled, setMsgEnabled]         = useState(true);
+  const [savingToggle, setSavingToggle]     = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      try {
+        const snap = await getDoc(doc(db, "users", user.uid));
+        if (snap.exists()) {
+          const data = snap.data() as any;
+          setCommVisible(data?.communityVisible || false);
+          setNotifEnabled(data?.notifEnabled || false);
+          setMsgEnabled(data?.msgEnabled !== false);
+        }
+      } catch { /* continue */ }
+    };
+    load();
+  }, []);
+
+  const saveToggle = async (field: string, value: boolean) => {
+    const user = auth.currentUser;
+    if (!user) return;
+    setSavingToggle(true);
+    try { await updateDoc(doc(db, "users", user.uid), { [field]: value }); }
+    catch { /* continue */ }
+    setSavingToggle(false);
+  };
+
+  const Toggle = ({ value, onToggle }: { value: boolean; onToggle: () => void }) => (
+    <button onClick={onToggle} disabled={savingToggle} style={{ width:48, height:26, borderRadius:13, background:value?"#e8b84b":"#2a3448", border:"none", cursor:"pointer", position:"relative", transition:"background 0.2s", flexShrink:0 }}>
+      <div style={{ position:"absolute", top:3, left:value?24:3, width:20, height:20, borderRadius:"50%", background:"#fff", transition:"left 0.2s" }} />
+    </button>
+  );
+
+  const L = {
+    fr: { title:"Mon Profil", situation:"DV Lottery", phase:"Phase 1 — Installation", score:"Score d'intégration", steps:"étapes complétées", lang:"Langue", commVisible:"Carte communauté", commSub:"Apparaître anonymement sur la carte", notif:"Notifications", notifSub:"Rappels quotidiens", msg:"Messages", msgSub:"Recevoir des messages", privacy:"Confidentialité", help:"Aide", logout:"Déconnexion", version:"Version 1.0 · Kuabo" },
+    en: { title:"My Profile", situation:"DV Lottery", phase:"Phase 1 — Installation", score:"Integration score", steps:"steps completed", lang:"Language", commVisible:"Community map", commSub:"Appear anonymously on the map", notif:"Notifications", notifSub:"Daily reminders", msg:"Messages", msgSub:"Receive messages", privacy:"Privacy", help:"Help", logout:"Logout", version:"Version 1.0 · Kuabo" },
+    es: { title:"Mi Perfil", situation:"DV Lottery", phase:"Fase 1 — Instalación", score:"Puntuación integración", steps:"pasos completados", lang:"Idioma", commVisible:"Mapa comunidad", commSub:"Aparecer anónimamente en el mapa", notif:"Notificaciones", notifSub:"Recordatorios diarios", msg:"Mensajes", msgSub:"Recibir mensajes", privacy:"Privacidad", help:"Ayuda", logout:"Cerrar sesión", version:"Versión 1.0 · Kuabo" },
+  }[lang];
+
   const size=96, sw=6, r=(size-sw)/2, circ=2*Math.PI*r, offset=circ-(progress/100)*circ;
+
   return (
     <div>
       <div style={{ fontSize:20, fontWeight:700, color:"#fff", marginBottom:20 }}>{L.title}</div>
+
+      {/* Avatar + info */}
       <div style={{ display:"flex", flexDirection:"column", alignItems:"center", marginBottom:20 }}>
         <div style={{ position:"relative", width:size, height:size, marginBottom:12 }}>
           <svg width={size} height={size} style={{ transform:"rotate(-90deg)" }}>
@@ -358,6 +405,8 @@ function ProfileTab({ userName, userEmail, lang, progress, doneCount, totalSteps
         <div style={{ fontSize:12, color:"#aaa", marginBottom:8 }}>{userEmail}</div>
         <div style={{ padding:"4px 14px", borderRadius:20, background:"rgba(232,184,75,0.1)", border:"1px solid rgba(232,184,75,0.25)", fontSize:11, color:"#e8b84b", fontWeight:600 }}>🎰 {L.situation} · {L.phase}</div>
       </div>
+
+      {/* Score */}
       <div style={{ background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:14, padding:"16px", marginBottom:12 }}>
         <div style={{ fontSize:11, color:"#aaa", letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:10 }}>{L.score}</div>
         <div style={{ display:"flex", alignItems:"center", gap:14 }}>
@@ -370,26 +419,76 @@ function ProfileTab({ userName, userEmail, lang, progress, doneCount, totalSteps
           </div>
         </div>
       </div>
-      <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-        <div style={settingRow}>
-          <div style={{ display:"flex", alignItems:"center", gap:10 }}><div style={settingIcon}><Globe size={16} color="#e8b84b" /></div><span style={{ fontSize:14, color:"#fff" }}>{L.lang}</span></div>
+
+      {/* Langue */}
+      <div style={{ background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:14, padding:"14px", marginBottom:8 }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <div style={settingIcon}><Globe size={16} color="#e8b84b" /></div>
+            <span style={{ fontSize:14, color:"#fff" }}>{L.lang}</span>
+          </div>
           <div style={{ display:"flex", gap:5 }}>
             {(["fr","en","es"] as Lang[]).map(lg => (
               <button key={lg} onClick={() => changeLang(lg)} style={{ padding:"4px 10px", borderRadius:8, border:"1px solid", borderColor:lang===lg?"#e8b84b":"#2a3448", background:lang===lg?"rgba(232,184,75,0.12)":"transparent", color:lang===lg?"#e8b84b":"#aaa", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>{lg.toUpperCase()}</button>
             ))}
           </div>
         </div>
-        {([[" 🔒",L.privacy],[" 🔔",L.notif],["❓",L.help]] as [string,string][]).map(([icon,label]) => (
-          <div key={label} style={settingRow}>
-            <div style={{ display:"flex", alignItems:"center", gap:10 }}><div style={settingIcon}>{icon}</div><span style={{ fontSize:14, color:"#fff" }}>{label}</span></div>
-            <ChevronRight size={16} color="#555" />
+      </div>
+
+      {/* Toggles confidentialité */}
+      <div style={{ background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:14, padding:"14px", marginBottom:8 }}>
+        <div style={{ fontSize:10, color:"#555", letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:12 }}>{L.privacy}</div>
+
+        {/* Communauté */}
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
+          <div>
+            <div style={{ fontSize:13, fontWeight:500, color:"#f4f1ec", marginBottom:2 }}>{L.commVisible}</div>
+            <div style={{ fontSize:11, color:"#aaa" }}>{L.commSub}</div>
           </div>
-        ))}
-        <div style={{ ...settingRow, borderColor:"rgba(239,68,68,0.15)", background:"rgba(239,68,68,0.04)", marginTop:4 }} onClick={onLogout}>
-          <div style={{ display:"flex", alignItems:"center", gap:10 }}><div style={settingIcon}><LogOut size={16} color="#ef4444" /></div><span style={{ fontSize:14, color:"#ef4444" }}>{L.logout}</span></div>
-          <ChevronRight size={16} color="#ef4444" />
+          <Toggle value={commVisible} onToggle={() => { const v=!commVisible; setCommVisible(v); saveToggle("communityVisible", v); }} />
+        </div>
+
+        {/* Messages */}
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div>
+            <div style={{ fontSize:13, fontWeight:500, color:"#f4f1ec", marginBottom:2 }}>{L.msg}</div>
+            <div style={{ fontSize:11, color:"#aaa" }}>{L.msgSub}</div>
+          </div>
+          <Toggle value={msgEnabled} onToggle={() => { const v=!msgEnabled; setMsgEnabled(v); saveToggle("msgEnabled", v); }} />
         </div>
       </div>
+
+      {/* Notifications */}
+      <div style={{ background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:14, padding:"14px", marginBottom:8 }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div>
+            <div style={{ fontSize:13, fontWeight:500, color:"#f4f1ec", marginBottom:2 }}>{L.notif}</div>
+            <div style={{ fontSize:11, color:"#aaa" }}>{L.notifSub}</div>
+          </div>
+          <Toggle value={notifEnabled} onToggle={() => { const v=!notifEnabled; setNotifEnabled(v); saveToggle("notifEnabled", v); }} />
+        </div>
+      </div>
+
+      {/* Aide */}
+      <div style={{ background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:14, padding:"14px", marginBottom:8, display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <div style={settingIcon}>❓</div>
+          <span style={{ fontSize:14, color:"#fff" }}>{L.help}</span>
+        </div>
+        <ChevronRight size={16} color="#555" />
+      </div>
+
+      {/* Déconnexion */}
+      <div style={{ background:"rgba(239,68,68,0.04)", border:"1px solid rgba(239,68,68,0.15)", borderRadius:14, padding:"14px", marginBottom:16, display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer" }} onClick={onLogout}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <div style={settingIcon}><LogOut size={16} color="#ef4444" /></div>
+          <span style={{ fontSize:14, color:"#ef4444" }}>{L.logout}</span>
+        </div>
+        <ChevronRight size={16} color="#ef4444" />
+      </div>
+
+      {/* Version */}
+      <div style={{ textAlign:"center" as const, fontSize:11, color:"#333", paddingBottom:8 }}>{L.version}</div>
     </div>
   );
 }
