@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useLoadScript, GoogleMap, Marker } from "@react-google-maps/api";
-import type { CSSProperties } from "react";
 
 type Lang = "fr" | "en" | "es";
 
@@ -20,12 +19,12 @@ type Place = {
 type FilterType = "ssn" | "dmv" | "bank" | "uscis" | "clinic" | "food";
 
 const FILTERS: { id: FilterType; icon: string; label: Record<Lang, string> }[] = [
-  { id: "ssn",    icon: "🪪", label: { fr: "SSA",      en: "SSA",      es: "SSA"      } },
-  { id: "dmv",    icon: "🚗", label: { fr: "DMV",      en: "DMV",      es: "DMV"      } },
-  { id: "bank",   icon: "🏦", label: { fr: "Banques",  en: "Banks",    es: "Bancos"   } },
-  { id: "uscis",  icon: "🛂", label: { fr: "USCIS",    en: "USCIS",    es: "USCIS"    } },
-  { id: "clinic", icon: "🏥", label: { fr: "Cliniques",en: "Clinics",  es: "Clínicas" } },
-  { id: "food",   icon: "🍽️", label: { fr: "Nourriture",en: "Food",   es: "Comida"   } },
+  { id: "ssn",    icon: "🪪", label: { fr: "SSA",       en: "SSA",      es: "SSA"      } },
+  { id: "dmv",    icon: "🚗", label: { fr: "DMV",       en: "DMV",      es: "DMV"      } },
+  { id: "bank",   icon: "🏦", label: { fr: "Banques",   en: "Banks",    es: "Bancos"   } },
+  { id: "uscis",  icon: "🛂", label: { fr: "USCIS",     en: "USCIS",    es: "USCIS"    } },
+  { id: "clinic", icon: "🏥", label: { fr: "Cliniques", en: "Clinics",  es: "Clínicas" } },
+  { id: "food",   icon: "🍽️", label: { fr: "Nourriture",en: "Food",    es: "Comida"   } },
 ];
 
 const MARKER_COLORS: Record<FilterType, string> = {
@@ -38,97 +37,42 @@ const MARKER_COLORS: Record<FilterType, string> = {
 };
 
 const LABELS: Record<Lang, Record<string, string>> = {
-  fr: {
-    title:      "Explorer",
-    sub:        "Services près de toi",
-    locating:   "Localisation en cours...",
-    noLocation: "Active la localisation pour voir les services",
-    activate:   "Activer la localisation",
-    open:       "Ouvert",
-    closed:     "Fermé",
-    unknown:    "Horaires inconnus",
-    noResults:  "Aucun résultat trouvé",
-    loading:    "Recherche en cours...",
-    directions: "Itinéraire →",
-    all:        "Tous",
-  },
-  en: {
-    title:      "Explorer",
-    sub:        "Services near you",
-    locating:   "Getting your location...",
-    noLocation: "Enable location to see nearby services",
-    activate:   "Enable location",
-    open:       "Open",
-    closed:     "Closed",
-    unknown:    "Hours unknown",
-    noResults:  "No results found",
-    loading:    "Searching...",
-    directions: "Directions →",
-    all:        "All",
-  },
-  es: {
-    title:      "Explorar",
-    sub:        "Servicios cerca de ti",
-    locating:   "Obteniendo ubicación...",
-    noLocation: "Activa la ubicación para ver servicios",
-    activate:   "Activar ubicación",
-    open:       "Abierto",
-    closed:     "Cerrado",
-    unknown:    "Horario desconocido",
-    noResults:  "Sin resultados",
-    loading:    "Buscando...",
-    directions: "Cómo llegar →",
-    all:        "Todos",
-  },
+  fr: { title:"Explorer", sub:"Services près de toi", locating:"Localisation en cours...", activate:"Activer la localisation", open:"Ouvert", closed:"Fermé", unknown:"Horaires inconnus", noResults:"Aucun résultat trouvé", loading:"Recherche en cours...", directions:"Itinéraire →", all:"Tous" },
+  en: { title:"Explorer", sub:"Services near you",    locating:"Getting your location...", activate:"Enable location",          open:"Open",   closed:"Closed", unknown:"Hours unknown",    noResults:"No results found",        loading:"Searching...",           directions:"Directions →",  all:"All"  },
+  es: { title:"Explorar", sub:"Servicios cerca de ti",locating:"Obteniendo ubicación...",  activate:"Activar ubicación",        open:"Abierto",closed:"Cerrado",unknown:"Horario desconocido",noResults:"Sin resultados",         loading:"Buscando...",            directions:"Cómo llegar →", all:"Todos"},
 };
 
-const mapContainerStyle = { width: "100%", height: "220px", borderRadius: "0px" };
+const mapContainerStyle = { width: "100%", height: "220px" };
 const mapOptions = {
   disableDefaultUI: true,
   zoomControl: false,
   styles: [
-    { elementType: "geometry",          stylers: [{ color: "#0f1521" }] },
-    { elementType: "labels.text.fill",  stylers: [{ color: "#aaa" }]   },
-    { elementType: "labels.text.stroke",stylers: [{ color: "#0f1521" }]},
-    { featureType: "road",              elementType: "geometry", stylers: [{ color: "#1e2a3a" }] },
-    { featureType: "water",             elementType: "geometry", stylers: [{ color: "#0b0f1a" }] },
-    { featureType: "poi",               stylers: [{ visibility: "off" }] },
+    { elementType: "geometry",           stylers: [{ color: "#0f1521" }] },
+    { elementType: "labels.text.fill",   stylers: [{ color: "#aaa" }]   },
+    { elementType: "labels.text.stroke", stylers: [{ color: "#0f1521" }]},
+    { featureType: "road",    elementType: "geometry", stylers: [{ color: "#1e2a3a" }] },
+    { featureType: "water",   elementType: "geometry", stylers: [{ color: "#0b0f1a" }] },
+    { featureType: "poi",     stylers: [{ visibility: "off" }] },
   ],
 };
 
 export default function ExplorerTab({ lang }: { lang: Lang }) {
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [locating, setLocating]         = useState(false);
-  const [activeFilter, setActiveFilter] = useState<FilterType>("ssn");
-  const [places, setPlaces]             = useState<Place[]>([]);
+  const [userLocation, setUserLocation]   = useState<{ lat: number; lng: number } | null>(null);
+  const [locating, setLocating]           = useState(false);
+  const [activeFilter, setActiveFilter]   = useState<FilterType>("ssn");
+  const [places, setPlaces]               = useState<Place[]>([]);
   const [loadingPlaces, setLoadingPlaces] = useState(false);
-  const [mapCenter, setMapCenter]       = useState({ lat: 38.9, lng: -77.0 });
-  const [map, setMap]                   = useState<google.maps.Map | null>(null);
+  const [mapCenter, setMapCenter]         = useState({ lat: 20, lng: -20 });
 
   const { isLoaded } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || "",
   });
 
   const label = LABELS[lang];
-
-  // ── Géolocalisation
-  const getLocation = () => {
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setUserLocation(loc);
-        setMapCenter(loc);
-        setLocating(false);
-        fetchPlaces(loc, activeFilter);
-      },
-      () => setLocating(false),
-      { timeout: 10000 }
-    );
-  };
+  const activeColor = MARKER_COLORS[activeFilter];
 
   // ── Fetch places
-  const fetchPlaces = async (loc: { lat: number; lng: number }, type: FilterType) => {
+  const fetchPlaces = useCallback(async (loc: { lat: number; lng: number }, type: FilterType) => {
     setLoadingPlaces(true);
     setPlaces([]);
     try {
@@ -143,6 +87,40 @@ export default function ExplorerTab({ lang }: { lang: Lang }) {
       setPlaces([]);
     }
     setLoadingPlaces(false);
+  }, []);
+
+  // ── Géolocalisation automatique au chargement
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserLocation(loc);
+        setMapCenter(loc);
+        setLocating(false);
+        fetchPlaces(loc, "ssn");
+      },
+      () => setLocating(false),
+      { timeout: 10000 }
+    );
+  }, [fetchPlaces]);
+
+  // ── Géolocalisation manuelle
+  const getLocation = () => {
+    if (!navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserLocation(loc);
+        setMapCenter(loc);
+        setLocating(false);
+        fetchPlaces(loc, activeFilter);
+      },
+      () => setLocating(false),
+      { timeout: 10000 }
+    );
   };
 
   const handleFilter = (f: FilterType) => {
@@ -150,9 +128,7 @@ export default function ExplorerTab({ lang }: { lang: Lang }) {
     if (userLocation) fetchPlaces(userLocation, f);
   };
 
-  const onMapLoad = useCallback((m: google.maps.Map) => setMap(m), []);
-
-  const activeColor = MARKER_COLORS[activeFilter];
+  const onMapLoad = useCallback((m: google.maps.Map) => {}, []);
 
   return (
     <div style={{ marginTop: 14 }}>
@@ -169,11 +145,10 @@ export default function ExplorerTab({ lang }: { lang: Lang }) {
           <GoogleMap
             mapContainerStyle={mapContainerStyle}
             center={mapCenter}
-            zoom={userLocation ? 13 : 11}
+            zoom={userLocation ? 13 : 2}
             options={mapOptions}
             onLoad={onMapLoad}
           >
-            {/* User marker */}
             {userLocation && (
               <Marker
                 position={userLocation}
@@ -187,7 +162,6 @@ export default function ExplorerTab({ lang }: { lang: Lang }) {
                 }}
               />
             )}
-            {/* Places markers */}
             {places.map(p => (
               <Marker
                 key={p.id}
@@ -200,12 +174,10 @@ export default function ExplorerTab({ lang }: { lang: Lang }) {
                   strokeColor: "#fff",
                   strokeWeight: 1.5,
                 }}
-                onClick={() => {
-                    window.open(
-                      `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.name)}&destination_place_id=${p.id}`,
-                      "_blank"
-                    );
-                  }}
+                onClick={() => window.open(
+                  `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.name)}&destination_place_id=${p.id}`,
+                  "_blank"
+                )}
               />
             ))}
           </GoogleMap>
@@ -245,16 +217,16 @@ export default function ExplorerTab({ lang }: { lang: Lang }) {
               key={f.id}
               onClick={() => handleFilter(f.id)}
               style={{
-                background: active ? activeColor : "#141d2e",
-                border:     "1px solid " + (active ? activeColor : "#1e2a3a"),
+                background:   active ? activeColor : "#141d2e",
+                border:       "1px solid " + (active ? activeColor : "#1e2a3a"),
                 borderRadius: 20,
-                padding:    "6px 14px",
-                color:      active ? "#000" : "#aaa",
-                fontSize:   11, fontWeight: active ? 700 : 400,
-                cursor:     "pointer", fontFamily: "inherit",
-                whiteSpace: "nowrap" as const,
-                flexShrink: 0,
-                display:    "flex", alignItems: "center", gap: 5,
+                padding:      "6px 14px",
+                color:        active ? "#000" : "#aaa",
+                fontSize:     11, fontWeight: active ? 700 : 400,
+                cursor:       "pointer", fontFamily: "inherit",
+                whiteSpace:   "nowrap" as const,
+                flexShrink:   0,
+                display:      "flex", alignItems: "center", gap: 5,
               }}
             >
               {f.icon} {f.label[lang]}
@@ -263,19 +235,21 @@ export default function ExplorerTab({ lang }: { lang: Lang }) {
         })}
       </div>
 
-      {/* Liste des lieux */}
+      {/* Loading */}
       {loadingPlaces && (
         <div style={{ textAlign: "center", padding: "24px", color: "#555", fontSize: 13 }}>
           {label.loading}
         </div>
       )}
 
+      {/* No results */}
       {!loadingPlaces && places.length === 0 && userLocation && (
         <div style={{ textAlign: "center", padding: "24px", color: "#555", fontSize: 13 }}>
           {label.noResults}
         </div>
       )}
 
+      {/* Liste */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {places.map(p => (
           <div
@@ -287,7 +261,6 @@ export default function ExplorerTab({ lang }: { lang: Lang }) {
               display: "flex", alignItems: "center", gap: 12,
             }}
           >
-            {/* Icon */}
             <div style={{
               width: 42, height: 42, borderRadius: 12,
               background: activeColor + "18",
@@ -298,7 +271,6 @@ export default function ExplorerTab({ lang }: { lang: Lang }) {
               {FILTERS.find(f => f.id === activeFilter)?.icon}
             </div>
 
-            {/* Info */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: "#f4f1ec", marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
                 {p.name}
@@ -313,9 +285,11 @@ export default function ExplorerTab({ lang }: { lang: Lang }) {
               </div>
             </div>
 
-            {/* Directions */}
             <button
-               onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.name)}&destination_place_id=${p.id}`, "_blank")}
+              onClick={() => window.open(
+                `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.name)}&destination_place_id=${p.id}`,
+                "_blank"
+              )}
               style={{
                 background: "none", border: "none",
                 color: "#e8b84b", fontSize: 18,
@@ -328,9 +302,7 @@ export default function ExplorerTab({ lang }: { lang: Lang }) {
         ))}
       </div>
 
-      <style>{`
-        ::-webkit-scrollbar { display: none; }
-      `}</style>
+      <style>{`::-webkit-scrollbar { display: none; }`}</style>
     </div>
   );
 }
