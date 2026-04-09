@@ -3,8 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
+import { onAuthStateChanged, signOut, deleteUser } from "firebase/auth";
 import {
   CheckCircle2, Clock, ChevronRight, LogOut, Globe,
   Undo2, Target, AlertTriangle, Home, FileText,
@@ -16,6 +16,7 @@ import ExplorerTab from "../components/ExplorerTab";
 type Lang = "fr" | "en" | "es";
 type Tab  = "home" | "documents" | "profile" | "explorer";
 type Step = { id: string; label: string; time: number; weight: number; urgency: "critical" | "high" | "normal" };
+type Arrival = "not-yet" | "just" | "months" | "settled";
 
 function useScrollToTop(activeTab: Tab) {
   useEffect(() => { window.scrollTo({ top: 0, behavior: "auto" }); }, [activeTab]);
@@ -41,44 +42,59 @@ function useStreak(userId: string | undefined) {
   return streak;
 }
 
-const STEPS_BY_LANG: Record<Lang, Step[]> = {
-  fr: [
-    { id: "ssn",       label: "Numéro de Sécurité Sociale (SSN)", time: 10, weight: 25, urgency: "critical" },
-    { id: "phone",     label: "Carte SIM / Téléphone US",         time: 1,  weight: 10, urgency: "critical" },
-    { id: "bank",      label: "Compte bancaire",                  time: 14, weight: 15, urgency: "high"     },
-    { id: "greencard", label: "Green Card physique (courrier)",    time: 21, weight: 10, urgency: "high"     },
-    { id: "housing",   label: "Logement permanent",               time: 30, weight: 15, urgency: "normal"   },
-    { id: "job",       label: "Trouver un emploi",                time: 90, weight: 15, urgency: "normal"   },
-    { id: "license",   label: "Permis de conduire",               time: 45, weight: 10, urgency: "normal"   },
-  ],
-  en: [
-    { id: "ssn",       label: "Social Security Number (SSN)",     time: 10, weight: 25, urgency: "critical" },
-    { id: "phone",     label: "SIM Card / US Phone Number",       time: 1,  weight: 10, urgency: "critical" },
-    { id: "bank",      label: "Bank Account",                     time: 14, weight: 15, urgency: "high"     },
-    { id: "greencard", label: "Physical Green Card (mail)",       time: 21, weight: 10, urgency: "high"     },
-    { id: "housing",   label: "Permanent Housing",                time: 30, weight: 15, urgency: "normal"   },
-    { id: "job",       label: "Find a Job",                       time: 90, weight: 15, urgency: "normal"   },
-    { id: "license",   label: "Driver License",                   time: 45, weight: 10, urgency: "normal"   },
-  ],
-  es: [
-    { id: "ssn",       label: "Número de Seguro Social (SSN)",    time: 10, weight: 25, urgency: "critical" },
-    { id: "phone",     label: "SIM / Número de teléfono US",      time: 1,  weight: 10, urgency: "critical" },
-    { id: "bank",      label: "Cuenta bancaria",                  time: 14, weight: 15, urgency: "high"     },
-    { id: "greencard", label: "Green Card física (correo)",       time: 21, weight: 10, urgency: "high"     },
-    { id: "housing",   label: "Vivienda permanente",              time: 30, weight: 15, urgency: "normal"   },
-    { id: "job",       label: "Encontrar trabajo",                time: 90, weight: 15, urgency: "normal"   },
-    { id: "license",   label: "Licencia de conducir",             time: 45, weight: 10, urgency: "normal"   },
-  ],
+// ── Steps selon situation d'arrivée
+const getStepsByArrival = (lang: Lang, arrival: Arrival): Step[] => {
+  const ALL_STEPS: Record<Lang, Step[]> = {
+    fr: [
+      { id:"ssn",       label:"Numéro de Sécurité Sociale (SSN)", time:10, weight:25, urgency:"critical" },
+      { id:"phone",     label:"Carte SIM / Téléphone US",         time:1,  weight:10, urgency:"critical" },
+      { id:"bank",      label:"Compte bancaire",                  time:14, weight:15, urgency:"high"     },
+      { id:"greencard", label:"Green Card physique (courrier)",    time:21, weight:10, urgency:"high"     },
+      { id:"housing",   label:"Logement permanent",               time:30, weight:15, urgency:"normal"   },
+      { id:"job",       label:"Trouver un emploi",                time:90, weight:15, urgency:"normal"   },
+      { id:"license",   label:"Permis de conduire",               time:45, weight:10, urgency:"normal"   },
+    ],
+    en: [
+      { id:"ssn",       label:"Social Security Number (SSN)",     time:10, weight:25, urgency:"critical" },
+      { id:"phone",     label:"SIM Card / US Phone Number",       time:1,  weight:10, urgency:"critical" },
+      { id:"bank",      label:"Bank Account",                     time:14, weight:15, urgency:"high"     },
+      { id:"greencard", label:"Physical Green Card (mail)",       time:21, weight:10, urgency:"high"     },
+      { id:"housing",   label:"Permanent Housing",                time:30, weight:15, urgency:"normal"   },
+      { id:"job",       label:"Find a Job",                       time:90, weight:15, urgency:"normal"   },
+      { id:"license",   label:"Driver License",                   time:45, weight:10, urgency:"normal"   },
+    ],
+    es: [
+      { id:"ssn",       label:"Número de Seguro Social (SSN)",    time:10, weight:25, urgency:"critical" },
+      { id:"phone",     label:"SIM / Número de teléfono US",      time:1,  weight:10, urgency:"critical" },
+      { id:"bank",      label:"Cuenta bancaria",                  time:14, weight:15, urgency:"high"     },
+      { id:"greencard", label:"Green Card física (correo)",       time:21, weight:10, urgency:"high"     },
+      { id:"housing",   label:"Vivienda permanente",              time:30, weight:15, urgency:"normal"   },
+      { id:"job",       label:"Encontrar trabajo",                time:90, weight:15, urgency:"normal"   },
+      { id:"license",   label:"Licencia de conducir",             time:45, weight:10, urgency:"normal"   },
+    ],
+  };
+
+  const steps = ALL_STEPS[lang];
+
+  // Pas encore arrivé → montre tout
+  if (arrival === "not-yet") return steps;
+  // Vient d'arriver → montre tout
+  if (arrival === "just") return steps;
+  // Quelques mois → cache SSN et SIM (probablement déjà fait)
+  if (arrival === "months") return steps.filter(s => !["ssn","phone"].includes(s.id));
+  // Installé → montre seulement emploi, logement, permis
+  if (arrival === "settled") return steps.filter(s => ["housing","job","license"].includes(s.id));
+  return steps;
 };
 
 const CELEB_MESSAGES: Record<string, Record<Lang, { emoji: string; title: string; sub: string }>> = {
-  ssn:      { fr: { emoji: "🪪", title: "SSN complété !",       sub: "Document le plus important. Tu peux maintenant ouvrir un compte et travailler légalement." }, en: { emoji: "🪪", title: "SSN completed!",        sub: "Most important document. You can now open a bank account and work legally in the USA." }, es: { emoji: "🪪", title: "¡SSN completado!",      sub: "Documento más importante. Ahora puedes abrir cuenta y trabajar legalmente." } },
-  phone:    { fr: { emoji: "📱", title: "Téléphone activé !",   sub: "Tu es maintenant connecté aux USA." },                                                         en: { emoji: "📱", title: "Phone activated!",       sub: "You're now connected in the USA." },                                                         es: { emoji: "📱", title: "¡Teléfono activado!",    sub: "Ya estás conectado en EE.UU." } },
-  bank:     { fr: { emoji: "🏦", title: "Compte ouvert !",      sub: "Tu peux maintenant recevoir ton salaire aux USA." },                                           en: { emoji: "🏦", title: "Account opened!",        sub: "You can now receive your salary in the USA." },                                           es: { emoji: "🏦", title: "¡Cuenta abierta!",       sub: "Ahora puedes recibir tu salario en EE.UU." } },
-  greencard:{ fr: { emoji: "💳", title: "Green Card reçue !",   sub: "Tu es officiellement résident permanent des États-Unis. 🇺🇸" },                                en: { emoji: "💳", title: "Green Card received!",   sub: "You are officially a permanent US resident. 🇺🇸" },                                es: { emoji: "💳", title: "¡Green Card recibida!",  sub: "Eres oficialmente residente permanente de EE.UU. 🇺🇸" } },
-  housing:  { fr: { emoji: "🏠", title: "Logement trouvé !",    sub: "Tu as maintenant un chez-toi aux USA. Bienvenue !" },                                          en: { emoji: "🏠", title: "Housing found!",         sub: "You now have a home in the USA. Welcome!" },                                          es: { emoji: "🏠", title: "¡Vivienda encontrada!",  sub: "Ya tienes un hogar en EE.UU. ¡Bienvenido!" } },
-  job:      { fr: { emoji: "💼", title: "Emploi trouvé !",      sub: "Tu contribues à l'économie américaine. Félicitations !" },                                    en: { emoji: "💼", title: "Job found!",             sub: "You're contributing to the US economy. Congratulations!" },                           es: { emoji: "💼", title: "¡Trabajo encontrado!",   sub: "Estás contribuyendo a la economía de EE.UU. ¡Felicidades!" } },
-  license:  { fr: { emoji: "🚗", title: "Permis obtenu !",      sub: "Tu peux maintenant conduire légalement aux États-Unis." },                                    en: { emoji: "🚗", title: "License obtained!",      sub: "You can now drive legally in the United States." },                                   es: { emoji: "🚗", title: "¡Licencia obtenida!",    sub: "Ahora puedes conducir legalmente en los Estados Unidos." } },
+  ssn:      { fr:{ emoji:"🪪", title:"SSN complété !",      sub:"Document le plus important. Tu peux maintenant ouvrir un compte et travailler légalement." }, en:{ emoji:"🪪", title:"SSN completed!",       sub:"Most important document. You can now open a bank account and work legally in the USA." }, es:{ emoji:"🪪", title:"¡SSN completado!",     sub:"Documento más importante. Ahora puedes abrir cuenta y trabajar legalmente." } },
+  phone:    { fr:{ emoji:"📱", title:"Téléphone activé !",  sub:"Tu es maintenant connecté aux USA." },                                                        en:{ emoji:"📱", title:"Phone activated!",      sub:"You're now connected in the USA." },                                                        es:{ emoji:"📱", title:"¡Teléfono activado!",   sub:"Ya estás conectado en EE.UU." } },
+  bank:     { fr:{ emoji:"🏦", title:"Compte ouvert !",     sub:"Tu peux maintenant recevoir ton salaire aux USA." },                                          en:{ emoji:"🏦", title:"Account opened!",       sub:"You can now receive your salary in the USA." },                                          es:{ emoji:"🏦", title:"¡Cuenta abierta!",      sub:"Ahora puedes recibir tu salario en EE.UU." } },
+  greencard:{ fr:{ emoji:"💳", title:"Green Card reçue !",  sub:"Tu es officiellement résident permanent des États-Unis. 🇺🇸" },                               en:{ emoji:"💳", title:"Green Card received!",  sub:"You are officially a permanent US resident. 🇺🇸" },                               es:{ emoji:"💳", title:"¡Green Card recibida!", sub:"Eres oficialmente residente permanente de EE.UU. 🇺🇸" } },
+  housing:  { fr:{ emoji:"🏠", title:"Logement trouvé !",   sub:"Tu as maintenant un chez-toi aux USA. Bienvenue !" },                                         en:{ emoji:"🏠", title:"Housing found!",        sub:"You now have a home in the USA. Welcome!" },                                         es:{ emoji:"🏠", title:"¡Vivienda encontrada!", sub:"Ya tienes un hogar en EE.UU. ¡Bienvenido!" } },
+  job:      { fr:{ emoji:"💼", title:"Emploi trouvé !",     sub:"Tu contribues à l'économie américaine. Félicitations !" },                                   en:{ emoji:"💼", title:"Job found!",            sub:"You're contributing to the US economy. Congratulations!" },                          es:{ emoji:"💼", title:"¡Trabajo encontrado!",  sub:"Estás contribuyendo a la economía de EE.UU. ¡Felicidades!" } },
+  license:  { fr:{ emoji:"🚗", title:"Permis obtenu !",     sub:"Tu peux maintenant conduire légalement aux États-Unis." },                                   en:{ emoji:"🚗", title:"License obtained!",     sub:"You can now drive legally in the United States." },                                  es:{ emoji:"🚗", title:"¡Licencia obtenida!",   sub:"Ahora puedes conducir legalmente en los Estados Unidos." } },
 };
 
 function CelebrationOverlay({ stepId, lang, onDone }: { stepId: string | null; lang: Lang; onDone: () => void }) {
@@ -88,22 +104,22 @@ function CelebrationOverlay({ stepId, lang, onDone }: { stepId: string | null; l
     return () => clearTimeout(t);
   }, [stepId, onDone]);
   if (!stepId) return null;
-  const msg = CELEB_MESSAGES[stepId]?.[lang] ?? { emoji: "✅", title: lang === "fr" ? "Étape complétée !" : lang === "es" ? "¡Paso completado!" : "Step completed!", sub: "" };
-  const isBig = stepId === "ssn" || stepId === "greencard";
-  const particles = Array.from({ length: isBig ? 32 : 20 }, (_, i) => ({
-    id: i, x: Math.random() * 100, delay: Math.random() * 0.6,
-    dur: 1.4 + Math.random() * 1.0,
-    color: ["#e8b84b","#22c55e","#2dd4bf","#f97316","#a78bfa","#f472b6","#60a5fa"][i % 7],
-    size: 7 + Math.random() * 9, rot: Math.random() * 360, isCircle: Math.random() > 0.5,
+  const msg = CELEB_MESSAGES[stepId]?.[lang] ?? { emoji:"✅", title:lang==="fr"?"Étape complétée !":lang==="es"?"¡Paso completado!":"Step completed!", sub:"" };
+  const isBig = stepId==="ssn" || stepId==="greencard";
+  const particles = Array.from({ length:isBig?32:20 }, (_,i) => ({
+    id:i, x:Math.random()*100, delay:Math.random()*0.6,
+    dur:1.4+Math.random()*1.0,
+    color:["#e8b84b","#22c55e","#2dd4bf","#f97316","#a78bfa","#f472b6","#60a5fa"][i%7],
+    size:7+Math.random()*9, rot:Math.random()*360, isCircle:Math.random()>0.5,
   }));
   return (
     <>
       <style>{`
-        @keyframes confettiFall { 0% { transform:translateY(-30px) rotate(0deg) scale(1); opacity:1; } 100% { transform:translateY(105vh) rotate(800deg) scale(0.5); opacity:0; } }
-        @keyframes celebPop { 0% { transform:translate(-50%,-50%) scale(0.4); opacity:0; } 18% { transform:translate(-50%,-50%) scale(1.1); opacity:1; } 50% { transform:translate(-50%,-50%) scale(1); opacity:1; } 78% { transform:translate(-50%,-50%) scale(1); opacity:1; } 100% { transform:translate(-50%,-50%) scale(0.85); opacity:0; } }
-        @keyframes bgFade { 0% { opacity:0; } 8% { opacity:1; } 78% { opacity:1; } 100% { opacity:0; } }
-        @keyframes emojiBounce { 0%,100% { transform:scale(1) rotate(-3deg); } 50% { transform:scale(1.2) rotate(3deg); } }
-        @keyframes ringPulse { 0% { transform:translate(-50%,-50%) scale(0.8); opacity:0.6; } 100% { transform:translate(-50%,-50%) scale(2.2); opacity:0; } }
+        @keyframes confettiFall { 0%{transform:translateY(-30px) rotate(0deg) scale(1);opacity:1} 100%{transform:translateY(105vh) rotate(800deg) scale(0.5);opacity:0} }
+        @keyframes celebPop { 0%{transform:translate(-50%,-50%) scale(0.4);opacity:0} 18%{transform:translate(-50%,-50%) scale(1.1);opacity:1} 50%{transform:translate(-50%,-50%) scale(1);opacity:1} 78%{transform:translate(-50%,-50%) scale(1);opacity:1} 100%{transform:translate(-50%,-50%) scale(0.85);opacity:0} }
+        @keyframes bgFade { 0%{opacity:0} 8%{opacity:1} 78%{opacity:1} 100%{opacity:0} }
+        @keyframes emojiBounce { 0%,100%{transform:scale(1) rotate(-3deg)} 50%{transform:scale(1.2) rotate(3deg)} }
+        @keyframes ringPulse { 0%{transform:translate(-50%,-50%) scale(0.8);opacity:0.6} 100%{transform:translate(-50%,-50%) scale(2.2);opacity:0} }
       `}</style>
       <div onClick={onDone} style={{ position:"fixed", inset:0, zIndex:1000, background:"rgba(0,0,0,0.65)", backdropFilter:"blur(4px)", animation:"bgFade 3s ease forwards", cursor:"pointer" }} />
       {particles.map(p => (
@@ -145,11 +161,12 @@ function DailyTip({ lang }: { lang: Lang }) {
   );
 }
 
-function KuaboAIButton({ lang, completedSteps }: { lang: Lang; completedSteps: string[] }) {
+function KuaboAIButton({ lang, completedSteps, userState, userCity }: { lang: Lang; completedSteps: string[]; userState: string; userCity: string }) {
+  const location = userCity || userState || (lang==="fr"?"ta zone":lang==="es"?"tu zona":"your area");
   const labels = {
-    fr: { title: "Demande à Kuabo AI", sub: "Ton assistant immigration personnel" },
-    en: { title: "Ask Kuabo AI",       sub: "Your personal immigration assistant" },
-    es: { title: "Pregunta a Kuabo AI",sub: "Tu asistente de inmigración personal" },
+    fr: { title:"Demande à Kuabo AI", sub:`Ton assistant immigration — ${location}` },
+    en: { title:"Ask Kuabo AI",       sub:`Your immigration assistant — ${location}` },
+    es: { title:"Pregunta a Kuabo AI",sub:`Tu asistente de inmigración — ${location}` },
   }[lang];
   return (
     <button
@@ -173,7 +190,7 @@ function KuaboAIButton({ lang, completedSteps }: { lang: Lang; completedSteps: s
 
 function StreakCard({ streak, lang }: { streak: number; lang: Lang }) {
   const data = { fr:{ label:"jours de suite", msg:streak>=7?"Tu es en feu 🔥":streak>=3?"Continue comme ça !":"Reviens chaque jour !" }, en:{ label:"days in a row", msg:streak>=7?"You're on fire 🔥":streak>=3?"Keep it up!":"Come back every day!" }, es:{ label:"días seguidos", msg:streak>=7?"¡Estás en llamas 🔥!":streak>=3?"¡Sigue así!":"¡Vuelve cada día!" } }[lang];
-  const color = streak >= 7 ? "#ef4444" : streak >= 3 ? "#f97316" : "#e8b84b";
+  const color = streak>=7?"#ef4444":streak>=3?"#f97316":"#e8b84b";
   return (
     <div style={{ marginTop:16, background:"#0f1521", border:"1px solid "+color+"30", borderRadius:14, padding:"14px 16px", display:"flex", alignItems:"center", gap:14 }}>
       <div style={{ width:48, height:48, borderRadius:12, background:color+"15", border:"1px solid "+color+"30", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
@@ -209,8 +226,8 @@ function SOSButton({ lang }: { lang: Lang }) {
             <div style={{ width:36, height:4, background:"#2a3448", borderRadius:4, margin:"0 auto 20px" }} />
             <div style={{ fontSize:16, fontWeight:700, color:"#ef4444", marginBottom:16, display:"flex", alignItems:"center", gap:8 }}><PhoneCall size={18} color="#ef4444" /> 🆘 {btnLabel}</div>
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-              {contacts[lang].map((c, i) => (
-                <button key={i} onClick={() => { window.location.href = "tel:"+c.number; }} style={{ display:"flex", alignItems:"center", gap:14, padding:"14px 16px", background:c.priority?"rgba(239,68,68,0.06)":"#141d2e", border:"1px solid "+(c.priority?"rgba(239,68,68,0.2)":"#1e2a3a"), borderRadius:12, cursor:"pointer", width:"100%", textAlign:"left" as const, fontFamily:"inherit" }}>
+              {contacts[lang].map((c,i) => (
+                <button key={i} onClick={() => { window.location.href="tel:"+c.number; }} style={{ display:"flex", alignItems:"center", gap:14, padding:"14px 16px", background:c.priority?"rgba(239,68,68,0.06)":"#141d2e", border:"1px solid "+(c.priority?"rgba(239,68,68,0.2)":"#1e2a3a"), borderRadius:12, cursor:"pointer", width:"100%", textAlign:"left" as const, fontFamily:"inherit" }}>
                   <span style={{ fontSize:22 }}>{c.icon}</span>
                   <div style={{ flex:1 }}>
                     <div style={{ fontSize:12, fontWeight:500, color:"#fff", marginBottom:2 }}>{c.label}</div>
@@ -249,19 +266,19 @@ function CountdownDeadline({ nextStep, lang }: { nextStep: Step | undefined; lan
     if (!nextStep) return;
     const deadline = new Date();
     deadline.setDate(deadline.getDate() + nextStep.time);
-    const update = () => setDaysLeft(Math.ceil((deadline.getTime() - Date.now()) / 86400000));
+    const update = () => setDaysLeft(Math.ceil((deadline.getTime()-Date.now())/86400000));
     update();
     const iv = setInterval(update, 60000);
     return () => clearInterval(iv);
   }, [nextStep]);
-  if (!nextStep || daysLeft === null) return null;
-  const isCrit = daysLeft <= 3 || nextStep.urgency === "critical";
-  const isUrg  = daysLeft <= 7 || nextStep.urgency === "high";
-  const color  = isCrit ? "#ef4444" : isUrg ? "#f97316" : "#e8b84b";
-  const bg     = isCrit ? "rgba(239,68,68,0.07)"  : isUrg ? "rgba(249,115,22,0.07)"  : "rgba(232,184,75,0.07)";
-  const border = isCrit ? "rgba(239,68,68,0.25)"  : isUrg ? "rgba(249,115,22,0.25)"  : "rgba(232,184,75,0.2)";
+  if (!nextStep || daysLeft===null) return null;
+  const isCrit = daysLeft<=3 || nextStep.urgency==="critical";
+  const isUrg  = daysLeft<=7 || nextStep.urgency==="high";
+  const color  = isCrit?"#ef4444":isUrg?"#f97316":"#e8b84b";
+  const bg     = isCrit?"rgba(239,68,68,0.07)":isUrg?"rgba(249,115,22,0.07)":"rgba(232,184,75,0.07)";
+  const border = isCrit?"rgba(239,68,68,0.25)":isUrg?"rgba(249,115,22,0.25)":"rgba(232,184,75,0.2)";
   const L = { fr:{ title:"Deadline", dl:daysLeft<=1?"jour restant":"jours restants", crit:"🔴 Urgent", urg:"⚠️ Important", norm:"📅 À venir", cta:"Agir maintenant →" }, en:{ title:"Deadline", dl:daysLeft<=1?"day left":"days left", crit:"🔴 Urgent", urg:"⚠️ Important", norm:"📅 Upcoming", cta:"Act now →" }, es:{ title:"Fecha límite", dl:daysLeft<=1?"día restante":"días restantes", crit:"🔴 Urgente", urg:"⚠️ Importante", norm:"📅 Próximo", cta:"Actuar ahora →" } }[lang];
-  const bar = Math.min(100, Math.max(0, ((nextStep.time - daysLeft) / nextStep.time) * 100));
+  const bar = Math.min(100, Math.max(0, ((nextStep.time-daysLeft)/nextStep.time)*100));
   return (
     <div style={{ marginTop:16, background:bg, border:"1px solid "+border, borderRadius:16, padding:"16px", position:"relative", overflow:"hidden" }}>
       {isCrit && <div style={{ position:"absolute", top:0, left:0, right:0, height:2, background:"linear-gradient(to right, transparent,"+color+", transparent)" }} />}
@@ -292,7 +309,7 @@ function DocumentsTab({ lang, completedSteps }: { lang: Lang; completedSteps: st
   const docs: Record<Lang, { id:string; icon:string; label:string; desc:string; linked:string|null; alwaysOk:boolean }[]> = {
     fr: [{ id:"passport", icon:"🛂", label:"Passeport",            desc:"Document d'identité international",    linked:null,        alwaysOk:true  },{ id:"visa",      icon:"🟩", label:"Visa immigrant (DV)",   desc:"DV Lottery approuvé",                  linked:null,        alwaysOk:true  },{ id:"ssn_card",  icon:"🪪", label:"Carte SSN",              desc:"Reçue 2 semaines après le bureau SSA",  linked:"ssn",       alwaysOk:false },{ id:"sim",       icon:"📱", label:"SIM / Numéro US",       desc:"T-Mobile ou Mint Mobile — Jour 1",     linked:"phone",     alwaysOk:false },{ id:"greencard", icon:"💳", label:"Green Card physique",    desc:"Courrier USCIS — 2 à 3 semaines",      linked:"greencard", alwaysOk:false },{ id:"bank_card", icon:"🏦", label:"Carte bancaire",        desc:"Chase ou BofA — passeport seulement",  linked:"bank",      alwaysOk:false },{ id:"license_c", icon:"🚗", label:"Permis de conduire US", desc:"Examen théorique + pratique DMV",      linked:"license",   alwaysOk:false }],
     en: [{ id:"passport", icon:"🛂", label:"Passport",             desc:"International ID document",            linked:null,        alwaysOk:true  },{ id:"visa",      icon:"🟩", label:"Immigrant Visa (DV)",   desc:"DV Lottery approved",                  linked:null,        alwaysOk:true  },{ id:"ssn_card",  icon:"🪪", label:"SSN Card",               desc:"Received 2 weeks after SSA office",     linked:"ssn",       alwaysOk:false },{ id:"sim",       icon:"📱", label:"SIM / US Phone Number", desc:"T-Mobile or Mint Mobile — Day 1",       linked:"phone",     alwaysOk:false },{ id:"greencard", icon:"💳", label:"Physical Green Card",   desc:"USCIS mail — 2 to 3 weeks",            linked:"greencard", alwaysOk:false },{ id:"bank_card", icon:"🏦", label:"Bank Card",             desc:"Chase or BofA — passport only",        linked:"bank",      alwaysOk:false },{ id:"license_c", icon:"🚗", label:"US Driver License",     desc:"Written + practical DMV test",         linked:"license",   alwaysOk:false }],
-    es: [{ id:"passport", icon:"🛂", label:"Pasaporte",            desc:"Documento de identidad internacional", linked:null,        alwaysOk:true  },{ id:"visa",      icon:"🟩", label:"Visa inmigrante (DV)", desc:"DV Lottery aprobado",                  linked:null,        alwaysOk:true  },{ id:"ssn_card",  icon:"🪪", label:"Tarjeta SSN",            desc:"Recibida 2 semanas después SSA",        linked:"ssn",       alwaysOk:false },{ id:"sim",       icon:"📱", label:"SIM / Número US",       desc:"T-Mobile o Mint Mobile — Día 1",       linked:"phone",     alwaysOk:false },{ id:"greencard", icon:"💳", label:"Green Card física",     desc:"Correo USCIS — 2 a 3 semanas",         linked:"greencard", alwaysOk:false },{ id:"bank_card", icon:"🏦", label:"Tarjeta bancaria",      desc:"Chase o BofA — solo pasaporte",        linked:"bank",      alwaysOk:false },{ id:"license_c", icon:"🚗", label:"Licencia de conducir",  desc:"Examen teórico + práctico DMV",        linked:"license",   alwaysOk:false }],
+    es: [{ id:"passport", icon:"🛂", label:"Pasaporte",            desc:"Documento de identidad internacional", linked:null,        alwaysOk:true  },{ id:"visa",      icon:"🟩", label:"Visa inmigrante (DV)",  desc:"DV Lottery aprobado",                  linked:null,        alwaysOk:true  },{ id:"ssn_card",  icon:"🪪", label:"Tarjeta SSN",            desc:"Recibida 2 semanas después SSA",        linked:"ssn",       alwaysOk:false },{ id:"sim",       icon:"📱", label:"SIM / Número US",       desc:"T-Mobile o Mint Mobile — Día 1",       linked:"phone",     alwaysOk:false },{ id:"greencard", icon:"💳", label:"Green Card física",     desc:"Correo USCIS — 2 a 3 semanas",         linked:"greencard", alwaysOk:false },{ id:"bank_card", icon:"🏦", label:"Tarjeta bancaria",      desc:"Chase o BofA — solo pasaporte",        linked:"bank",      alwaysOk:false },{ id:"license_c", icon:"🚗", label:"Licencia de conducir",  desc:"Examen teórico + práctico DMV",        linked:"license",   alwaysOk:false }],
   };
   const L = { fr:{ title:"Mes Documents", sub:"Mis à jour selon tes étapes", ok:"OK", pending:"En attente", missing:"Manquant" }, en:{ title:"My Documents", sub:"Updated based on your steps", ok:"OK", pending:"Pending", missing:"Missing" }, es:{ title:"Mis Documentos", sub:"Actualizado según tus pasos", ok:"OK", pending:"Pendiente", missing:"Faltante" } }[lang];
   const list = docs[lang];
@@ -338,25 +355,26 @@ function DocumentsTab({ lang, completedSteps }: { lang: Lang; completedSteps: st
   );
 }
 
-function ProfileTab({ userName, userEmail, lang, progress, doneCount, totalSteps, changeLang, onLogout }: {
-  userName:string; userEmail:string; lang:Lang; progress:number; doneCount:number; totalSteps:number; changeLang:(l:Lang)=>void; onLogout:()=>void;
+function ProfileTab({ userName, userEmail, lang, progress, doneCount, totalSteps, changeLang, onLogout, onDeleteAccount }: {
+  userName:string; userEmail:string; lang:Lang; progress:number; doneCount:number; totalSteps:number;
+  changeLang:(l:Lang)=>void; onLogout:()=>void; onDeleteAccount:()=>void;
 }) {
-  const [commVisible, setCommVisible]       = useState(false);
-  const [notifEnabled, setNotifEnabled]     = useState(false);
-  const [msgEnabled, setMsgEnabled]         = useState(true);
-  const [savingToggle, setSavingToggle]     = useState(false);
+  const [commVisible, setCommVisible]   = useState(false);
+  const [notifEnabled, setNotifEnabled] = useState(false);
+  const [msgEnabled, setMsgEnabled]     = useState(true);
+  const [savingToggle, setSavingToggle] = useState(false);
 
   useEffect(() => {
     const load = async () => {
       const user = auth.currentUser;
       if (!user) return;
       try {
-        const snap = await getDoc(doc(db, "users", user.uid));
+        const snap = await getDoc(doc(db,"users",user.uid));
         if (snap.exists()) {
           const data = snap.data() as any;
-          setCommVisible(data?.communityVisible || false);
-          setNotifEnabled(data?.notifEnabled || false);
-          setMsgEnabled(data?.msgEnabled !== false);
+          setCommVisible(data?.communityVisible||false);
+          setNotifEnabled(data?.notifEnabled||false);
+          setMsgEnabled(data?.msgEnabled!==false);
         }
       } catch { /* continue */ }
     };
@@ -367,21 +385,21 @@ function ProfileTab({ userName, userEmail, lang, progress, doneCount, totalSteps
     const user = auth.currentUser;
     if (!user) return;
     setSavingToggle(true);
-    try { await updateDoc(doc(db, "users", user.uid), { [field]: value }); }
+    try { await updateDoc(doc(db,"users",user.uid), { [field]:value }); }
     catch { /* continue */ }
     setSavingToggle(false);
   };
 
-  const Toggle = ({ value, onToggle }: { value: boolean; onToggle: () => void }) => (
+  const Toggle = ({ value, onToggle }: { value:boolean; onToggle:()=>void }) => (
     <button onClick={onToggle} disabled={savingToggle} style={{ width:48, height:26, borderRadius:13, background:value?"#e8b84b":"#2a3448", border:"none", cursor:"pointer", position:"relative", transition:"background 0.2s", flexShrink:0 }}>
       <div style={{ position:"absolute", top:3, left:value?24:3, width:20, height:20, borderRadius:"50%", background:"#fff", transition:"left 0.2s" }} />
     </button>
   );
 
   const L = {
-    fr: { title:"Mon Profil", situation:"DV Lottery", phase:"Phase 1 — Installation", score:"Score d'intégration", steps:"étapes complétées", lang:"Langue", commVisible:"Carte communauté", commSub:"Apparaître anonymement sur la carte", notif:"Notifications", notifSub:"Rappels quotidiens", msg:"Messages", msgSub:"Recevoir des messages", privacy:"Confidentialité", help:"Aide", logout:"Déconnexion", version:"Version 1.0 · Kuabo" },
-    en: { title:"My Profile", situation:"DV Lottery", phase:"Phase 1 — Installation", score:"Integration score", steps:"steps completed", lang:"Language", commVisible:"Community map", commSub:"Appear anonymously on the map", notif:"Notifications", notifSub:"Daily reminders", msg:"Messages", msgSub:"Receive messages", privacy:"Privacy", help:"Help", logout:"Logout", version:"Version 1.0 · Kuabo" },
-    es: { title:"Mi Perfil", situation:"DV Lottery", phase:"Fase 1 — Instalación", score:"Puntuación integración", steps:"pasos completados", lang:"Idioma", commVisible:"Mapa comunidad", commSub:"Aparecer anónimamente en el mapa", notif:"Notificaciones", notifSub:"Recordatorios diarios", msg:"Mensajes", msgSub:"Recibir mensajes", privacy:"Privacidad", help:"Ayuda", logout:"Cerrar sesión", version:"Versión 1.0 · Kuabo" },
+    fr: { title:"Mon Profil", situation:"DV Lottery", phase:"Phase 1 — Installation", score:"Score d'intégration", steps:"étapes complétées", lang:"Langue", commVisible:"Carte communauté", commSub:"Apparaître anonymement sur la carte", notif:"Notifications", notifSub:"Rappels quotidiens", msg:"Messages", msgSub:"Recevoir des messages", privacy:"Confidentialité", help:"Aide", logout:"Déconnexion", deleteAccount:"Supprimer mon compte", deleteSub:"Action irréversible", version:"Version 1.0 · Kuabo" },
+    en: { title:"My Profile", situation:"DV Lottery", phase:"Phase 1 — Installation", score:"Integration score", steps:"steps completed", lang:"Language", commVisible:"Community map", commSub:"Appear anonymously on the map", notif:"Notifications", notifSub:"Daily reminders", msg:"Messages", msgSub:"Receive messages", privacy:"Privacy", help:"Help", logout:"Logout", deleteAccount:"Delete my account", deleteSub:"Irreversible action", version:"Version 1.0 · Kuabo" },
+    es: { title:"Mi Perfil", situation:"DV Lottery", phase:"Fase 1 — Instalación", score:"Puntuación integración", steps:"pasos completados", lang:"Idioma", commVisible:"Mapa comunidad", commSub:"Aparecer anónimamente en el mapa", notif:"Notificaciones", notifSub:"Recordatorios diarios", msg:"Mensajes", msgSub:"Recibir mensajes", privacy:"Privacidad", help:"Ayuda", logout:"Cerrar sesión", deleteAccount:"Eliminar mi cuenta", deleteSub:"Acción irreversible", version:"Versión 1.0 · Kuabo" },
   }[lang];
 
   const size=96, sw=6, r=(size-sw)/2, circ=2*Math.PI*r, offset=circ-(progress/100)*circ;
@@ -390,7 +408,7 @@ function ProfileTab({ userName, userEmail, lang, progress, doneCount, totalSteps
     <div>
       <div style={{ fontSize:20, fontWeight:700, color:"#fff", marginBottom:20 }}>{L.title}</div>
 
-      {/* Avatar + info */}
+      {/* Avatar */}
       <div style={{ display:"flex", flexDirection:"column", alignItems:"center", marginBottom:20 }}>
         <div style={{ position:"relative", width:size, height:size, marginBottom:12 }}>
           <svg width={size} height={size} style={{ transform:"rotate(-90deg)" }}>
@@ -435,26 +453,24 @@ function ProfileTab({ userName, userEmail, lang, progress, doneCount, totalSteps
         </div>
       </div>
 
-      {/* Toggles confidentialité */}
+      {/* Confidentialité */}
       <div style={{ background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:14, padding:"14px", marginBottom:8 }}>
-        <div style={{ fontSize:10, color:"#555", letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:12 }}>{L.privacy}</div>
+        <div style={{ fontSize:10, color:"#555", letterSpacing:"0.1em", textTransform:"uppercase" as const, marginBottom:14 }}>{L.privacy}</div>
 
-        {/* Communauté */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
           <div>
             <div style={{ fontSize:13, fontWeight:500, color:"#f4f1ec", marginBottom:2 }}>{L.commVisible}</div>
             <div style={{ fontSize:11, color:"#aaa" }}>{L.commSub}</div>
           </div>
-          <Toggle value={commVisible} onToggle={() => { const v=!commVisible; setCommVisible(v); saveToggle("communityVisible", v); }} />
+          <Toggle value={commVisible} onToggle={() => { const v=!commVisible; setCommVisible(v); saveToggle("communityVisible",v); }} />
         </div>
 
-        {/* Messages */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div>
             <div style={{ fontSize:13, fontWeight:500, color:"#f4f1ec", marginBottom:2 }}>{L.msg}</div>
             <div style={{ fontSize:11, color:"#aaa" }}>{L.msgSub}</div>
           </div>
-          <Toggle value={msgEnabled} onToggle={() => { const v=!msgEnabled; setMsgEnabled(v); saveToggle("msgEnabled", v); }} />
+          <Toggle value={msgEnabled} onToggle={() => { const v=!msgEnabled; setMsgEnabled(v); saveToggle("msgEnabled",v); }} />
         </div>
       </div>
 
@@ -465,7 +481,7 @@ function ProfileTab({ userName, userEmail, lang, progress, doneCount, totalSteps
             <div style={{ fontSize:13, fontWeight:500, color:"#f4f1ec", marginBottom:2 }}>{L.notif}</div>
             <div style={{ fontSize:11, color:"#aaa" }}>{L.notifSub}</div>
           </div>
-          <Toggle value={notifEnabled} onToggle={() => { const v=!notifEnabled; setNotifEnabled(v); saveToggle("notifEnabled", v); }} />
+          <Toggle value={notifEnabled} onToggle={() => { const v=!notifEnabled; setNotifEnabled(v); saveToggle("notifEnabled",v); }} />
         </div>
       </div>
 
@@ -479,10 +495,22 @@ function ProfileTab({ userName, userEmail, lang, progress, doneCount, totalSteps
       </div>
 
       {/* Déconnexion */}
-      <div style={{ background:"rgba(239,68,68,0.04)", border:"1px solid rgba(239,68,68,0.15)", borderRadius:14, padding:"14px", marginBottom:16, display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer" }} onClick={onLogout}>
+      <div style={{ background:"rgba(239,68,68,0.04)", border:"1px solid rgba(239,68,68,0.15)", borderRadius:14, padding:"14px", marginBottom:8, display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer" }} onClick={onLogout}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <div style={settingIcon}><LogOut size={16} color="#ef4444" /></div>
           <span style={{ fontSize:14, color:"#ef4444" }}>{L.logout}</span>
+        </div>
+        <ChevronRight size={16} color="#ef4444" />
+      </div>
+
+      {/* ✅ Supprimer le compte */}
+      <div style={{ background:"rgba(239,68,68,0.04)", border:"1px solid rgba(239,68,68,0.15)", borderRadius:14, padding:"14px", marginBottom:16, display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer" }} onClick={onDeleteAccount}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <div style={settingIcon}>🗑️</div>
+          <div>
+            <div style={{ fontSize:14, color:"#ef4444" }}>{L.deleteAccount}</div>
+            <div style={{ fontSize:11, color:"#555", marginTop:2 }}>{L.deleteSub}</div>
+          </div>
         </div>
         <ChevronRight size={16} color="#ef4444" />
       </div>
@@ -494,11 +522,7 @@ function ProfileTab({ userName, userEmail, lang, progress, doneCount, totalSteps
 }
 
 function BottomNav({ activeTab, setActiveTab, lang }: { activeTab:Tab; setActiveTab:(t:Tab)=>void; lang:Lang }) {
-  const L = {
-    fr: { home:"Accueil", documents:"Documents", explorer:"Explorer", profile:"Profil"    },
-    en: { home:"Home",    documents:"Documents", explorer:"Explorer", profile:"Profile"   },
-    es: { home:"Inicio",  documents:"Documentos",explorer:"Explorar", profile:"Perfil"   },
-  }[lang];
+  const L = { fr:{ home:"Accueil", documents:"Documents", explorer:"Explorer", profile:"Profil" }, en:{ home:"Home", documents:"Documents", explorer:"Explorer", profile:"Profile" }, es:{ home:"Inicio", documents:"Documentos", explorer:"Explorar", profile:"Perfil" } }[lang];
   const tabs: { id:Tab; icon:React.ReactNode; label:string }[] = [
     { id:"home",      icon:<Home size={22} />,     label:L.home      },
     { id:"documents", icon:<FileText size={22} />, label:L.documents },
@@ -508,7 +532,7 @@ function BottomNav({ activeTab, setActiveTab, lang }: { activeTab:Tab; setActive
   return (
     <div style={bottomNavWrap}>
       {tabs.map(tab => {
-        const active = activeTab === tab.id;
+        const active = activeTab===tab.id;
         return (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, padding:"10px 0 8px", background:"transparent", border:"none", cursor:"pointer", position:"relative", fontFamily:"inherit" }}>
             {active && <div style={{ position:"absolute", top:0, left:"50%", transform:"translateX(-50%)", width:32, height:2, borderRadius:"0 0 4px 4px", background:"#e8b84b" }} />}
@@ -539,6 +563,16 @@ export default function Dashboard() {
   const [lastAction, setLastAction]         = useState<string | null>(null);
   const [activeTab, setActiveTab]           = useState<Tab>("home");
   const [celebStep, setCelebStep]           = useState<string | null>(null);
+  const [userState, setUserState]           = useState("");
+  const [userCity, setUserCity]             = useState("");
+  const [arrival, setArrival]               = useState<Arrival>("just");
+
+  // ✅ Delete account states
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteStep, setDeleteStep]           = useState(1);
+  const [deleteInput, setDeleteInput]         = useState("");
+  const [deleting, setDeleting]               = useState(false);
+  const [deleteError, setDeleteError]         = useState("");
 
   const streak = useStreak(userId);
   useScrollToTop(activeTab);
@@ -550,7 +584,8 @@ export default function Dashboard() {
   };
 
   const text  = T[lang];
-  const steps = STEPS_BY_LANG[lang];
+  // ✅ Steps adaptés selon situation d'arrivée
+  const steps = getStepsByArrival(lang, arrival);
 
   useEffect(() => {
     const savedLang = localStorage.getItem("lang") as Lang;
@@ -562,17 +597,21 @@ export default function Dashboard() {
 
     const unsub = onAuthStateChanged(auth, async user => {
       clearTimeout(timeout);
-      if (!user) { window.location.href = "/login"; return; }
+      if (!user) { window.location.href="/login"; return; }
       setUserId(user.uid);
-      setUserEmail(user.email || "");
+      setUserEmail(user.email||"");
       try {
-        const snap = await getDoc(doc(db, "users", user.uid));
+        const snap = await getDoc(doc(db,"users",user.uid));
         const data = snap.exists() ? snap.data() as any : {};
         const name = data?.name || user.displayName || user.email?.split("@")[0] || "User";
         const userLang = (data?.lang as Lang) || savedLang || "fr";
         setUserName(name);
         setLang(userLang);
-        setCompletedSteps(data?.completedSteps || []);
+        setCompletedSteps(data?.completedSteps||[]);
+        setArrival((data?.arrival as Arrival)||"just");
+        // ✅ Charge état et ville depuis Firestore
+        setUserState(data?.location?.state||localStorage.getItem("userState")||"");
+        setUserCity(data?.location?.city||localStorage.getItem("userCity")||"");
         localStorage.setItem("userName", name);
         localStorage.setItem("lang", userLang);
       } catch { /* continue */ }
@@ -587,7 +626,7 @@ export default function Dashboard() {
     localStorage.setItem("lang", l);
     const user = auth.currentUser;
     if (user) {
-      try { await updateDoc(doc(db, "users", user.uid), { lang: l }); }
+      try { await updateDoc(doc(db,"users",user.uid), { lang:l }); }
       catch { /* continue */ }
     }
     setMenuOpen(false);
@@ -602,7 +641,7 @@ export default function Dashboard() {
     };
     let updated: string[];
     if (completedSteps.includes(stepId)) {
-      updated = completedSteps.filter(s => s !== stepId);
+      updated = completedSteps.filter(s => s!==stepId);
       setToast(msgs.removed[lang]);
     } else {
       updated = [...completedSteps, stepId];
@@ -611,7 +650,7 @@ export default function Dashboard() {
     }
     setCompletedSteps(updated);
     setLastAction(stepId);
-    try { await updateDoc(doc(db, "users", user.uid), { completedSteps: updated }); }
+    try { await updateDoc(doc(db,"users",user.uid), { completedSteps:updated }); }
     catch { /* continue */ }
     setTimeout(() => setToast(null), 3000);
   };
@@ -620,9 +659,9 @@ export default function Dashboard() {
     if (!lastAction) return;
     const user = auth.currentUser;
     if (!user) return;
-    const updated = completedSteps.filter(s => s !== lastAction);
+    const updated = completedSteps.filter(s => s!==lastAction);
     setCompletedSteps(updated);
-    try { await updateDoc(doc(db, "users", user.uid), { completedSteps: updated }); }
+    try { await updateDoc(doc(db,"users",user.uid), { completedSteps:updated }); }
     catch { /* continue */ }
     setToast(null);
     setLastAction(null);
@@ -630,20 +669,65 @@ export default function Dashboard() {
 
   const handleLogout = async () => {
     try { await signOut(auth); } catch { /* continue */ }
-    window.location.href = "/login";
+    window.location.href="/login";
   };
+
+  // ✅ Delete account
+  const handleDeleteAccount = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+    if (deleteInput!=="DELETE") {
+      setDeleteError(lang==="fr"?"Tape DELETE pour confirmer":lang==="es"?"Escribe DELETE para confirmar":"Type DELETE to confirm");
+      return;
+    }
+    setDeleting(true);
+    try {
+      // 1. Copie dans deleted_users
+      const snap = await getDoc(doc(db,"users",user.uid));
+      const data = snap.exists() ? snap.data() : {};
+      await setDoc(doc(db,"deleted_users",user.uid), {
+        ...data,
+        deletedAt: new Date().toISOString(),
+        originalUid: user.uid,
+        originalEmail: user.email,
+      });
+      // 2. Anonymise dans users
+      await updateDoc(doc(db,"users",user.uid), {
+        deleted: true,
+        deletedAt: new Date().toISOString(),
+        name: "***",
+        email: "***",
+        location: null,
+        communityVisible: false,
+      });
+      // 3. Supprime Firebase Auth
+      await deleteUser(user);
+      // 4. Clear localStorage
+      localStorage.clear();
+      // 5. Redirect
+      window.location.href="/home";
+    } catch (err: any) {
+      if (err.code==="auth/requires-recent-login") {
+        setDeleteError(lang==="fr"?"Reconnecte-toi d'abord":lang==="es"?"Vuelve a iniciar sesión":"Please sign in again first");
+      } else {
+        setDeleteError(lang==="fr"?"Erreur — réessaie":lang==="es"?"Error — inténtalo de nuevo":"Error — please try again");
+      }
+      setDeleting(false);
+    }
+  };
+
   const handleCelebDone = useCallback(() => setCelebStep(null), []);
 
-  const progress   = Math.round(steps.reduce((acc, s) => completedSteps.includes(s.id) ? acc + s.weight : acc, 0));
+  const progress   = Math.round(steps.reduce((acc,s) => completedSteps.includes(s.id)?acc+s.weight:acc, 0));
   const nextStep   = steps.find(s => !completedSteps.includes(s.id));
   const totalSteps = steps.length;
   const doneCount  = completedSteps.length;
-  const motivMsg   = doneCount === 0 ? text.m0 : doneCount < 2 ? text.m1 : doneCount < 4 ? text.m2 : doneCount < totalSteps ? text.m3 : text.m4;
+  const motivMsg   = doneCount===0?text.m0:doneCount<2?text.m1:doneCount<4?text.m2:doneCount<totalSteps?text.m3:text.m4;
 
   const getStepColor = (step: Step, done: boolean) => {
     if (done) return "#22c55e";
-    if (step.urgency === "critical") return "#ef4444";
-    if (step.urgency === "high")     return "#f97316";
+    if (step.urgency==="critical") return "#ef4444";
+    if (step.urgency==="high")     return "#f97316";
     return "#e8b84b";
   };
 
@@ -664,6 +748,68 @@ export default function Dashboard() {
     <div style={{ background:"#0b0f1a", minHeight:"100dvh", color:"#fff" }}>
 
       <CelebrationOverlay stepId={celebStep} lang={lang} onDone={handleCelebDone} />
+
+      {/* ✅ DELETE ACCOUNT MODAL */}
+      {showDeleteModal && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.8)", zIndex:1000, display:"flex", alignItems:"flex-end", justifyContent:"center", backdropFilter:"blur(4px)" }}
+          onClick={() => { setShowDeleteModal(false); setDeleteStep(1); setDeleteInput(""); setDeleteError(""); }}
+        >
+          <div style={{ background:"#0f1521", border:"1px solid #1e2a3a", borderRadius:"20px 20px 0 0", padding:"24px 20px 48px", width:"100%", maxWidth:480 }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ width:36, height:4, background:"#2a3448", borderRadius:4, margin:"0 auto 24px" }} />
+
+            {/* STEP 1 */}
+            {deleteStep===1 && (
+              <>
+                <div style={{ fontSize:40, textAlign:"center", marginBottom:16 }}>⚠️</div>
+                <div style={{ fontSize:18, fontWeight:700, color:"#ef4444", textAlign:"center", marginBottom:12 }}>
+                  {lang==="fr"?"Supprimer ton compte ?":lang==="es"?"¿Eliminar tu cuenta?":"Delete your account?"}
+                </div>
+                <div style={{ fontSize:13, color:"#aaa", textAlign:"center", lineHeight:1.7, marginBottom:24 }}>
+                  {lang==="fr"?"Cette action est irréversible. Toutes tes étapes, ton profil et tes données seront supprimés définitivement.":lang==="es"?"Esta acción es irreversible. Todos tus pasos, perfil y datos serán eliminados definitivamente.":"This action is irreversible. All your steps, profile and data will be permanently deleted."}
+                </div>
+                <div style={{ display:"flex", gap:10 }}>
+                  <button onClick={() => { setShowDeleteModal(false); setDeleteStep(1); }} style={{ flex:1, padding:"13px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#f4f1ec", fontSize:14, cursor:"pointer", fontFamily:"inherit" }}>
+                    {lang==="fr"?"Annuler":lang==="es"?"Cancelar":"Cancel"}
+                  </button>
+                  <button onClick={() => setDeleteStep(2)} style={{ flex:1, padding:"13px", background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.3)", borderRadius:12, color:"#ef4444", fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                    {lang==="fr"?"Continuer":lang==="es"?"Continuar":"Continue"}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* STEP 2 */}
+            {deleteStep===2 && (
+              <>
+                <div style={{ fontSize:40, textAlign:"center", marginBottom:16 }}>🗑️</div>
+                <div style={{ fontSize:18, fontWeight:700, color:"#ef4444", textAlign:"center", marginBottom:8 }}>
+                  {lang==="fr"?"Confirmation finale":lang==="es"?"Confirmación final":"Final confirmation"}
+                </div>
+                <div style={{ fontSize:13, color:"#aaa", textAlign:"center", lineHeight:1.7, marginBottom:20 }}>
+                  {lang==="fr"?`Tape "DELETE" pour confirmer la suppression de ton compte.`:lang==="es"?`Escribe "DELETE" para confirmar.`:`Type "DELETE" to confirm the deletion.`}
+                </div>
+                <input
+                  value={deleteInput}
+                  onChange={e => { setDeleteInput(e.target.value); setDeleteError(""); }}
+                  placeholder="DELETE"
+                  style={{ width:"100%", padding:"13px 14px", background:"#141d2e", border:"1px solid "+(deleteInput==="DELETE"?"#ef4444":"#1e2a3a"), borderRadius:12, color:"#f4f1ec", fontSize:16, fontFamily:"inherit", outline:"none", marginBottom:12, boxSizing:"border-box" as const, textAlign:"center" as const, letterSpacing:"0.1em" }}
+                />
+                {deleteError && <div style={{ fontSize:12, color:"#ef4444", textAlign:"center", marginBottom:12 }}>⚠️ {deleteError}</div>}
+                <div style={{ display:"flex", gap:10 }}>
+                  <button onClick={() => { setDeleteStep(1); setDeleteInput(""); setDeleteError(""); }} style={{ flex:1, padding:"13px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#f4f1ec", fontSize:14, cursor:"pointer", fontFamily:"inherit" }}>
+                    {lang==="fr"?"Retour":lang==="es"?"Volver":"Back"}
+                  </button>
+                  <button onClick={handleDeleteAccount} disabled={deleting||deleteInput!=="DELETE"} style={{ flex:1, padding:"13px", background:deleteInput==="DELETE"?"#ef4444":"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.3)", borderRadius:12, color:deleteInput==="DELETE"?"#fff":"#ef4444", fontSize:14, fontWeight:600, cursor:deleteInput==="DELETE"?"pointer":"default", fontFamily:"inherit", opacity:deleting?0.7:1 }}>
+                    {deleting?(lang==="fr"?"Suppression...":lang==="es"?"Eliminando...":"Deleting..."):(lang==="fr"?"Supprimer définitivement":lang==="es"?"Eliminar definitivamente":"Delete permanently")}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       <div style={container}>
 
@@ -691,7 +837,7 @@ export default function Dashboard() {
         </div>
 
         {/* HOME TAB */}
-        {activeTab === "home" && (
+        {activeTab==="home" && (
           <>
             <div style={{ marginTop:14 }}>
               <div style={{ color:"#aaa", fontSize:11, letterSpacing:"0.1em", textTransform:"uppercase" as const }}>⚡ Phase 1 — Installation</div>
@@ -706,7 +852,9 @@ export default function Dashboard() {
 
             <StreakCard streak={streak} lang={lang} />
             <DailyTip lang={lang} />
-            <KuaboAIButton lang={lang} completedSteps={completedSteps} />
+
+            {/* ✅ Kuabo AI avec état dynamique */}
+            <KuaboAIButton lang={lang} completedSteps={completedSteps} userState={userState} userCity={userCity} />
 
             {nextStep ? (
               <div style={{ ...priorityCard, border:"1px solid "+(nextStep.urgency==="critical"?"rgba(239,68,68,0.4)":nextStep.urgency==="high"?"rgba(249,115,22,0.3)":"rgba(232,184,75,0.25)"), background:nextStep.urgency==="critical"?"rgba(239,68,68,0.05)":"#1a2438" }}>
@@ -718,9 +866,10 @@ export default function Dashboard() {
                 <div style={{ fontSize:17, fontWeight:600, marginBottom:6, color:"#fff" }}>{nextStep.label}</div>
                 <div style={{ fontSize:12, color:"#aaa", marginBottom:14, display:"flex", alignItems:"center", gap:4 }}>
                   <Clock size={11} color="#aaa" />
-                  {nextStep.time===1 ? (lang==="fr"?"Jour 1 — dès l'arrivée":lang==="es"?"Día 1 — al llegar":"Day 1 — upon arrival") : nextStep.time+" "+(lang==="fr"?"jours max":lang==="es"?"días máx":"days max")}
+                  {nextStep.time===1?(lang==="fr"?"Jour 1 — dès l'arrivée":lang==="es"?"Día 1 — al llegar":"Day 1 — upon arrival"):nextStep.time+" "+(lang==="fr"?"jours max":lang==="es"?"días máx":"days max")}
                 </div>
-                <button style={primaryBtn}>{text.guide}</button>
+                {/* ✅ Bouton guide → /guide/[stepId] */}
+                <button style={primaryBtn} onClick={() => window.location.href=`/guide/${nextStep.id}`}>{text.guide}</button>
                 <button style={secondaryBtn} onClick={() => toggleStep(nextStep.id)}>✓ {text.mark}</button>
               </div>
             ) : (
@@ -745,7 +894,7 @@ export default function Dashboard() {
               {steps.map(step => {
                 const done = completedSteps.includes(step.id);
                 const color = getStepColor(step, done);
-                const borderColor = done ? "rgba(34,197,94,0.2)" : step.urgency==="critical" ? "rgba(239,68,68,0.2)" : step.urgency==="high" ? "rgba(249,115,22,0.15)" : "rgba(255,255,255,0.04)";
+                const borderColor = done?"rgba(34,197,94,0.2)":step.urgency==="critical"?"rgba(239,68,68,0.2)":step.urgency==="high"?"rgba(249,115,22,0.15)":"rgba(255,255,255,0.04)";
                 return (
                   <div key={step.id} style={{ ...taskCard, opacity:done?0.55:1, border:"1px solid "+borderColor }}>
                     <div style={{ ...check, background:done?"#22c55e":"transparent", borderColor:done?"#22c55e":color }} onClick={() => toggleStep(step.id)}>
@@ -755,11 +904,11 @@ export default function Dashboard() {
                       <div style={{ fontSize:13, fontWeight:500, color:done?"#555":"#fff", textDecoration:done?"line-through":"none", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{step.label}</div>
                       <div style={{ fontSize:11, color:done?"#555":color, marginTop:2, display:"flex", alignItems:"center", gap:4 }}>
                         <Clock size={10} color={done?"#555":color} />
-                        {step.time===1 ? (lang==="fr"?"Jour 1 — dès l'arrivée":lang==="es"?"Día 1 — al llegar":"Day 1 — upon arrival") : step.time+" "+text.days+" max"}
+                        {step.time===1?(lang==="fr"?"Jour 1 — dès l'arrivée":lang==="es"?"Día 1 — al llegar":"Day 1 — upon arrival"):step.time+" "+text.days+" max"}
                       </div>
                     </div>
                     <div style={{ fontSize:10, fontWeight:700, color, display:"flex", alignItems:"center", gap:3, flexShrink:0 }}>
-                      {done ? <><CheckCircle2 size={11} color="#22c55e" /> {text.done}</> : <><ChevronRight size={11} color={color} /> {text.todo}</>}
+                      {done?<><CheckCircle2 size={11} color="#22c55e" /> {text.done}</>:<><ChevronRight size={11} color={color} /> {text.todo}</>}
                     </div>
                   </div>
                 );
@@ -770,14 +919,23 @@ export default function Dashboard() {
           </>
         )}
 
-        {activeTab === "documents" && <div style={{ marginTop:14 }}><DocumentsTab lang={lang} completedSteps={completedSteps} /></div>}
+        {activeTab==="documents" && <div style={{ marginTop:14 }}><DocumentsTab lang={lang} completedSteps={completedSteps} /></div>}
 
-        {/* ✅ EXPLORER TAB */}
-        {activeTab === "explorer" && <ExplorerTab lang={lang} />}
+        {activeTab==="explorer" && <ExplorerTab lang={lang} />}
 
-        {activeTab === "profile" && (
+        {activeTab==="profile" && (
           <div style={{ marginTop:14 }}>
-            <ProfileTab userName={userName} userEmail={userEmail} lang={lang} progress={progress} doneCount={doneCount} totalSteps={totalSteps} changeLang={changeLang} onLogout={handleLogout} />
+            <ProfileTab
+              userName={userName}
+              userEmail={userEmail}
+              lang={lang}
+              progress={progress}
+              doneCount={doneCount}
+              totalSteps={totalSteps}
+              changeLang={changeLang}
+              onLogout={handleLogout}
+              onDeleteAccount={() => setShowDeleteModal(true)}
+            />
           </div>
         )}
 
