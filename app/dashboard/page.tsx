@@ -293,7 +293,7 @@ function DashboardInner() {
         </div>
       )}
 
-      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} lang={lang} onHomePress={handleHomePress} />
+      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} lang={lang} onHomePress={handleHomePress} colors={colors} />
 
       <style>{`
         @keyframes spin     { to { transform: rotate(360deg) } }
