@@ -1,9 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { CSSProperties } from "react";
 type Lang = "fr" | "en" | "es";
 
 export default function Terms() {
+  const router = useRouter();
   const [lang, setLang] = useState<Lang>("en");
   useEffect(() => {
     const l = localStorage.getItem("lang") as Lang;
@@ -64,7 +66,7 @@ export default function Terms() {
   return (
     <div style={container}>
       <div style={header}>
-        <button style={backBtn} onClick={() => window.history.back()}>←</button>
+        <button style={backBtn} onClick={() => router.back()}>←</button>
         <div style={logo}><span style={{ color:"#e8b84b" }}>Ku</span>abo</div>
         <div style={{ width:40 }} />
       </div>

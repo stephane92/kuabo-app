@@ -104,7 +104,6 @@ function SearchModal({ lang, onClose }: { lang: Lang; onClose: () => void }) {
       </div>
 
       <div style={{ flex:1, overflowY:"auto", padding:"14px 16px" }} onClick={e => e.stopPropagation()}>
-        {/* Suggestions quand vide */}
         {suggestions.length > 0 && (
           <>
             <div style={{ fontSize:10, color:"#555", letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:10, fontWeight:600 }}>⭐ {recentLabel}</div>
@@ -121,7 +120,6 @@ function SearchModal({ lang, onClose }: { lang: Lang; onClose: () => void }) {
           </>
         )}
 
-        {/* Résultats de recherche */}
         {query.trim().length > 0 && results.length > 0 && (
           <>
             <div style={{ fontSize:10, color:"#555", letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:10, fontWeight:600 }}>🔍 {results.length} résultat{results.length > 1 ? "s" : ""}</div>
@@ -138,7 +136,6 @@ function SearchModal({ lang, onClose }: { lang: Lang; onClose: () => void }) {
           </>
         )}
 
-        {/* Aucun résultat */}
         {query.trim().length > 0 && results.length === 0 && (
           <div style={{ textAlign:"center", padding:"40px 20px", color:"#555" }}>
             <div style={{ fontSize:36, marginBottom:12 }}>🔍</div>
@@ -909,9 +906,10 @@ function DocumentsTab({ lang, completedSteps }: { lang:Lang; completedSteps:stri
 
   return (
     <div>
+      {/* ✅ FIX — Modal info document avec maxHeight */}
       {activeDoc&&selDoc&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center",backdropFilter:"blur(4px)"}} onClick={()=>setActiveDoc(null)}>
-          <div style={{background:"#0f1521",border:"1px solid #1e2a3a",borderRadius:"20px 20px 0 0",padding:"22px 18px 44px",width:"100%",maxWidth:480,animation:"slideUp 0.3s ease"}} onClick={e=>e.stopPropagation()}>
+          <div style={{background:"#0f1521",border:"1px solid #1e2a3a",borderRadius:"20px 20px 0 0",padding:"22px 18px 44px",width:"100%",maxWidth:480,maxHeight:"85vh",overflowY:"auto",animation:"slideUp 0.3s ease"}} onClick={e=>e.stopPropagation()}>
             <div style={{width:32,height:3,background:"#2a3448",borderRadius:3,margin:"0 auto 18px"}}/>
             <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}><span style={{fontSize:28}}>{selDoc.icon}</span><div><div style={{fontSize:16,fontWeight:700,color:"#f4f1ec"}}>{selDoc.label}</div><div style={{fontSize:12,color:"#aaa"}}>{selDoc.desc}</div></div></div>
             <div style={{background:"rgba(232,184,75,0.05)",border:"1px solid rgba(232,184,75,0.18)",borderRadius:12,padding:"13px 15px",marginBottom:16}}>
@@ -926,9 +924,10 @@ function DocumentsTab({ lang, completedSteps }: { lang:Lang; completedSteps:stri
           </div>
         </div>
       )}
+      {/* ✅ FIX — Modal "J'ai perdu ce document" avec maxHeight */}
       {lostModal&&lostDoc&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center",backdropFilter:"blur(4px)"}} onClick={()=>setLostModal(null)}>
-          <div style={{background:"#0f1521",border:"1px solid #1e2a3a",borderRadius:"20px 20px 0 0",padding:"22px 18px 44px",width:"100%",maxWidth:480,animation:"slideUp 0.3s ease"}} onClick={e=>e.stopPropagation()}>
+          <div style={{background:"#0f1521",border:"1px solid #1e2a3a",borderRadius:"20px 20px 0 0",padding:"22px 18px 44px",width:"100%",maxWidth:480,maxHeight:"85vh",overflowY:"auto",animation:"slideUp 0.3s ease"}} onClick={e=>e.stopPropagation()}>
             <div style={{width:32,height:3,background:"#2a3448",borderRadius:3,margin:"0 auto 18px"}}/>
             <div style={{fontSize:16,fontWeight:700,color:"#ef4444",marginBottom:4}}>🆘 {L.lostTitle}</div>
             <div style={{fontSize:14,color:"#f4f1ec",marginBottom:16}}>{lostDoc.label}</div>
@@ -1049,7 +1048,6 @@ function ProfileTab({ userName, userEmail, userCountry, userState, userCity, lan
     </button>
   ),[]);
 
-  // ⚠️ ARMY — 3 options seulement, PAS de retrait
   const ARMY_OPTS: Record<Lang,{value:string;label:string;icon:string;desc:string}[]> = {
     fr:[
       {value:"army",       label:"Je suis dans l'Army",     icon:"🎖️", desc:"Soldat actif — avantages militaires"},
@@ -1108,10 +1106,10 @@ function ProfileTab({ userName, userEmail, userCountry, userState, userCity, lan
         </div>
       )}
 
-      {/* ARMY MODAL — 3 options, pas de retrait */}
+      {/* ✅ FIX — Modal Army profil avec maxHeight:"80vh" et overflowY:"auto" */}
       {showArmyModal&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.9)",zIndex:700,display:"flex",alignItems:"flex-end",justifyContent:"center",backdropFilter:"blur(4px)"}} onClick={()=>setShowArmyModal(false)}>
-          <div style={{background:"#0f1521",border:"1px solid #1e2a3a",borderRadius:"20px 20px 0 0",padding:"22px 18px 44px",width:"100%",maxWidth:480,animation:"slideUp 0.3s ease"}} onClick={e=>e.stopPropagation()}>
+          <div style={{background:"#0f1521",border:"1px solid #1e2a3a",borderRadius:"20px 20px 0 0",padding:"22px 18px 44px",width:"100%",maxWidth:480,maxHeight:"80vh",overflowY:"auto",animation:"slideUp 0.3s ease"}} onClick={e=>e.stopPropagation()}>
             <div style={{width:32,height:3,background:"#2a3448",borderRadius:3,margin:"0 auto 18px"}}/>
             <div style={{fontSize:16,fontWeight:700,color:"#f4f1ec",marginBottom:4}}>{L.armyModalTitle}</div>
             <div style={{fontSize:13,color:"#aaa",marginBottom:16}}>{lang==="fr"?"Choisis ton statut actuel :":lang==="es"?"Elige tu estado actual:":"Choose your current status:"}</div>
@@ -1140,7 +1138,6 @@ function ProfileTab({ userName, userEmail, userCountry, userState, userCity, lan
 
       <div style={{fontSize:21,fontWeight:700,color:"#fff",marginBottom:16}}>{L.title}</div>
 
-      {/* Avatar circulaire */}
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",marginBottom:16}}>
         <div style={{position:"relative",width:size,height:size,marginBottom:10}}>
           <svg width={size} height={size} style={{transform:"rotate(-90deg)"}}><circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#1e2a3a" strokeWidth={sw}/><circle cx={size/2} cy={size/2} r={r} fill="none" stroke={currentPhaseMeta.color} strokeWidth={sw} strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset} style={{transition:"stroke-dashoffset 0.8s ease"}}/></svg>
@@ -1160,7 +1157,6 @@ function ProfileTab({ userName, userEmail, userCountry, userState, userCity, lan
         </div>
       </div>
 
-      {/* Score global */}
       <div style={{background:"#141d2e",border:"1px solid #1e2a3a",borderRadius:12,padding:"14px 16px",marginBottom:4}}>
         <div style={{fontSize:10,color:"#aaa",letterSpacing:"0.1em",textTransform:"uppercase" as const,marginBottom:8}}>{L.globalScore}</div>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
@@ -1169,7 +1165,6 @@ function ProfileTab({ userName, userEmail, userCountry, userState, userCity, lan
         </div>
       </div>
 
-      {/* Mini phases */}
       <Section title={L.phases}/>
       <div style={{display:"flex",gap:6,flexWrap:"wrap" as const,marginBottom:4}}>
         {([1,2,3,4,5] as PhaseId[]).map(pid=>{const meta=PHASES_META[pid];const prog=phaseProgress[pid];const unlocked=isPhaseUnlocked(pid,completedSteps);const complete=prog.pct===100;return(
@@ -1180,7 +1175,6 @@ function ProfileTab({ userName, userEmail, userCountry, userState, userCity, lan
         );})}
       </div>
 
-      {/* Army section — MODIFIER seulement, pas retirer */}
       {armyStatus&&(
         <>
           <Section title={L.armySection}/>
@@ -1240,9 +1234,10 @@ function ProfileTab({ userName, userEmail, userCountry, userState, userCity, lan
         ))}
       </div>
 
+      {/* ✅ FIX — Terms et Privacy : window.location.href au lieu de window.open(_blank) */}
       <Section title={L.legal}/>
       <div style={{display:"flex",flexDirection:"column",gap:6}}>
-        {[{icon:"📄",label:L.terms,action:()=>{window.open("/terms","_blank");}},{icon:"🔒",label:L.privacy2,action:()=>{window.open("/privacy","_blank");}}].map((item,i)=>(
+        {[{icon:"📄",label:L.terms,action:()=>{window.location.href="/terms";}},{icon:"🔒",label:L.privacy2,action:()=>{window.location.href="/privacy";}}].map((item,i)=>(
           <button key={i} onClick={item.action} style={{width:"100%",background:"#141d2e",border:"1px solid #1e2a3a",borderRadius:12,padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",fontFamily:"inherit"}}>
             <div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:32,height:32,borderRadius:8,background:"#1a2438",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15}}>{item.icon}</div><span style={{fontSize:13,color:"#fff"}}>{item.label}</span></div>
             <ChevronRight size={15} color="#555"/>
@@ -1329,10 +1324,8 @@ export default function Dashboard() {
 
   const streak = useStreak(userId);
 
-  // Scroll to top quand on change de tab
   useEffect(() => { pageRef.current?.scrollTo({top:0,behavior:"auto"}); }, [activeTab]);
 
-  // Scroll to top Home button
   const handleHomePress = useCallback(() => {
     if (activeTab==="home") { pageRef.current?.scrollTo({top:0,behavior:"smooth"}); }
     else { setActiveTab("home"); }
@@ -1418,7 +1411,6 @@ export default function Dashboard() {
 
   const { currentPhase, phaseProgress } = getPhaseStats(completedSteps);
   const currentPhaseMeta = PHASES_META[currentPhase];
-  const phase1Done = PHASE_STEPS[1].filter(s=>completedSteps.includes(s.id)).length;
 
   const CHECKLIST_ITEMS: Record<Lang,{id:string;label:string}[]> = {
     fr:[{id:"passport",label:"Passeport valide (6 mois minimum)"},{id:"visa",label:"Visa immigrant approuvé"},{id:"ticket",label:"Billet d'avion confirmé"},{id:"cash",label:"Argent liquide ($500 minimum)"},{id:"insurance",label:"Assurance voyage souscrite"},{id:"contacts",label:"Contacts d'urgence notés"},{id:"address",label:"Adresse temporaire aux USA"},{id:"copies",label:"Copies des documents importants"}],
@@ -1439,15 +1431,12 @@ export default function Dashboard() {
   return (
     <div style={{background:"#0b0f1a",height:"100dvh",overflow:"hidden",color:"#fff"}}>
 
-      {/* SEARCH MODAL */}
       {showSearch&&<SearchModal lang={lang} onClose={()=>setShowSearch(false)}/>}
 
-      {/* OVERLAYS */}
       <PhaseUnlockOverlay phaseId={phaseUnlockAnim} lang={lang} onDone={()=>setPhaseUnlockAnim(null)}/>
       <ArmyGuideModal armyStatus={showArmyGuide?armyStatus:null} lang={lang} onClose={()=>setShowArmyGuide(false)}/>
       <StepModal stepId={activeStepModal} lang={lang} completedSteps={completedSteps} onToggle={toggleStep} onClose={()=>setActiveStepModal(null)}/>
 
-      {/* DELETE MODAL */}
       {showDeleteModal&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:1000,display:"flex",alignItems:"flex-end",justifyContent:"center",backdropFilter:"blur(4px)"}} onClick={()=>{setShowDeleteModal(false);setDeleteStep(1);setDeleteInput("");setDeleteError("");}}>
           <div style={{background:"#0f1521",border:"1px solid #1e2a3a",borderRadius:"20px 20px 0 0",padding:"22px 18px 44px",width:"100%",maxWidth:480}} onClick={e=>e.stopPropagation()}>
@@ -1478,11 +1467,9 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* SCROLLABLE PAGE CONTENT */}
       <div ref={pageRef} style={{height:"calc(100dvh - 68px)",overflowY:"auto",padding:"0",WebkitOverflowScrolling:"touch" as any}}>
         <div style={{padding:"16px 16px 20px",maxWidth:480,margin:"0 auto"}}>
 
-          {/* HEADER */}
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
             <div style={{fontWeight:"bold",fontSize:22,letterSpacing:"-0.02em"}}><span style={{color:"#e8b84b"}}>Ku</span>abo</div>
             <div ref={menuRef} style={{position:"relative"}}>
@@ -1503,18 +1490,15 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* ✅ BARRE DE RECHERCHE */}
           <button onClick={()=>setShowSearch(true)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,background:"#141d2e",border:"1px solid #1e2a3a",borderRadius:12,padding:"12px 14px",marginBottom:16,cursor:"pointer",fontFamily:"inherit",textAlign:"left" as const}}>
             <Search size={16} color="#555"/>
             <span style={{fontSize:14,color:"#555",flex:1}}>{searchPlaceholder}</span>
           </button>
 
-          {/* HOME TAB */}
           {activeTab==="home"&&(
             <>
               <CircularHero currentPhase={currentPhase} phaseProgress={phaseProgress} lang={lang}/>
 
-              {/* STATS */}
               <div style={{display:"flex",gap:8,marginBottom:14}}>
                 <div style={{flex:1,background:"#141d2e",border:"1px solid #1e2a3a",borderRadius:12,padding:"10px 8px",textAlign:"center" as const}}>
                   <div style={{fontSize:22,fontWeight:800,color:currentPhaseMeta.color,lineHeight:1}}>{phaseProgress[currentPhase].done}</div>
@@ -1539,7 +1523,6 @@ export default function Dashboard() {
               <BadgesRow completedSteps={completedSteps} lang={lang}/>
               <AdBanner lang={lang} userState={userState} userCountry={userCountry}/>
 
-              {/* Checklist avant départ */}
               {phaseProgress[1].done===0&&(
                 <div style={{marginBottom:14,background:"rgba(232,184,75,0.05)",border:"1px solid rgba(232,184,75,0.18)",borderRadius:14,padding:"16px"}}>
                   <div style={{fontSize:15,fontWeight:700,color:"#e8b84b",marginBottom:4}}>{lang==="fr"?"📋 Checklist avant ton départ":lang==="es"?"📋 Lista antes de partir":"📋 Pre-departure checklist"}</div>
@@ -1555,7 +1538,6 @@ export default function Dashboard() {
                 </div>
               )}
 
-              {/* PHASES */}
               <div style={{marginBottom:6}}>
                 <div style={{fontSize:11,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase" as const,marginBottom:12,fontWeight:600}}>🗺️ {lang==="fr"?"Ton parcours Kuabo":lang==="es"?"Tu camino Kuabo":"Your Kuabo Journey"}</div>
                 {([1,2,3,4,5] as PhaseId[]).map(pid=>(
@@ -1575,7 +1557,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* TOAST */}
           {toast&&(
             <div style={{position:"fixed",bottom:80,left:"50%",transform:"translateX(-50%)",background:"#1a2438",padding:"10px 18px",borderRadius:12,border:"1px solid rgba(255,255,255,0.07)",boxShadow:"0 8px 24px rgba(0,0,0,0.4)",zIndex:999,display:"flex",alignItems:"center"}}>
               <span style={{fontSize:13}}>{toast}</span>
