@@ -66,11 +66,22 @@ export default function Dashboard() {
       setUserId(user.uid);
       setUserEmail(user.email || "");
       try {
-        const snap     = await getDoc(doc(db, "users", user.uid));
-        const data     = snap.exists() ? (snap.data() as any) : {};
+        const snap      = await getDoc(doc(db, "users", user.uid));
+        const data      = snap.exists() ? (snap.data() as any) : {};
         const savedLang = localStorage.getItem("lang") as Lang;
-        const name      = data?.name || user.displayName || user.email?.split("@")[0] || "User";
-        const userLang  = (data?.lang as Lang) || savedLang || "fr";
+
+        // Si le nom Firebase est "***" (compte partiellement supprimé) → on prend Google ou email
+        const rawName = data?.name;
+        const name    = (!rawName || rawName === "***" || rawName === "")
+          ? (user.displayName || user.email?.split("@")[0] || "User")
+          : rawName;
+
+        // Si le nom était "***", on le répare dans Firebase automatiquement
+        if (rawName === "***" || rawName === "") {
+          try { await updateDoc(doc(db, "users", user.uid), { name, deleted: false }); } catch {}
+        }
+
+        const userLang = (data?.lang as Lang) || savedLang || "fr";
         setUserName(name);
         setLang(userLang);
         setCompletedSteps(data?.completedSteps || []);
