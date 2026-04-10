@@ -5,6 +5,8 @@ import { useState, useEffect, useRef } from "react";
 import {
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   sendEmailVerification,
   onAuthStateChanged,
@@ -18,6 +20,15 @@ type Lang = "en" | "fr" | "es";
 
 const isValidEmail = (email: string) =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+// Détecte Safari / iOS pour utiliser redirect au lieu de popup
+const isSafariOrIOS = () => {
+  if (typeof window === "undefined") return false;
+  const ua = window.navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+  return isIOS || isSafari;
+};
 
 const T = {
   en: {
@@ -157,32 +168,57 @@ export default function Login() {
   const [showLoader, setShowLoader]       = useState(false);
   const [emailTouched, setEmailTouched]   = useState(false);
 
-  const emailValid = !emailTouched || email === "" || isValidEmail(email);
-  const errorRef   = useRef<HTMLDivElement>(null);
-  const successRef = useRef<HTMLDivElement>(null);
+  const emailValid       = !emailTouched || email === "" || isValidEmail(email);
+  const errorRef         = useRef<HTMLDivElement>(null);
+  const successRef       = useRef<HTMLDivElement>(null);
   const googleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const text = T[lang];
+  const text             = T[lang];
 
   useEffect(() => {
-    if (error && errorRef.current) {
-      errorRef.current.scrollIntoView({ behavior:"smooth", block:"center" });
-    }
+    if (error && errorRef.current) errorRef.current.scrollIntoView({ behavior:"smooth", block:"center" });
   }, [error]);
 
   useEffect(() => {
-    if (success && successRef.current) {
-      successRef.current.scrollIntoView({ behavior:"smooth", block:"center" });
-    }
+    if (success && successRef.current) successRef.current.scrollIntoView({ behavior:"smooth", block:"center" });
   }, [success]);
 
-  useEffect(() => {
-    setTimeout(() => setMounted(true), 50);
-  }, []);
+  useEffect(() => { setTimeout(() => setMounted(true), 50); }, []);
 
   useEffect(() => {
-    return () => {
-      if (googleTimeoutRef.current) clearTimeout(googleTimeoutRef.current);
+    return () => { if (googleTimeoutRef.current) clearTimeout(googleTimeoutRef.current); };
+  }, []);
+
+  // ── Gérer le résultat du redirect Google (Safari/iOS) ──
+  useEffect(() => {
+    const handleRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (!result) return;
+        const user = result.user;
+        const snap = await getDoc(doc(db, "users", user.uid));
+        if (!snap.exists()) {
+          await setDoc(doc(db, "users", user.uid), {
+            name: user.displayName || "",
+            email: user.email || "",
+            completedSteps: [],
+            lang,
+            onboardingCompleted: false,
+            createdAt: new Date().toISOString(),
+          });
+          redirectWithLoader("/welcome");
+          return;
+        }
+        const data = snap.data() as any;
+        if (data.lang) localStorage.setItem("lang", data.lang);
+        localStorage.setItem("userName", data.name || user.displayName || "User");
+        redirectWithLoader(data.onboardingCompleted ? "/dashboard" : "/welcome");
+      } catch (err: any) {
+        if (err.code && err.code !== "auth/no-current-user") {
+          setError(T[lang].googleError);
+        }
+      }
     };
+    handleRedirectResult();
   }, []);
 
   useEffect(() => {
@@ -273,10 +309,25 @@ export default function Login() {
     setError(""); setSuccess("");
     if (googleLoading) { setGoogleLoading(false); return; }
     setGoogleLoading(true);
+
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+
+    // Safari / iOS → redirect (pas de popup)
+    if (isSafariOrIOS()) {
+      try {
+        await signInWithRedirect(auth, provider);
+        // La page va se recharger — getRedirectResult s'en occupe
+      } catch (err: any) {
+        setError(text.googleError);
+        setGoogleLoading(false);
+      }
+      return;
+    }
+
+    // Autres navigateurs → popup
     googleTimeoutRef.current = setTimeout(() => { setGoogleLoading(false); }, 30000);
     try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: "select_account" });
       const cred = await signInWithPopup(auth, provider);
       if (googleTimeoutRef.current) clearTimeout(googleTimeoutRef.current);
       const user = cred.user;
@@ -299,11 +350,14 @@ export default function Login() {
       redirectWithLoader(data.onboardingCompleted ? "/dashboard" : "/welcome");
     } catch (err: any) {
       if (googleTimeoutRef.current) clearTimeout(googleTimeoutRef.current);
-      if (
-        err.code === "auth/popup-closed-by-user" ||
-        err.code === "auth/cancelled-popup-request"
-      ) { setGoogleLoading(false); return; }
-      if (err.code === "auth/popup-blocked") { setError(text.popupBlocked); setGoogleLoading(false); return; }
+      if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {
+        setGoogleLoading(false); return;
+      }
+      if (err.code === "auth/popup-blocked") {
+        // Fallback redirect si popup bloqué sur desktop aussi
+        try { await signInWithRedirect(auth, provider); } catch { setError(text.popupBlocked); }
+        setGoogleLoading(false); return;
+      }
       if (err.code === "auth/too-many-requests") { setError(text.tooMany); setGoogleLoading(false); return; }
       setError(text.googleError);
       setGoogleLoading(false);
@@ -455,25 +509,17 @@ export default function Login() {
           ) : text.btn}
         </button>
 
-        {/* ✅ FIX — Terms et Privacy avec router.push au lieu de window.open */}
         <div style={{ textAlign:"center", marginTop:16, fontSize:11, color:"#555", lineHeight:1.6 }}>
           {text.terms}{" "}
-          <span
-            style={{ color:"#e8b84b", cursor:"pointer", textDecoration:"underline" }}
-            onClick={() => router.push("/terms")}
-          >
+          <span style={{ color:"#e8b84b", cursor:"pointer", textDecoration:"underline" }} onClick={() => router.push("/terms")}>
             {text.termsLink}
           </span>
           {" "}{text.and}{" "}
-          <span
-            style={{ color:"#e8b84b", cursor:"pointer", textDecoration:"underline" }}
-            onClick={() => router.push("/privacy")}
-          >
+          <span style={{ color:"#e8b84b", cursor:"pointer", textDecoration:"underline" }} onClick={() => router.push("/privacy")}>
             {text.privacyLink}
           </span>
         </div>
 
-        {/* Sign up */}
         <div style={bottomText}>
           <span style={{ color:"#aaa" }}>{text.noAccount} </span>
           <span style={linkStyle} onClick={() => router.push("/signup")}>{text.signup}</span>
