@@ -64,18 +64,27 @@ function CountdownSection({ arrivalDate, lang, completedSteps, onOpenStep }: {
   if (!arrivalDate) return null;
 
   const allDeadlines = [
-    { id: "ssn", days: 10 }, { id: "phone", days: 1 }, { id: "bank", days: 14 },
-    { id: "greencard", days: 21 }, { id: "housing", days: 30 }, { id: "license", days: 45 }, { id: "job", days: 90 },
-    { id: "taxes_first", days: 90 }, { id: "real_id", days: 60 }, { id: "credit_score", days: 60 },
-    { id: "taxes_annual", days: 365 }, { id: "taxes_annual_4", days: 365 }, { id: "taxes_lifetime", days: 365 },
-    { id: "renew_greencard", days: 3650 },
+    { id: "ssn", days: 10, priority: 1 }, { id: "phone", days: 1, priority: 2 }, { id: "bank", days: 14, priority: 3 },
+    { id: "greencard", days: 21, priority: 4 }, { id: "housing", days: 30, priority: 5 }, { id: "license", days: 45, priority: 6 }, { id: "job", days: 90, priority: 7 },
+    { id: "taxes_first", days: 90, priority: 8 }, { id: "real_id", days: 60, priority: 9 }, { id: "credit_score", days: 60, priority: 10 },
+    { id: "taxes_annual", days: 365, priority: 11 }, { id: "taxes_annual_4", days: 365, priority: 12 }, { id: "taxes_lifetime", days: 365, priority: 13 },
+    { id: "renew_greencard", days: 3650, priority: 14 },
   ];
   const allPhaseSteps = [...PHASE_STEPS[1], ...PHASE_STEPS[2], ...PHASE_STEPS[3], ...PHASE_STEPS[4], ...PHASE_STEPS[5]];
+
+  // SSN toujours en 1er s'il n'est pas complété — sinon tri par daysLeft
+  const ssnPending = !completedSteps.includes("ssn");
   const pending = allDeadlines
     .filter(d => !completedSteps.includes(d.id))
     .map(d => ({ ...d, daysLeft: getDaysLeft(arrivalDate, d.days), dateStr: addDays(arrivalDate, d.days) }))
-    .filter(d => d.daysLeft <= 45)
-    .sort((a, b) => a.daysLeft - b.daysLeft);
+    .filter(d => d.id === "ssn" || d.daysLeft <= 45) // SSN toujours visible
+    .sort((a, b) => {
+      // SSN toujours en premier
+      if (ssnPending && a.id === "ssn") return -1;
+      if (ssnPending && b.id === "ssn") return 1;
+      // Ensuite par daysLeft croissant
+      return a.daysLeft - b.daysLeft;
+    });
 
   if (pending.length === 0) return null;
   const urgent   = pending[0];
