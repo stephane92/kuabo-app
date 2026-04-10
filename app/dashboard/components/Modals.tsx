@@ -109,9 +109,9 @@ export function StepModal({ stepId, lang, completedSteps, onToggle, onClose }: {
   const isDone    = completedSteps.includes(stepId);
   const urgColor  = stepData.urgency === "critical" ? "#ef4444" : stepData.urgency === "high" ? "#f97316" : "#e8b84b";
   const L = {
-    fr: { why: "Pourquoi c'est important", done: "✅ Marquer comme fait", undone: "↩️ Retirer",    guide: "📖 Voir le guide →",    explorer: "🗺️ Trouver un bureau",    close: "Fermer" },
-    en: { why: "Why it's important",       done: "✅ Mark as done",       undone: "↩️ Remove",     guide: "📖 View guide →",       explorer: "🗺️ Find an office",        close: "Close" },
-    es: { why: "Por qué es importante",    done: "✅ Marcar como hecho",  undone: "↩️ Quitar",     guide: "📖 Ver guía →",         explorer: "🗺️ Encontrar oficina",    close: "Cerrar" },
+    fr: { why: "Pourquoi c'est important", done: "✅ Marquer comme fait", undone: "↩️ Retirer",    guide: "📖 Voir le guide →",    explorer: "🗺️ Trouver un bureau",    close: "← Retour" },
+    en: { why: "Why it's important",       done: "✅ Mark as done",       undone: "↩️ Remove",     guide: "📖 View guide →",       explorer: "🗺️ Find an office",        close: "← Back" },
+    es: { why: "Por qué es importante",    done: "✅ Marcar como hecho",  undone: "↩️ Quitar",     guide: "📖 Ver guía →",         explorer: "🗺️ Encontrar oficina",    close: "← Volver" },
   }[lang];
 
   return (

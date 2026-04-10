@@ -45,7 +45,8 @@ export default function ProfileTab({
   const [passwordError, setPasswordError] = useState("");
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [displayName,   setDisplayName]   = useState(userName);
-  const [showArmyModal, setShowArmyModal] = useState(false);
+  const [showArmyModal,    setShowArmyModal]    = useState(false);
+  const [armyConfirmOpt,   setArmyConfirmOpt]   = useState<string | null>(null); // option en attente de confirmation
 
   const { currentPhase, phaseProgress } = getPhaseStats(completedSteps);
   const globalPct = Math.round(Object.values(phaseProgress).reduce((acc, p) => acc + p.pct, 0) / 5);
@@ -212,42 +213,88 @@ export default function ProfileTab({
       {showArmyModal && (
         <div
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.9)", zIndex: 700, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)", padding: "0 16px" }}
-          onClick={() => setShowArmyModal(false)}
+          onClick={() => { setShowArmyModal(false); setArmyConfirmOpt(null); }}
         >
           <div
             style={{ background: "#0f1521", border: "1px solid #1e2a3a", borderRadius: 20, padding: "24px 18px", width: "100%", maxWidth: 480, maxHeight: "80vh", overflowY: "auto", animation: "alertPop 0.3s cubic-bezier(.34,1.56,.64,1)" }}
             onClick={e => e.stopPropagation()}
           >
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#f4f1ec", marginBottom: 4 }}>{L.armyModalTitle}</div>
-            <div style={{ fontSize: 13, color: "#aaa", marginBottom: 16 }}>
-              {lang === "fr" ? "Choisis ton statut actuel :" : lang === "es" ? "Elige tu estado actual:" : "Choose your current status:"}
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {ARMY_OPTS[lang].map(opt => {
-                const isSel = armyStatus === opt.value;
-                return (
+            {/* ── Étape 1 : choisir ── */}
+            {!armyConfirmOpt && (<>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#f4f1ec", marginBottom: 4 }}>{L.armyModalTitle}</div>
+              <div style={{ fontSize: 13, color: "#aaa", marginBottom: 16 }}>
+                {lang === "fr" ? "Choisis ton statut actuel :" : lang === "es" ? "Elige tu estado actual:" : "Choose your current status:"}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+                {ARMY_OPTS[lang].map(opt => {
+                  const isSel = armyStatus === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => {
+                        if (isSel) return; // déjà sélectionné, rien à faire
+                        setArmyConfirmOpt(opt.value);
+                      }}
+                      style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: isSel ? "rgba(34,197,94,0.07)" : "#141d2e", border: "1px solid " + (isSel ? "rgba(34,197,94,0.25)" : "#1e2a3a"), borderRadius: 12, cursor: isSel ? "default" : "pointer", width: "100%", textAlign: "left" as const, fontFamily: "inherit" }}
+                    >
+                      <span style={{ fontSize: 22 }}>{opt.icon}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 14, color: isSel ? "#22c55e" : "#f4f1ec", fontWeight: isSel ? 700 : 500 }}>{opt.label}</div>
+                        <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>{opt.desc}</div>
+                      </div>
+                      {isSel && <span style={{ fontSize: 16, color: "#22c55e" }}>✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+              {/* Bouton Fermer */}
+              <button
+                onClick={() => setShowArmyModal(false)}
+                style={{ width: "100%", padding: "13px", background: "#141d2e", border: "1px solid #1e2a3a", borderRadius: 12, color: "#aaa", fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}
+              >
+                {lang === "fr" ? "← Retour" : lang === "es" ? "← Volver" : "← Back"}
+              </button>
+            </>)}
+
+            {/* ── Étape 2 : confirmer ── */}
+            {armyConfirmOpt && (() => {
+              const opt = ARMY_OPTS[lang].find(o => o.value === armyConfirmOpt)!;
+              return (<>
+                <div style={{ fontSize: 36, textAlign: "center", marginBottom: 12 }}>{opt.icon}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "#f4f1ec", textAlign: "center", marginBottom: 8 }}>
+                  {lang === "fr" ? "Confirmer le changement ?" : lang === "es" ? "¿Confirmar el cambio?" : "Confirm the change?"}
+                </div>
+                <div style={{ background: "rgba(232,184,75,0.06)", border: "1px solid rgba(232,184,75,0.2)", borderRadius: 12, padding: "14px", marginBottom: 20, textAlign: "center" as const }}>
+                  <div style={{ fontSize: 13, color: "#aaa", marginBottom: 4 }}>
+                    {lang === "fr" ? "Nouveau statut :" : lang === "es" ? "Nuevo estado:" : "New status:"}
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "#f4f1ec" }}>{opt.label}</div>
+                  <div style={{ fontSize: 12, color: "#555", marginTop: 2 }}>{opt.desc}</div>
+                </div>
+                <div style={{ display: "flex", gap: 10 }}>
                   <button
-                    key={opt.value}
+                    onClick={() => setArmyConfirmOpt(null)}
+                    style={{ flex: 1, padding: "13px", background: "#141d2e", border: "1px solid #1e2a3a", borderRadius: 12, color: "#aaa", fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}
+                  >
+                    {lang === "fr" ? "← Retour" : lang === "es" ? "← Volver" : "← Back"}
+                  </button>
+                  <button
                     onClick={async () => {
                       setShowArmyModal(false);
-                      onArmyChange(opt.value);
+                      setArmyConfirmOpt(null);
+                      onArmyChange(armyConfirmOpt);
                       const user = auth.currentUser;
                       if (user) {
-                        try { await updateDoc(doc(db, "users", user.uid), { armyStatus: opt.value, isArmy: opt.value === "army", reason: opt.value }); } catch {}
+                        try { await updateDoc(doc(db, "users", user.uid), { armyStatus: armyConfirmOpt, isArmy: armyConfirmOpt === "army", reason: armyConfirmOpt }); } catch {}
                       }
                     }}
-                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: isSel ? "rgba(34,197,94,0.07)" : "#141d2e", border: "1px solid " + (isSel ? "rgba(34,197,94,0.25)" : "#1e2a3a"), borderRadius: 12, cursor: "pointer", width: "100%", textAlign: "left" as const, fontFamily: "inherit" }}
+                    style={{ flex: 1, padding: "13px", background: "#22c55e", border: "none", borderRadius: 12, color: "#000", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
                   >
-                    <span style={{ fontSize: 22 }}>{opt.icon}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, color: isSel ? "#22c55e" : "#f4f1ec", fontWeight: isSel ? 700 : 500 }}>{opt.label}</div>
-                      <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>{opt.desc}</div>
-                    </div>
-                    {isSel && <span style={{ fontSize: 16, color: "#22c55e" }}>✓</span>}
+                    {lang === "fr" ? "✅ Confirmer" : lang === "es" ? "✅ Confirmar" : "✅ Confirm"}
                   </button>
-                );
-              })}
-            </div>
+                </div>
+              </>);
+            })()}
           </div>
         </div>
       )}
