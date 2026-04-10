@@ -336,7 +336,17 @@ export default function Step3() {
               placeholder={text.searchPlaceholder}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              style={{ flex:1, background:"none", border:"none", outline:"none", color:"#f4f1ec", fontSize:14, fontFamily:"inherit" }}
+              inputMode="search"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              style={{
+                flex:1, background:"none", border:"none", outline:"none",
+                color:"#f4f1ec",
+                fontSize:"16px", // ✅ 16px minimum — empêche le zoom sur iOS/Safari
+                fontFamily:"inherit",
+              }}
             />
             {searchQuery && (
               <button onClick={() => setSearchQuery("")} style={{ background:"none", border:"none", color:"#555", cursor:"pointer", fontSize:16, fontFamily:"inherit" }}>✕</button>
@@ -442,6 +452,7 @@ export default function Step3() {
         @keyframes confirmPop   { 0%{transform:scale(0.9);opacity:0} 100%{transform:scale(1);opacity:1} }
         button:active           { transform: scale(0.98) !important }
         input::placeholder      { color: #444 }
+        input                   { font-size: 16px !important } /* ✅ empêche zoom iOS */
         ::-webkit-scrollbar     { width: 4px }
         ::-webkit-scrollbar-track { background: #0f1521 }
         ::-webkit-scrollbar-thumb { background: #2a3448; border-radius: 4px }
