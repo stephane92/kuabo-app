@@ -20,7 +20,7 @@ export const THEME_COLORS = {
     text:        "#f4f1ec",
     textMuted:   "#aaa",
     textFaint:   "#555",
-    gold:        "#e8b84b",   // or sur fond sombre ✅
+    gold:        "#e8b84b",
     teal:        "#2dd4bf",
     green:       "#22c55e",
     red:         "#ef4444",
@@ -29,26 +29,28 @@ export const THEME_COLORS = {
     navBg:       "#0f1521",
     navBorder:   "#1e2a3a",
     shadow:      "rgba(0,0,0,0.4)",
+    overlay:     "rgba(0,0,0,0.85)",
   },
   light: {
-    bg:          "#f5f0e8",
-    bgCard:      "#ffffff",
-    bgDeep:      "#ede8df",
-    bgInput:     "#f0ebe2",
-    border:      "#ddd6ca",
-    borderLight: "#ccc5b8",
-    text:        "#0f1521",   // presque noir — lisible sur fond clair ✅
-    textMuted:   "#444444",   // gris foncé — lisible ✅
-    textFaint:   "#888888",   // gris moyen — lisible ✅
-    gold:        "#c9952a",   // or foncé sur fond clair — jamais #e8b84b ✅
-    teal:        "#0d9488",
-    green:       "#16a34a",
-    red:         "#dc2626",
-    orange:      "#ea580c",
-    purple:      "#7c3aed",
-    navBg:       "#ffffff",
-    navBorder:   "#ddd6ca",
-    shadow:      "rgba(0,0,0,0.12)",
+    bg:          "#f2f2f2",   // fond gris très clair (comme Walmart) ✅
+    bgCard:      "#ffffff",   // cards blanc pur ✅
+    bgDeep:      "#e8e8e8",   // sections légèrement plus sombres ✅
+    bgInput:     "#f8f8f8",   // inputs légers ✅
+    border:      "#e0e0e0",   // bordures discrètes ✅
+    borderLight: "#ececec",
+    text:        "#1a1a1a",   // noir quasi-pur — lisibilité maximale ✅
+    textMuted:   "#444444",   // gris foncé lisible ✅
+    textFaint:   "#888888",   // gris moyen lisible ✅
+    gold:        "#b8860b",   // or foncé sur blanc — bon contraste ✅
+    teal:        "#0a7c74",   // teal foncé sur blanc ✅
+    green:       "#15803d",   // vert foncé ✅
+    red:         "#b91c1c",   // rouge foncé ✅
+    orange:      "#c2410c",   // orange foncé ✅
+    purple:      "#6d28d9",   // violet foncé ✅
+    navBg:       "#ffffff",   // nav blanche ✅
+    navBorder:   "#e0e0e0",   // bordure nav discrète ✅
+    shadow:      "rgba(0,0,0,0.08)",
+    overlay:     "rgba(0,0,0,0.5)",
   },
 };
 
@@ -56,12 +58,12 @@ export const THEME_COLORS = {
 // CONTEXT
 // ══════════════════════════════════════════════
 const ThemeContext = createContext<{
-  theme:     Theme;
-  colors:    typeof THEME_COLORS.dark;
+  theme:       Theme;
+  colors:      typeof THEME_COLORS.dark & typeof THEME_COLORS.light;
   toggleTheme: () => void;
 }>({
   theme:       "dark",
-  colors:      THEME_COLORS.dark,
+  colors:      THEME_COLORS.dark as any,
   toggleTheme: () => {},
 });
 
