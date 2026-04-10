@@ -29,105 +29,181 @@ const MAIN_OPTIONS: Record<Lang, {label:string;value:string;icon:string;desc:str
   ],
 };
 
-// ✅ Sous-options "Autre"
 const SUB_OPTIONS: Record<Lang, {label:string;value:string;icon:string}[]> = {
   fr:[
-    {icon:"💼",label:"Visa travail",          value:"work"   },
-    {icon:"🎓",label:"Étudiant",              value:"student"},
-    {icon:"👨‍👩‍👧",label:"Regroupement familial",value:"family" },
-    {icon:"🕊️",label:"Réfugié / Asile",       value:"refugee"},
+    {icon:"💼",label:"Visa travail",           value:"work"   },
+    {icon:"🎓",label:"Étudiant",               value:"student"},
+    {icon:"👨‍👩‍👧",label:"Regroupement familial", value:"family" },
+    {icon:"🕊️",label:"Réfugié / Asile",        value:"refugee"},
   ],
   en:[
-    {icon:"💼",label:"Work visa",             value:"work"   },
-    {icon:"🎓",label:"Student",               value:"student"},
-    {icon:"👨‍👩‍👧",label:"Family reunification", value:"family" },
-    {icon:"🕊️",label:"Refugee / Asylum",      value:"refugee"},
+    {icon:"💼",label:"Work visa",              value:"work"   },
+    {icon:"🎓",label:"Student",                value:"student"},
+    {icon:"👨‍👩‍👧",label:"Family reunification",  value:"family" },
+    {icon:"🕊️",label:"Refugee / Asylum",       value:"refugee"},
   ],
   es:[
-    {icon:"💼",label:"Visa de trabajo",        value:"work"   },
-    {icon:"🎓",label:"Estudiante",             value:"student"},
-    {icon:"👨‍👩‍👧",label:"Reunificación familiar",value:"family" },
-    {icon:"🕊️",label:"Refugiado / Asilo",      value:"refugee"},
+    {icon:"💼",label:"Visa de trabajo",         value:"work"   },
+    {icon:"🎓",label:"Estudiante",              value:"student"},
+    {icon:"👨‍👩‍👧",label:"Reunificación familiar", value:"family" },
+    {icon:"🕊️",label:"Refugiado / Asilo",       value:"refugee"},
   ],
 };
 
-// ✅ Sous-options Army pour DV
-const ARMY_OPTIONS: Record<Lang, {label:string;value:string;icon:string;desc:string}[]> = {
+// ✅ 4 options Army OBLIGATOIRES — pas de skip
+const ARMY_OPTIONS: Record<Lang, {label:string;value:string;icon:string;desc:string;explain:string}[]> = {
   fr:[
-    {icon:"🎖️",label:"Oui, je suis dans l'Army",    value:"army",         desc:"Parcours militaire — logement, TRICARE, naturalisation accélérée"},
-    {icon:"🤔",label:"Je veux m'y engager",           value:"army_interest", desc:"On t'explique comment rejoindre l'Army avec une DV"},
-    {icon:"❓",label:"Je ne sais pas encore",          value:"army_unsure",   desc:"On t'informe — tu décides plus tard"},
-    {icon:"🎰",label:"Non, parcours DV classique",     value:"dv",            desc:"SSN, Green Card, logement, emploi..."},
+    {
+      icon:"🎖️",
+      label:"Oui, je suis dans l'Army",
+      value:"army",
+      desc:"Parcours militaire actif",
+      explain:"Tu bénéficies du logement sur base, TRICARE gratuit pour ta famille, et une naturalisation accélérée en seulement 1 an de service actif.",
+    },
+    {
+      icon:"🤔",
+      label:"Je veux m'engager",
+      value:"army_interest",
+      desc:"Je suis intéressé mais pas encore engagé",
+      explain:"Avec une DV Lottery, tu peux rejoindre l'Army dès ton arrivée. Kuabo t'explique les étapes : ASVAB, recruteur, Boot Camp.",
+    },
+    {
+      icon:"❓",
+      label:"Pas encore décidé",
+      value:"army_unsure",
+      desc:"Je veux en savoir plus avant de décider",
+      explain:"Pas de pression ! Kuabo te donnera toutes les infos sur l'Army au bon moment. Tu peux changer d'avis dans ton profil.",
+    },
+    {
+      icon:"🎰",
+      label:"DV Lottery classique",
+      value:"dv_classic",
+      desc:"Parcours DV standard sans l'Army",
+      explain:"Tu suis le parcours DV classique : SSN, Green Card, logement, emploi, credit score... Kuabo te guide étape par étape.",
+    },
   ],
   en:[
-    {icon:"🎖️",label:"Yes, I'm in the Army",         value:"army",          desc:"Military path — housing, TRICARE, fast-track naturalization"},
-    {icon:"🤔",label:"I want to enlist",              value:"army_interest",  desc:"We explain how to join the Army with a DV"},
-    {icon:"❓",label:"I'm not sure yet",               value:"army_unsure",    desc:"We'll inform you — you decide later"},
-    {icon:"🎰",label:"No, classic DV path",            value:"dv",             desc:"SSN, Green Card, housing, job..."},
+    {
+      icon:"🎖️",
+      label:"Yes, I'm in the Army",
+      value:"army",
+      desc:"Active military path",
+      explain:"You benefit from on-base housing, free TRICARE for your family, and fast-track naturalization in just 1 year of active duty.",
+    },
+    {
+      icon:"🤔",
+      label:"I want to enlist",
+      value:"army_interest",
+      desc:"Interested but not yet enlisted",
+      explain:"With a DV Lottery, you can join the Army upon arrival. Kuabo explains the steps: ASVAB, recruiter, Boot Camp.",
+    },
+    {
+      icon:"❓",
+      label:"Not decided yet",
+      value:"army_unsure",
+      desc:"I want more info before deciding",
+      explain:"No pressure! Kuabo will give you all the info about the Army when you need it. You can change your mind in your profile.",
+    },
+    {
+      icon:"🎰",
+      label:"Classic DV path",
+      value:"dv_classic",
+      desc:"Standard DV path without the Army",
+      explain:"You follow the classic DV path: SSN, Green Card, housing, job, credit score... Kuabo guides you step by step.",
+    },
   ],
   es:[
-    {icon:"🎖️",label:"Sí, estoy en el Army",         value:"army",           desc:"Camino militar — vivienda, TRICARE, naturalización acelerada"},
-    {icon:"🤔",label:"Quiero alistarme",               value:"army_interest",  desc:"Te explicamos cómo unirte al Army con una DV"},
-    {icon:"❓",label:"Todavía no sé",                  value:"army_unsure",    desc:"Te informamos — decides más tarde"},
-    {icon:"🎰",label:"No, camino DV clásico",          value:"dv",             desc:"SSN, Green Card, vivienda, trabajo..."},
+    {
+      icon:"🎖️",
+      label:"Sí, estoy en el Army",
+      value:"army",
+      desc:"Camino militar activo",
+      explain:"Tienes alojamiento en base, TRICARE gratis para tu familia y naturalización acelerada en solo 1 año de servicio activo.",
+    },
+    {
+      icon:"🤔",
+      label:"Quiero alistarme",
+      value:"army_interest",
+      desc:"Interesado pero aún no alistado",
+      explain:"Con una DV Lottery, puedes unirte al Army a tu llegada. Kuabo te explica los pasos: ASVAB, reclutador, Boot Camp.",
+    },
+    {
+      icon:"❓",
+      label:"Aún no lo decidí",
+      value:"army_unsure",
+      desc:"Quiero más información antes de decidir",
+      explain:"¡Sin presión! Kuabo te dará toda la información sobre el Army cuando la necesites. Puedes cambiar de opinión en tu perfil.",
+    },
+    {
+      icon:"🎰",
+      label:"Camino DV clásico",
+      value:"dv_classic",
+      desc:"Camino DV estándar sin el Army",
+      explain:"Sigues el camino DV clásico: SSN, Green Card, vivienda, trabajo, historial crediticio... Kuabo te guía paso a paso.",
+    },
   ],
 };
 
 const MOTIVATION: Record<string, Record<Lang, {emoji:string;title:string;msg:string}>> = {
   dv:{
-    fr:{emoji:"🎰",title:"DV Lottery — Tu l'as eu !",         msg:"Tu fais partie des chanceux. Kuabo va te guider étape par étape — SSN, Green Card, logement et bien plus."},
-    en:{emoji:"🎰",title:"DV Lottery — You made it!",          msg:"You're one of the lucky few. Kuabo will guide you through every step — SSN, Green Card, housing and more."},
-    es:{emoji:"🎰",title:"¡Lotería DV — Lo lograste!",         msg:"Eres uno de los afortunados. Kuabo te guiará en cada paso — SSN, Green Card, vivienda y más."},
+    fr:{emoji:"🎰",title:"DV Lottery — Tu l'as eu !",        msg:"Tu fais partie des chanceux. Kuabo va te guider étape par étape — SSN, Green Card, logement et bien plus."},
+    en:{emoji:"🎰",title:"DV Lottery — You made it!",         msg:"You're one of the lucky few. Kuabo will guide you through every step — SSN, Green Card, housing and more."},
+    es:{emoji:"🎰",title:"¡Lotería DV — Lo lograste!",        msg:"Eres uno de los afortunados. Kuabo te guiará en cada paso — SSN, Green Card, vivienda y más."},
+  },
+  dv_classic:{
+    fr:{emoji:"🎰",title:"DV Lottery classique !",            msg:"Tu suis le parcours DV standard. Kuabo te guide étape par étape — SSN, Green Card, logement, emploi et plus."},
+    en:{emoji:"🎰",title:"Classic DV path!",                  msg:"You follow the standard DV path. Kuabo guides you step by step — SSN, Green Card, housing, job and more."},
+    es:{emoji:"🎰",title:"¡Camino DV clásico!",               msg:"Sigues el camino DV estándar. Kuabo te guía paso a paso — SSN, Green Card, vivienda, trabajo y más."},
   },
   army:{
-    fr:{emoji:"🎖️",title:"Soldat et résident permanent !",    msg:"Double honneur. Kuabo va t'aider avec ton logement sur base, TRICARE, et ta naturalisation accélérée en 1 an."},
-    en:{emoji:"🎖️",title:"Soldier and permanent resident!",   msg:"Double honor. Kuabo will help you with on-base housing, TRICARE, and your fast-track naturalization in 1 year."},
-    es:{emoji:"🎖️",title:"¡Soldado y residente permanente!",  msg:"Doble honor. Kuabo te ayudará con tu alojamiento en base, TRICARE y tu naturalización acelerada en 1 año."},
+    fr:{emoji:"🎖️",title:"Soldat et résident permanent !",   msg:"Double honneur. Kuabo va t'aider avec ton logement sur base, TRICARE, et ta naturalisation accélérée en 1 an."},
+    en:{emoji:"🎖️",title:"Soldier and permanent resident!",  msg:"Double honor. Kuabo will help you with on-base housing, TRICARE, and your fast-track naturalization in 1 year."},
+    es:{emoji:"🎖️",title:"¡Soldado y residente permanente!", msg:"Doble honor. Kuabo te ayudará con tu alojamiento en base, TRICARE y tu naturalización acelerada en 1 año."},
   },
   army_interest:{
-    fr:{emoji:"🤔",title:"Intéressé par l'Army !",            msg:"Bonne idée. Kuabo va t'expliquer comment t'engager dans l'US Army avec ton statut DV — avantages, étapes et naturalisation."},
-    en:{emoji:"🤔",title:"Interested in the Army!",           msg:"Great idea. Kuabo will explain how to enlist in the US Army with your DV status — benefits, steps and naturalization."},
-    es:{emoji:"🤔",title:"¡Interesado en el Army!",           msg:"Buena idea. Kuabo te explicará cómo alistarte en el US Army con tu estatus DV — beneficios, pasos y naturalización."},
+    fr:{emoji:"🤔",title:"Intéressé par l'Army !",           msg:"Bonne idée. Kuabo va t'expliquer comment t'engager dans l'US Army avec ton statut DV — avantages, étapes et naturalisation."},
+    en:{emoji:"🤔",title:"Interested in the Army!",          msg:"Great idea. Kuabo will explain how to enlist in the US Army with your DV status — benefits, steps and naturalization."},
+    es:{emoji:"🤔",title:"¡Interesado en el Army!",          msg:"Buena idea. Kuabo te explicará cómo alistarte en el US Army con tu estatus DV — beneficios, pasos y naturalización."},
   },
   army_unsure:{
-    fr:{emoji:"❓",title:"On t'informe !",                    msg:"Pas de pression. Kuabo te donnera toutes les infos sur l'Army quand tu en auras besoin. Tu décides à ton rythme."},
-    en:{emoji:"❓",title:"We'll keep you informed!",          msg:"No pressure. Kuabo will give you all the info about the Army when you need it. You decide at your own pace."},
-    es:{emoji:"❓",title:"¡Te informaremos!",                 msg:"Sin presión. Kuabo te dará toda la información sobre el Army cuando la necesites. Decides a tu propio ritmo."},
+    fr:{emoji:"❓",title:"On t'informe !",                   msg:"Pas de pression. Kuabo te donnera toutes les infos sur l'Army quand tu en auras besoin. Tu décides à ton rythme."},
+    en:{emoji:"❓",title:"We'll keep you informed!",         msg:"No pressure. Kuabo will give you all the info about the Army when you need it. You decide at your own pace."},
+    es:{emoji:"❓",title:"¡Te informaremos!",                msg:"Sin presión. Kuabo te dará toda la información sobre el Army cuando la necesites. Decides a tu propio ritmo."},
   },
   worldcup:{
-    fr:{emoji:"🏆",title:"Coupe du Monde 2026 !",             msg:"USA, Canada, Mexique — Kuabo va t'aider à préparer ton voyage et en profiter au max."},
-    en:{emoji:"🏆",title:"World Cup 2026!",                   msg:"USA, Canada, Mexico — Kuabo will help you prepare your trip and make the most of it."},
-    es:{emoji:"🏆",title:"¡Copa del Mundo 2026!",             msg:"EE.UU., Canadá, México — Kuabo te ayudará a preparar tu viaje y disfrutarlo al máximo."},
+    fr:{emoji:"🏆",title:"Coupe du Monde 2026 !",            msg:"USA, Canada, Mexique — Kuabo va t'aider à préparer ton voyage et en profiter au max."},
+    en:{emoji:"🏆",title:"World Cup 2026!",                  msg:"USA, Canada, Mexico — Kuabo will help you prepare your trip and make the most of it."},
+    es:{emoji:"🏆",title:"¡Copa del Mundo 2026!",            msg:"EE.UU., Canadá, México — Kuabo te ayudará a preparar tu viaje y disfrutarlo al máximo."},
   },
   tourist:{
-    fr:{emoji:"✈️",title:"L'aventure t'attend !",             msg:"Kuabo va t'aider à préparer ton voyage — visas, conseils et tout pour profiter de ton séjour."},
-    en:{emoji:"✈️",title:"Adventure awaits!",                 msg:"Kuabo will help you prepare your trip — visas, tips, and everything to enjoy your stay."},
-    es:{emoji:"✈️",title:"¡La aventura te espera!",           msg:"Kuabo te ayudará a preparar tu viaje — visas, consejos y todo para disfrutar tu estancia."},
+    fr:{emoji:"✈️",title:"L'aventure t'attend !",            msg:"Kuabo va t'aider à préparer ton voyage — visas, conseils et tout pour profiter de ton séjour."},
+    en:{emoji:"✈️",title:"Adventure awaits!",                msg:"Kuabo will help you prepare your trip — visas, tips, and everything to enjoy your stay."},
+    es:{emoji:"✈️",title:"¡La aventura te espera!",          msg:"Kuabo te ayudará a preparar tu viaje — visas, consejos y todo para disfrutar tu estancia."},
   },
   work:{
-    fr:{emoji:"💼",title:"Prêt à travailler !",               msg:"Kuabo va t'aider à t'installer rapidement — documents, logement, et tout ce qu'il faut."},
-    en:{emoji:"💼",title:"Ready to work!",                    msg:"Kuabo will help you settle fast — documents, housing, and everything you need to start strong."},
-    es:{emoji:"💼",title:"¡Listo para trabajar!",             msg:"Kuabo te ayudará a instalarte rápido — documentos, vivienda y todo lo que necesitas."},
+    fr:{emoji:"💼",title:"Prêt à travailler !",              msg:"Kuabo va t'aider à t'installer rapidement — documents, logement, et tout ce qu'il faut."},
+    en:{emoji:"💼",title:"Ready to work!",                   msg:"Kuabo will help you settle fast — documents, housing, and everything you need to start strong."},
+    es:{emoji:"💼",title:"¡Listo para trabajar!",            msg:"Kuabo te ayudará a instalarte rápido — documentos, vivienda y todo lo que necesitas."},
   },
   student:{
-    fr:{emoji:"🎓",title:"La vie étudiante commence !",       msg:"Kuabo va te guider dans ton nouveau pays — logement, admin, et conseils d'autres étudiants."},
-    en:{emoji:"🎓",title:"Student life starts now!",          msg:"Kuabo will guide you through your new country — housing, admin, and tips from other students."},
-    es:{emoji:"🎓",title:"¡La vida estudiantil comienza!",    msg:"Kuabo te guiará en tu nuevo país — vivienda, trámites y consejos de otros estudiantes."},
+    fr:{emoji:"🎓",title:"La vie étudiante commence !",      msg:"Kuabo va te guider dans ton nouveau pays — logement, admin, et conseils d'autres étudiants."},
+    en:{emoji:"🎓",title:"Student life starts now!",         msg:"Kuabo will guide you through your new country — housing, admin, and tips from other students."},
+    es:{emoji:"🎓",title:"¡La vida estudiantil comienza!",   msg:"Kuabo te guiará en tu nuevo país — vivienda, trámites y consejos de otros estudiantes."},
   },
   family:{
-    fr:{emoji:"👨‍👩‍👧",title:"La famille avant tout !",          msg:"Kuabo va aider toute ta famille à s'installer — étape par étape, sans stress."},
-    en:{emoji:"👨‍👩‍👧",title:"Family first!",                    msg:"Kuabo will help your whole family settle in — step by step, stress-free."},
-    es:{emoji:"👨‍👩‍👧",title:"¡La familia primero!",              msg:"Kuabo ayudará a toda tu familia a instalarse — paso a paso, sin estrés."},
+    fr:{emoji:"👨‍👩‍👧",title:"La famille avant tout !",         msg:"Kuabo va aider toute ta famille à s'installer — étape par étape, sans stress."},
+    en:{emoji:"👨‍👩‍👧",title:"Family first!",                   msg:"Kuabo will help your whole family settle in — step by step, stress-free."},
+    es:{emoji:"👨‍👩‍👧",title:"¡La familia primero!",             msg:"Kuabo ayudará a toda tu familia a instalarse — paso a paso, sin estrés."},
   },
   refugee:{
-    fr:{emoji:"🕊️",title:"Tu es en sécurité ici.",            msg:"Kuabo est là pour toi. On va te guider à travers chaque démarche administrative avec soin."},
-    en:{emoji:"🕊️",title:"You're safe here.",                 msg:"Kuabo is here for you. We'll guide you through every administrative step with care."},
-    es:{emoji:"🕊️",title:"Estás a salvo aquí.",               msg:"Kuabo está aquí para ti. Te guiaremos en cada trámite administrativo con cuidado."},
+    fr:{emoji:"🕊️",title:"Tu es en sécurité ici.",           msg:"Kuabo est là pour toi. On va te guider à travers chaque démarche administrative avec soin."},
+    en:{emoji:"🕊️",title:"You're safe here.",                msg:"Kuabo is here for you. We'll guide you through every administrative step with care."},
+    es:{emoji:"🕊️",title:"Estás a salvo aquí.",              msg:"Kuabo está aquí para ti. Te guiaremos en cada trámite administrativo con cuidado."},
   },
   other:{
-    fr:{emoji:"🌍",title:"Bienvenue !",                        msg:"Quelle que soit ta raison, Kuabo est là pour te guider à chaque étape."},
-    en:{emoji:"🌍",title:"Welcome!",                           msg:"Whatever your reason, Kuabo is here to guide you every step of the way."},
-    es:{emoji:"🌍",title:"¡Bienvenido!",                       msg:"Cualquiera que sea tu razón, Kuabo está aquí para guiarte en cada paso."},
+    fr:{emoji:"🌍",title:"Bienvenue !",                       msg:"Quelle que soit ta raison, Kuabo est là pour te guider à chaque étape."},
+    en:{emoji:"🌍",title:"Welcome!",                          msg:"Whatever your reason, Kuabo is here to guide you every step of the way."},
+    es:{emoji:"🌍",title:"¡Bienvenido!",                      msg:"Cualquiera que sea tu razón, Kuabo está aquí para guiarte en cada paso."},
   },
 };
 
@@ -138,8 +214,9 @@ const UI: Record<Lang, any> = {
     next:"Continuer",back:"Retour",step:"Étape 1 sur 5",
     subTitle:"Précise ta situation",
     armyTitle:"Et l'US Army ?",
-    armySub:"Avec une DV Lottery, tu peux rejoindre l'Army — naturalisation en 1 an",
-    armyInfo:"🎖️ L'US Army offre aux détenteurs de DV une naturalisation accélérée en seulement 1 an. Logement sur base, assurance TRICARE, et salaire garanti dès le premier jour.",
+    armySub:"Choisis ton rapport avec l'Army — tu pourras changer dans ton profil",
+    armyInfo:"🎖️ L'US Army offre aux détenteurs de DV une naturalisation accélérée en 1 an. Logement sur base, assurance TRICARE, et salaire garanti dès le premier jour.",
+    required:"Tu dois choisir une option pour continuer",
   },
   en:{
     title:"What's your situation?",
@@ -147,8 +224,9 @@ const UI: Record<Lang, any> = {
     next:"Continue",back:"Back",step:"Step 1 of 5",
     subTitle:"Tell us more",
     armyTitle:"What about the US Army?",
-    armySub:"With a DV Lottery, you can join the Army — naturalization in 1 year",
+    armySub:"Choose your Army status — you can change it in your profile later",
     armyInfo:"🎖️ The US Army offers DV holders fast-track naturalization in just 1 year. On-base housing, TRICARE insurance, and guaranteed salary from day one.",
+    required:"You must choose an option to continue",
   },
   es:{
     title:"¿Cuál es tu situación?",
@@ -156,8 +234,9 @@ const UI: Record<Lang, any> = {
     next:"Continuar",back:"Atrás",step:"Paso 1 de 5",
     subTitle:"Cuéntanos más",
     armyTitle:"¿Y el US Army?",
-    armySub:"Con una DV Lottery, puedes unirte al Army — naturalización en 1 año",
-    armyInfo:"🎖️ El US Army ofrece a los titulares de DV una naturalización acelerada en solo 1 año. Alojamiento en base, seguro TRICARE y salario garantizado desde el primer día.",
+    armySub:"Elige tu estado con el Army — puedes cambiarlo en tu perfil después",
+    armyInfo:"🎖️ El US Army ofrece a los titulares de DV una naturalización acelerada en solo 1 año. Alojamiento en base, seguro TRICARE y salario garantizado.",
+    required:"Debes elegir una opción para continuar",
   },
 };
 
@@ -183,8 +262,7 @@ function MotivationOverlay({lang,value,onDone}:{lang:Lang;value:string;onDone:()
     size:6+Math.random()*8,
   }));
 
-  // Couleur selon le type
-  const isArmy = value.startsWith("army");
+  const isArmy      = value.startsWith("army");
   const borderColor = isArmy ? "rgba(34,197,94,0.4)" : "rgba(232,184,75,0.4)";
   const titleColor  = isArmy ? "#22c55e" : "#e8b84b";
 
@@ -224,15 +302,16 @@ function MotivationOverlay({lang,value,onDone}:{lang:Lang;value:string;onDone:()
 // ══════════════════════════════════════════════
 export default function Step1() {
   const [selected,setSelected]             = useState("");
-  const [subSelected,setSubSelected]       = useState(""); // pour "other"
-  const [armySelected,setArmySelected]     = useState(""); // pour sous-menu Army DV
+  const [subSelected,setSubSelected]       = useState("");
+  const [armySelected,setArmySelected]     = useState("");
   const [lang,setLang]                     = useState<Lang>("fr");
   const [ready,setReady]                   = useState(false);
   const [mounted,setMounted]               = useState(false);
-  const [showSub,setShowSub]               = useState(false);  // sous-menu "Autre"
-  const [showArmy,setShowArmy]             = useState(false);  // sous-menu Army DV
+  const [showSub,setShowSub]               = useState(false);
+  const [showArmy,setShowArmy]             = useState(false);
   const [showMotivation,setShowMotivation] = useState(false);
   const [saving,setSaving]                 = useState(false);
+  const [armyError,setArmyError]           = useState(false); // ✅ erreur si Army pas choisi
 
   useEffect(()=>{
     const savedLang = localStorage.getItem("lang") as Lang;
@@ -260,14 +339,14 @@ export default function Step1() {
     setLang(l);
     localStorage.setItem("lang",l);
     const user=auth.currentUser;
-    if (user){try{await updateDoc(doc(db,"users",user.uid),{lang:l});}catch{/**/}}
+    if (user){try{await updateDoc(doc(db,"users",user.uid),{lang:l});}catch{}}
   };
 
   const handleMainSelect = (value:string)=>{
     setSelected(value);
     setSubSelected("");
     setArmySelected("");
-    // DV → ouvre le sous-menu Army
+    setArmyError(false);
     if (value==="dv"){
       setShowArmy(true);
       setShowSub(false);
@@ -280,7 +359,6 @@ export default function Step1() {
     }
   };
 
-  // Valeur finale selon les sélections
   const getFinalValue = ()=>{
     if (selected==="dv")    return armySelected||"";
     if (selected==="other") return subSelected||"";
@@ -289,7 +367,6 @@ export default function Step1() {
 
   const finalValue = getFinalValue();
 
-  // Peut continuer ?
   const canContinue = ()=>{
     if (selected==="dv")    return !!armySelected;
     if (selected==="other") return !!subSelected;
@@ -297,19 +374,32 @@ export default function Step1() {
   };
 
   const handleNext = async ()=>{
+    // ✅ Si DV sélectionné mais Army pas choisi → montrer erreur
+    if (selected==="dv" && !armySelected){
+      setArmyError(true);
+      // Scroll vers le sous-menu Army
+      document.getElementById("army-section")?.scrollIntoView({behavior:"smooth",block:"center"});
+      return;
+    }
     if (!canContinue()||saving) return;
     setSaving(true);
+    setArmyError(false);
     try {
-      const isArmy = armySelected.startsWith("army");
-      localStorage.setItem("reason", finalValue);
+      // dv_classic → sauvegardé comme "dv" dans reason, armyStatus null
+      const isDvClassic = armySelected === "dv_classic";
+      const isArmy      = armySelected.startsWith("army");
+      const reasonToSave = isDvClassic ? "dv" : finalValue;
+
+      localStorage.setItem("reason", reasonToSave);
       localStorage.setItem("isArmy", isArmy?"true":"false");
+
       const user = auth.currentUser;
       if (user) await updateDoc(doc(db,"users",user.uid),{
-        reason:   finalValue,
-        isArmy:   isArmy,
-        armyStatus: armySelected||null, // "army"|"army_interest"|"army_unsure"|null
+        reason:     reasonToSave,
+        isArmy:     isArmy,
+        armyStatus: isArmy ? armySelected : null,
       });
-    } catch{/*continue*/}
+    } catch{}
     setShowMotivation(true);
   };
 
@@ -380,9 +470,9 @@ export default function Step1() {
                     </div>
                   </button>
 
-                  {/* ✅ Sous-menu Army — apparaît sous DV */}
-                  {active && opt.value==="dv" && showArmy&&(
-                    <div style={{marginTop:10,padding:"16px",background:"rgba(34,197,94,0.04)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:16,animation:"fadeSlideDown 0.3s ease"}}>
+                  {/* ✅ Sous-menu Army — OBLIGATOIRE pour DV */}
+                  {active && opt.value==="dv" && showArmy && (
+                    <div id="army-section" style={{marginTop:10,padding:"16px",background:"rgba(34,197,94,0.04)",border:`1.5px solid ${armyError?"#ef4444":"rgba(34,197,94,0.2)"}`,borderRadius:16,animation:"fadeSlideDown 0.3s ease"}}>
 
                       {/* Info Army */}
                       <div style={{background:"rgba(34,197,94,0.06)",border:"1px solid rgba(34,197,94,0.15)",borderRadius:10,padding:"10px 12px",marginBottom:12}}>
@@ -392,37 +482,57 @@ export default function Step1() {
                         <div style={{fontSize:11,color:"#aaa",lineHeight:1.6}}>{text.armyInfo}</div>
                       </div>
 
-                      <div style={{fontSize:12,color:"#22c55e",fontWeight:600,letterSpacing:"0.08em",textTransform:"uppercase" as const,marginBottom:10}}>
-                        🎖️ {text.armySub}
+                      <div style={{fontSize:12,color:"#22c55e",fontWeight:600,letterSpacing:"0.06em",textTransform:"uppercase" as const,marginBottom:10}}>
+                        {text.armySub}
                       </div>
 
-                      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                      {/* ✅ Erreur si Army pas choisi */}
+                      {armyError && (
+                        <div style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.3)",borderRadius:10,padding:"10px 12px",marginBottom:12,fontSize:12,color:"#ef4444"}}>
+                          ⚠️ {text.required}
+                        </div>
+                      )}
+
+                      <div style={{display:"flex",flexDirection:"column",gap:10}}>
                         {ARMY_OPTIONS[lang].map(ao=>{
-                          const aoActive = armySelected===ao.value;
-                          const isArmyOption = ao.value.startsWith("army");
+                          const aoActive    = armySelected===ao.value;
+                          const isArmyOpt   = ao.value.startsWith("army");
+                          const activeColor = isArmyOpt ? "#22c55e" : "#e8b84b";
                           return (
                             <button
                               key={ao.value}
-                              onClick={()=>setArmySelected(ao.value)}
+                              onClick={()=>{setArmySelected(ao.value);setArmyError(false);}}
                               style={{
-                                display:"flex",alignItems:"center",gap:12,
-                                padding:"12px 14px",borderRadius:12,
-                                background:aoActive?(isArmyOption?"rgba(34,197,94,0.1)":"rgba(232,184,75,0.1)"):"#141d2e",
-                                border:"1.5px solid "+(aoActive?(isArmyOption?"#22c55e":"#e8b84b"):"#1e2a3a"),
+                                display:"flex",alignItems:"flex-start",gap:12,
+                                padding:"14px",borderRadius:12,
+                                background:aoActive?`${activeColor}10`:"#141d2e",
+                                border:`1.5px solid ${aoActive?activeColor:"#1e2a3a"}`,
                                 cursor:"pointer",fontFamily:"inherit",
                                 width:"100%",textAlign:"left" as const,
                                 transition:"all 0.2s",
                               }}
                             >
-                              <span style={{fontSize:20,flexShrink:0}}>{ao.icon}</span>
+                              <span style={{fontSize:22,flexShrink:0,marginTop:1}}>{ao.icon}</span>
                               <div style={{flex:1,minWidth:0}}>
-                                <div style={{fontSize:13,fontWeight:aoActive?600:400,color:aoActive?(isArmyOption?"#22c55e":"#e8b84b"):"#f4f1ec"}}>
-                                  {ao.label}
+                                {/* Label + radio */}
+                                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+                                  <div style={{fontSize:14,fontWeight:aoActive?700:500,color:aoActive?activeColor:"#f4f1ec"}}>
+                                    {ao.label}
+                                  </div>
+                                  <div style={{width:18,height:18,borderRadius:"50%",border:`2px solid ${aoActive?activeColor:"#2a3448"}`,background:aoActive?activeColor:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all 0.2s",marginLeft:8}}>
+                                    {aoActive&&<span style={{fontSize:10,color:"#000",fontWeight:800}}>✓</span>}
+                                  </div>
                                 </div>
-                                <div style={{fontSize:11,color:"#555",marginTop:2}}>{ao.desc}</div>
-                              </div>
-                              <div style={{width:18,height:18,borderRadius:"50%",border:"2px solid "+(aoActive?(isArmyOption?"#22c55e":"#e8b84b"):"#2a3448"),background:aoActive?(isArmyOption?"#22c55e":"#e8b84b"):"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all 0.2s"}}>
-                                {aoActive&&<span style={{fontSize:10,color:"#000",fontWeight:800}}>✓</span>}
+                                {/* Description courte */}
+                                <div style={{fontSize:11,color:"#666",marginBottom:aoActive?6:0}}>
+                                  {ao.desc}
+                                </div>
+                                {/* ✅ Explication visible quand sélectionné */}
+                                {aoActive && (
+                                  <div style={{fontSize:12,color:isArmyOpt?"rgba(34,197,94,0.85)":"rgba(232,184,75,0.85)",lineHeight:1.6,background:isArmyOpt?"rgba(34,197,94,0.06)":"rgba(232,184,75,0.06)",borderRadius:8,padding:"8px 10px",marginTop:4,animation:"slideUp 0.3s ease"}}>
+                                    💡 {ao.explain}
+                                  </div>
+                                )}
                               </div>
                             </button>
                           );
@@ -435,7 +545,7 @@ export default function Step1() {
             })}
           </div>
 
-          {/* ✅ Sous-options "Autre" */}
+          {/* Sous-options "Autre" */}
           {showSub&&(
             <div style={{marginTop:16,padding:"16px",background:"rgba(232,184,75,0.04)",border:"1px solid rgba(232,184,75,0.15)",borderRadius:16,animation:"fadeSlideDown 0.3s ease"}}>
               <div style={{fontSize:12,color:"#e8b84b",fontWeight:600,letterSpacing:"0.08em",textTransform:"uppercase" as const,marginBottom:12}}>
@@ -445,19 +555,8 @@ export default function Step1() {
                 {SUB_OPTIONS[lang].map(opt=>{
                   const active = subSelected===opt.value;
                   return (
-                    <button
-                      key={opt.value}
-                      onClick={()=>setSubSelected(opt.value)}
-                      style={{
-                        display:"flex",alignItems:"center",gap:12,
-                        padding:"12px 14px",borderRadius:12,
-                        background:active?"rgba(232,184,75,0.1)":"#141d2e",
-                        border:"1.5px solid "+(active?"#e8b84b":"#1e2a3a"),
-                        cursor:"pointer",fontFamily:"inherit",
-                        width:"100%",textAlign:"left" as const,
-                        transition:"all 0.2s",
-                      }}
-                    >
+                    <button key={opt.value} onClick={()=>setSubSelected(opt.value)}
+                      style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:12,background:active?"rgba(232,184,75,0.1)":"#141d2e",border:"1.5px solid "+(active?"#e8b84b":"#1e2a3a"),cursor:"pointer",fontFamily:"inherit",width:"100%",textAlign:"left" as const,transition:"all 0.2s"}}>
                       <span style={{fontSize:18}}>{opt.icon}</span>
                       <span style={{fontSize:14,fontWeight:active?600:400,color:active?"#e8b84b":"#f4f1ec",flex:1}}>{opt.label}</span>
                       <div style={{width:18,height:18,borderRadius:"50%",border:"2px solid "+(active?"#e8b84b":"#2a3448"),background:active?"#e8b84b":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all 0.2s"}}>
@@ -470,11 +569,18 @@ export default function Step1() {
             </div>
           )}
 
+          {/* ✅ Note en bas si DV sélectionné — tu peux changer dans profil */}
+          {selected==="dv" && armySelected && (
+            <div style={{marginTop:12,padding:"10px 14px",background:"rgba(45,212,191,0.05)",border:"1px solid rgba(45,212,191,0.15)",borderRadius:10,fontSize:11,color:"#2dd4bf",lineHeight:1.6}}>
+              💡 {lang==="fr"?"Tu pourras changer ton statut Army à tout moment dans ton Profil.":lang==="es"?"Podrás cambiar tu estado Army en cualquier momento en tu Perfil.":"You can change your Army status anytime in your Profile."}
+            </div>
+          )}
+
           {/* Bouton continuer */}
           <button
             onClick={handleNext}
-            disabled={!canContinue()||saving}
-            style={{...nextBtn,opacity:canContinue()&&!saving?1:0.4,marginTop:24}}
+            disabled={saving&&!showMotivation}
+            style={{...nextBtn,opacity:(!selected||(selected==="dv"&&!armySelected)||(selected==="other"&&!subSelected))&&!saving?0.5:1,marginTop:24}}
           >
             {saving&&!showMotivation?(
               <svg width="20" height="20" viewBox="0 0 20 20" style={{animation:"spin 1s linear infinite"}}>
@@ -490,6 +596,7 @@ export default function Step1() {
       <style>{`
         @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes fadeSlideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes slideUp{from{transform:translateY(8px);opacity:0}to{transform:translateY(0);opacity:1}}
         button:active{transform:scale(0.98) !important}
       `}</style>
     </div>
