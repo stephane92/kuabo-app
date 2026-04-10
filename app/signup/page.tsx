@@ -267,7 +267,7 @@ export default function Signup() {
               </div>
             )}
 
-            {/* ✅ CHECKBOX TERMS */}
+            {/* ✅ CHECKBOX TERMS — router.push au lieu de window.open */}
             <div
               onClick={() => setTermsAccepted(!termsAccepted)}
               style={{
@@ -295,19 +295,19 @@ export default function Signup() {
                 )}
               </div>
 
-              {/* Text */}
+              {/* ✅ FIX — router.push() au lieu de window.open(_blank) */}
               <div style={{ fontSize:12, color:"#aaa", lineHeight:1.6 }}>
                 {text.terms}{" "}
                 <span
                   style={{ color:"#e8b84b", textDecoration:"underline", cursor:"pointer" }}
-                  onClick={e => { e.stopPropagation(); window.open("/terms","_blank"); }}
+                  onClick={e => { e.stopPropagation(); router.push("/terms"); }}
                 >
                   {text.termsLink}
                 </span>
                 {" "}{text.and}{" "}
                 <span
                   style={{ color:"#e8b84b", textDecoration:"underline", cursor:"pointer" }}
-                  onClick={e => { e.stopPropagation(); window.open("/privacy","_blank"); }}
+                  onClick={e => { e.stopPropagation(); router.push("/privacy"); }}
                 >
                   {text.privacyLink}
                 </span>

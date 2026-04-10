@@ -44,6 +44,10 @@ const T = {
     tooMany: "Too many attempts. Try again later.",
     popupBlocked: "Popup blocked. Please allow popups.",
     googleError: "Google error. Please try again.",
+    terms: "By signing in, you agree to our",
+    termsLink: "Terms of Service",
+    and: "and",
+    privacyLink: "Privacy Policy",
   },
   fr: {
     title: "Bon retour",
@@ -69,6 +73,10 @@ const T = {
     tooMany: "Trop de tentatives. Réessaie plus tard.",
     popupBlocked: "Popup bloqué. Autorise les popups.",
     googleError: "Erreur Google. Réessaie.",
+    terms: "En te connectant, tu acceptes nos",
+    termsLink: "Conditions d'utilisation",
+    and: "et notre",
+    privacyLink: "Politique de confidentialité",
   },
   es: {
     title: "Bienvenido de vuelta",
@@ -94,6 +102,10 @@ const T = {
     tooMany: "Demasiados intentos. Inténtalo más tarde.",
     popupBlocked: "Popup bloqueado. Permite los popups.",
     googleError: "Error de Google. Inténtalo de nuevo.",
+    terms: "Al iniciar sesión, aceptas nuestros",
+    termsLink: "Términos de Servicio",
+    and: "y nuestra",
+    privacyLink: "Política de Privacidad",
   },
 };
 
@@ -167,7 +179,6 @@ export default function Login() {
     setTimeout(() => setMounted(true), 50);
   }, []);
 
-  // ── Cleanup timeout on unmount
   useEffect(() => {
     return () => {
       if (googleTimeoutRef.current) clearTimeout(googleTimeoutRef.current);
@@ -258,35 +269,18 @@ export default function Login() {
     }
   };
 
-  // ✅ Google — fix bouton bloqué
   const handleGoogle = async () => {
     setError(""); setSuccess("");
-
-    // Reset si déjà en cours
-    if (googleLoading) {
-      setGoogleLoading(false);
-      return;
-    }
-
+    if (googleLoading) { setGoogleLoading(false); return; }
     setGoogleLoading(true);
-
-    // ✅ Timeout de sécurité — reset après 30s si popup reste ouverte
-    googleTimeoutRef.current = setTimeout(() => {
-      setGoogleLoading(false);
-    }, 30000);
-
+    googleTimeoutRef.current = setTimeout(() => { setGoogleLoading(false); }, 30000);
     try {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
-
       const cred = await signInWithPopup(auth, provider);
-
-      // Succès — clear timeout
       if (googleTimeoutRef.current) clearTimeout(googleTimeoutRef.current);
-
       const user = cred.user;
       const snap = await getDoc(doc(db, "users", user.uid));
-
       if (!snap.exists()) {
         await setDoc(doc(db, "users", user.uid), {
           name: user.displayName || "",
@@ -299,37 +293,18 @@ export default function Login() {
         redirectWithLoader("/welcome");
         return;
       }
-
       const data = snap.data() as any;
       if (data.lang) localStorage.setItem("lang", data.lang);
       localStorage.setItem("userName", data.name || user.displayName || "User");
       redirectWithLoader(data.onboardingCompleted ? "/dashboard" : "/welcome");
-
     } catch (err: any) {
-      // ✅ Clear timeout dans tous les cas d'erreur
       if (googleTimeoutRef.current) clearTimeout(googleTimeoutRef.current);
-
-      // ✅ Reset immédiat si popup fermée
       if (
         err.code === "auth/popup-closed-by-user" ||
         err.code === "auth/cancelled-popup-request"
-      ) {
-        setGoogleLoading(false);
-        return;
-      }
-
-      if (err.code === "auth/popup-blocked") {
-        setError(text.popupBlocked);
-        setGoogleLoading(false);
-        return;
-      }
-
-      if (err.code === "auth/too-many-requests") {
-        setError(text.tooMany);
-        setGoogleLoading(false);
-        return;
-      }
-
+      ) { setGoogleLoading(false); return; }
+      if (err.code === "auth/popup-blocked") { setError(text.popupBlocked); setGoogleLoading(false); return; }
+      if (err.code === "auth/too-many-requests") { setError(text.tooMany); setGoogleLoading(false); return; }
       setError(text.googleError);
       setGoogleLoading(false);
     }
@@ -358,18 +333,16 @@ export default function Login() {
     <div style={container}>
       <div style={bgGlow} />
 
-      {/* Header */}
       <div style={headerStyle}>
         <div style={logoStyle}>
           <span style={{ color:"#e8b84b" }}>Ku</span>
           <span style={{ color:"#f4f1ec" }}>abo</span>
         </div>
-        <button style={backBtn} onClick={() => window.location.href = "/home"}>
+        <button style={backBtn} onClick={() => router.push("/home")}>
           ← {text.back}
         </button>
       </div>
 
-      {/* Card */}
       <div style={{ ...card, opacity:mounted?1:0, transform:mounted?"translateY(0)":"translateY(24px)", transition:"all 0.5s ease" }}>
         <div style={iconCircle}>
           <LogIn size={26} color="#e8b84b" />
@@ -400,7 +373,6 @@ export default function Login() {
           }
         </button>
 
-        {/* Separator */}
         <div style={separator}>
           <div style={sepLine} />
           <span style={sepText}>{text.or}</span>
@@ -452,7 +424,7 @@ export default function Login() {
 
         {/* Forgot */}
         <div style={{ textAlign:"right", marginBottom:16, marginTop:-4 }}>
-          <span style={linkStyle} onClick={() => window.location.href = "/forgot"}>{text.forgot}</span>
+          <span style={linkStyle} onClick={() => router.push("/forgot")}>{text.forgot}</span>
         </div>
 
         {/* Errors */}
@@ -483,10 +455,28 @@ export default function Login() {
           ) : text.btn}
         </button>
 
+        {/* ✅ FIX — Terms et Privacy avec router.push au lieu de window.open */}
+        <div style={{ textAlign:"center", marginTop:16, fontSize:11, color:"#555", lineHeight:1.6 }}>
+          {text.terms}{" "}
+          <span
+            style={{ color:"#e8b84b", cursor:"pointer", textDecoration:"underline" }}
+            onClick={() => router.push("/terms")}
+          >
+            {text.termsLink}
+          </span>
+          {" "}{text.and}{" "}
+          <span
+            style={{ color:"#e8b84b", cursor:"pointer", textDecoration:"underline" }}
+            onClick={() => router.push("/privacy")}
+          >
+            {text.privacyLink}
+          </span>
+        </div>
+
         {/* Sign up */}
         <div style={bottomText}>
           <span style={{ color:"#aaa" }}>{text.noAccount} </span>
-          <span style={linkStyle} onClick={() => window.location.href = "/signup"}>{text.signup}</span>
+          <span style={linkStyle} onClick={() => router.push("/signup")}>{text.signup}</span>
         </div>
       </div>
 
@@ -519,4 +509,4 @@ const loginBtn: CSSProperties      = { width:"100%", padding:"14px", background:
 const errorBox: CSSProperties      = { background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.25)", borderRadius:10, padding:"12px 14px", marginBottom:12, color:"#ef4444", fontSize:13, lineHeight:1.6 };
 const successBox: CSSProperties    = { background:"rgba(34,197,94,0.08)", border:"1px solid rgba(34,197,94,0.25)", borderRadius:10, padding:"12px 14px", marginBottom:12, color:"#22c55e", fontSize:13 };
 const linkStyle: CSSProperties     = { color:"#e8b84b", cursor:"pointer", textDecoration:"underline", fontSize:13 };
-const bottomText: CSSProperties    = { textAlign:"center", marginTop:20, fontSize:13 };
+const bottomText: CSSProperties    = { textAlign:"center", marginTop:16, fontSize:13 };
