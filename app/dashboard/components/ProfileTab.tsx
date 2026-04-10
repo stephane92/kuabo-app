@@ -12,7 +12,6 @@ type PhaseId = 1 | 2 | 3 | 4 | 5;
 // ── Imports des données partagées (depuis data.ts) ──────────────────────────
 import { PHASES_META, PHASE_STEPS } from "./data";
 import { getPhaseStats, isPhaseUnlocked } from "./utils";
-import { ThemeToggle } from "./ThemeToggle";
 
 // ══════════════════════════════════════════════
 // PROFILE TAB
@@ -404,30 +403,22 @@ export default function ProfileTab({
 
       {/* ── Préférences / Langue ──────────────────────────── */}
       <Section title={L.preferences} />
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-
-        {/* Langue */}
-        <div style={{ background: "#141d2e", border: "1px solid #1e2a3a", borderRadius: 12, padding: "13px 16px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 34, height: 34, borderRadius: 9, background: "#1a2438", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Globe size={16} color="#e8b84b" />
-              </div>
-              <span style={{ fontSize: 14, color: "#fff" }}>{L.language}</span>
+      <div style={{ background: "#141d2e", border: "1px solid #1e2a3a", borderRadius: 12, padding: "13px 16px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 9, background: "#1a2438", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Globe size={16} color="#e8b84b" />
             </div>
-            <div style={{ display: "flex", gap: 5 }}>
-              {(["fr", "en", "es"] as Lang[]).map(lg => (
-                <button key={lg} onClick={() => changeLang(lg)} style={{ padding: "4px 10px", borderRadius: 7, border: "1px solid", borderColor: lang === lg ? "#e8b84b" : "#2a3448", background: lang === lg ? "rgba(232,184,75,0.1)" : "transparent", color: lang === lg ? "#e8b84b" : "#aaa", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                  {lg.toUpperCase()}
-                </button>
-              ))}
-            </div>
+            <span style={{ fontSize: 14, color: "#fff" }}>{L.language}</span>
+          </div>
+          <div style={{ display: "flex", gap: 5 }}>
+            {(["fr", "en", "es"] as Lang[]).map(lg => (
+              <button key={lg} onClick={() => changeLang(lg)} style={{ padding: "4px 10px", borderRadius: 7, border: "1px solid", borderColor: lang === lg ? "#e8b84b" : "#2a3448", background: lang === lg ? "rgba(232,184,75,0.1)" : "transparent", color: lang === lg ? "#e8b84b" : "#aaa", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                {lg.toUpperCase()}
+              </button>
+            ))}
           </div>
         </div>
-
-        {/* Thème Light / Dark */}
-        <ThemeToggle lang={lang} />
-
       </div>
 
       {/* ── Confidentialité / Toggles ─────────────────────── */}

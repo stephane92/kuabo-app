@@ -472,9 +472,8 @@ function PhaseCard({ phaseId, lang, completedSteps, onOpenStep, isActive, isUnlo
 // ══════════════════════════════════════════════
 // BOTTOM NAV
 // ══════════════════════════════════════════════
-export function BottomNav({ activeTab, setActiveTab, lang, onHomePress, colors }: {
+export function BottomNav({ activeTab, setActiveTab, lang, onHomePress }: {
   activeTab: string; setActiveTab: (t: any) => void; lang: Lang; onHomePress: () => void;
-  colors: { navBg: string; navBorder: string; gold: string; textFaint: string; text: string };
 }) {
   const L = { fr: { home: "Accueil", documents: "Documents", explorer: "Explorer", profile: "Profil" }, en: { home: "Home", documents: "Documents", explorer: "Explorer", profile: "Profile" }, es: { home: "Inicio", documents: "Documentos", explorer: "Explorar", profile: "Perfil" } }[lang];
 
@@ -486,15 +485,15 @@ export function BottomNav({ activeTab, setActiveTab, lang, onHomePress, colors }
   ];
 
   return (
-    <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, height: 68, background: colors.navBg, borderTop: `1px solid ${colors.navBorder}`, display: "flex", alignItems: "center", zIndex: 200, transition: "background 0.3s" }}>
+    <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, height: 68, background: "#0f1521", borderTop: "1px solid #1e2a3a", display: "flex", alignItems: "center", zIndex: 200 }}>
       {tabs.map(({ id, icon, label }) => {
         const active = activeTab === id;
         return (
           <button key={id} onClick={() => { if (id === "home" && activeTab === "home") onHomePress(); else setActiveTab(id); }}
             style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, padding: "8px 0", background: "transparent", border: "none", cursor: "pointer", position: "relative", fontFamily: "inherit", WebkitTapHighlightColor: "transparent" }}>
-            {active && <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 30, height: 2, borderRadius: "0 0 3px 3px", background: colors.gold }} />}
+            {active && <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 30, height: 2, borderRadius: "0 0 3px 3px", background: "#e8b84b" }} />}
             <span style={{ fontSize: 22, filter: active ? "none" : "grayscale(1) opacity(0.45)" }}>{icon}</span>
-            <span style={{ fontSize: 10, fontWeight: active ? 600 : 400, color: active ? colors.gold : colors.textFaint, transition: "color 0.15s" }}>{label}</span>
+            <span style={{ fontSize: 10, fontWeight: active ? 600 : 400, color: active ? "#e8b84b" : "#4a5568", transition: "color 0.15s" }}>{label}</span>
           </button>
         );
       })}

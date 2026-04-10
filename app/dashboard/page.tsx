@@ -13,20 +13,9 @@ import HomeTab, { BottomNav } from "./components/HomeTab";
 import { SearchModal, StepModal, ArmyGuideModal, PhaseUnlockOverlay } from "./components/Modals";
 import { PHASE_STEPS } from "./components/data";
 import { getPhaseStats, useStreak } from "./components/utils";
-import { ThemeProvider, useTheme } from "./components/ThemeContext";
 import type { Lang, PhaseId } from "./components/data";
 
-// ── Wrapper avec ThemeProvider ─────────────────────────
 export default function Dashboard() {
-  return (
-    <ThemeProvider>
-      <DashboardInner />
-    </ThemeProvider>
-  );
-}
-
-function DashboardInner() {
-  const { theme, colors } = useTheme();
   const pageRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -177,13 +166,13 @@ function DashboardInner() {
 
   // ── Loading ────────────────────────────────────────────
   if (!ready) return (
-    <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: colors.bg, gap: 14 }}>
+    <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#0b0f1a", gap: 14 }}>
       <div style={{ fontSize: 28, fontWeight: 900, fontFamily: "serif" }}>
-        <span style={{ color: colors.gold }}>Ku</span><span style={{ color: colors.text }}>abo</span>
+        <span style={{ color: "#e8b84b" }}>Ku</span><span style={{ color: "#f4f1ec" }}>abo</span>
       </div>
       <svg width="36" height="36" viewBox="0 0 34 34" style={{ animation: "spin 1s linear infinite" }}>
-        <circle cx="17" cy="17" r="13" fill="none" stroke={colors.border} strokeWidth="4" />
-        <circle cx="17" cy="17" r="13" fill="none" stroke={colors.gold} strokeWidth="4" strokeLinecap="round" strokeDasharray="82" strokeDashoffset="62" />
+        <circle cx="17" cy="17" r="13" fill="none" stroke="#1e2a3a" strokeWidth="4" />
+        <circle cx="17" cy="17" r="13" fill="none" stroke="#e8b84b" strokeWidth="4" strokeLinecap="round" strokeDasharray="82" strokeDashoffset="62" />
       </svg>
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
@@ -191,7 +180,7 @@ function DashboardInner() {
 
   // ── Render ─────────────────────────────────────────────
   return (
-    <div style={{ background: colors.bg, height: "100dvh", overflow: "hidden", color: colors.text, transition: "background 0.3s, color 0.3s" }}>
+    <div style={{ background: "#0b0f1a", height: "100dvh", overflow: "hidden", color: "#f4f1ec" }}>
 
       {/* Modals globaux */}
       {showSearch && <SearchModal lang={lang} onClose={() => setShowSearch(false)} />}
@@ -234,27 +223,27 @@ function DashboardInner() {
       )}
 
       {/* Zone scrollable */}
-      <div ref={pageRef} style={{ height: "calc(100dvh - 68px)", overflowY: "auto", WebkitOverflowScrolling: "touch" as any, background: colors.bg, transition: "background 0.3s" }}>
+      <div ref={pageRef} style={{ height: "calc(100dvh - 68px)", overflowY: "auto", WebkitOverflowScrolling: "touch" as any }}>
         <div style={{ padding: "16px 16px 20px", maxWidth: 480, margin: "0 auto" }}>
 
           {/* Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <div style={{ fontWeight: "bold", fontSize: 22, letterSpacing: "-0.02em" }}>
-              <span style={{ color: colors.gold }}>Ku</span><span style={{ color: colors.text }}>abo</span>
+              <span style={{ color: "#e8b84b" }}>Ku</span><span style={{ color: "#f4f1ec" }}>abo</span>
             </div>
             <div ref={menuRef} style={{ position: "relative" }}>
-              <div style={{ background: colors.bgCard, border: `1px solid ${colors.border}`, padding: "7px 12px", borderRadius: 10, cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 6, color: colors.textMuted }} onClick={() => setMenuOpen(!menuOpen)}>
-                <Globe size={13} color={colors.textMuted} />
+              <div style={{ background: "#1a2438", padding: "7px 12px", borderRadius: 10, cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 6, color: "#aaa" }} onClick={() => setMenuOpen(!menuOpen)}>
+                <Globe size={13} color="#aaa" />
                 <span style={{ maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{userName}</span>
-                <ChevronRight size={13} color={colors.textMuted} style={{ transform: menuOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
+                <ChevronRight size={13} color="#aaa" style={{ transform: menuOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
               </div>
               {menuOpen && (
-                <div style={{ position: "absolute", right: 0, top: "110%", background: colors.bgCard, border: `1px solid ${colors.border}`, padding: "8px", borderRadius: 12, minWidth: 150, zIndex: 100, boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}>
-                  <div style={{ padding: "8px 10px", cursor: "pointer", fontSize: 13, borderRadius: 7, color: colors.text }} onClick={() => changeLang("fr")}>🇫🇷 Français</div>
-                  <div style={{ padding: "8px 10px", cursor: "pointer", fontSize: 13, borderRadius: 7, color: colors.text }} onClick={() => changeLang("en")}>🇺🇸 English</div>
-                  <div style={{ padding: "8px 10px", cursor: "pointer", fontSize: 13, borderRadius: 7, color: colors.text }} onClick={() => changeLang("es")}>🇪🇸 Español</div>
-                  <hr style={{ borderColor: colors.border, margin: "5px 0" }} />
-                  <div style={{ padding: "8px 10px", cursor: "pointer", fontSize: 13, borderRadius: 7, color: colors.red, display: "flex", alignItems: "center", gap: 6 }} onClick={handleLogout}>
+                <div style={{ position: "absolute", right: 0, top: "110%", background: "#1a2438", padding: "8px", borderRadius: 12, minWidth: 150, zIndex: 100, boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}>
+                  <div style={{ padding: "8px 10px", cursor: "pointer", fontSize: 13, borderRadius: 7, color: "#f4f1ec" }} onClick={() => changeLang("fr")}>🇫🇷 Français</div>
+                  <div style={{ padding: "8px 10px", cursor: "pointer", fontSize: 13, borderRadius: 7, color: "#f4f1ec" }} onClick={() => changeLang("en")}>🇺🇸 English</div>
+                  <div style={{ padding: "8px 10px", cursor: "pointer", fontSize: 13, borderRadius: 7, color: "#f4f1ec" }} onClick={() => changeLang("es")}>🇪🇸 Español</div>
+                  <hr style={{ borderColor: "#2a3448", margin: "5px 0" }} />
+                  <div style={{ padding: "8px 10px", cursor: "pointer", fontSize: 13, borderRadius: 7, color: "#ef4444", display: "flex", alignItems: "center", gap: 6 }} onClick={handleLogout}>
                     <LogOut size={13} /> {lang === "fr" ? "Déconnexion" : lang === "es" ? "Cerrar sesión" : "Logout"}
                   </div>
                 </div>
@@ -263,9 +252,9 @@ function DashboardInner() {
           </div>
 
           {/* Barre de recherche */}
-          <button onClick={() => setShowSearch(true)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, background: colors.bgCard, border: `1px solid ${colors.border}`, borderRadius: 12, padding: "12px 14px", marginBottom: 16, cursor: "pointer", fontFamily: "inherit", textAlign: "left" as const }}>
-            <Search size={16} color={colors.textFaint} />
-            <span style={{ fontSize: 14, color: colors.textFaint, flex: 1 }}>{{ fr: "🔍 Chercher un guide...", en: "🔍 Search a guide...", es: "🔍 Buscar una guía..." }[lang]}</span>
+          <button onClick={() => setShowSearch(true)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, background: "#141d2e", border: "1px solid #1e2a3a", borderRadius: 12, padding: "12px 14px", marginBottom: 16, cursor: "pointer", fontFamily: "inherit", textAlign: "left" as const }}>
+            <Search size={16} color="#555" />
+            <span style={{ fontSize: 14, color: "#555", flex: 1 }}>{{ fr: "🔍 Chercher un guide...", en: "🔍 Search a guide...", es: "🔍 Buscar una guía..." }[lang]}</span>
           </button>
 
           {/* Onglets */}
@@ -293,7 +282,7 @@ function DashboardInner() {
         </div>
       )}
 
-      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} lang={lang} onHomePress={handleHomePress} colors={colors} />
+      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} lang={lang} onHomePress={handleHomePress} />
 
       <style>{`
         @keyframes spin     { to { transform: rotate(360deg) } }
