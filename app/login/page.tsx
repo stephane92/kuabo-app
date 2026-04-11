@@ -20,13 +20,10 @@ type Lang = "en" | "fr" | "es";
 
 const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
-// ✅ Détecte iOS/Safari — doit utiliser redirect au lieu de popup
-const isMobileSafari = () => {
+// ✅ Détecte mobile (iOS ou Android)
+const isMobile = () => {
   if (typeof window === "undefined") return false;
-  const ua = window.navigator.userAgent;
-  return /iPhone|iPad|iPod/i.test(ua) || (
-    /Safari/i.test(ua) && !/Chrome/i.test(ua) && !/CriOS/i.test(ua)
-  );
+  return /iPhone|iPad|iPod|Android/i.test(window.navigator.userAgent);
 };
 
 const T = {
@@ -182,19 +179,20 @@ export default function Login() {
 
   useEffect(() => { setTimeout(() => setMounted(true), 50); }, []);
 
-  // ── Vérifier si déjà connecté + résultat redirect Google ──
+  // ── Auth init — redirect result + déjà connecté ─────────
   useEffect(() => {
     const savedLang = (localStorage.getItem("lang") as Lang) || "fr";
     if (["fr","en","es"].includes(savedLang)) setLang(savedLang);
 
-    const timeout = setTimeout(() => setCheckingAuth(false), 2000);
+    let handled = false;
 
-    const init = async () => {
-      // ✅ Vérifier d'abord si on revient d'un redirect Google (Safari/mobile)
+    const redirect = async () => {
+      // ✅ Toujours appeler getRedirectResult en premier
+      // Sur mobile après signInWithRedirect, c'est ici qu'on récupère le user
       try {
         const result = await getRedirectResult(auth);
-        if (result?.user) {
-          clearTimeout(timeout);
+        if (result?.user && !handled) {
+          handled = true;
           setShowLoader(true);
           const dest = await resolveUser(result.user, savedLang);
           if (dest) {
@@ -204,20 +202,33 @@ export default function Login() {
             setCheckingAuth(false);
             setError(T[savedLang].googleError);
           }
-          return;
+          return true;
         }
       } catch (err: any) {
-        // Pas de redirect result — normal
+        // auth/null-user = normal quand pas de redirect
+        // Autres erreurs = vrai problème
+        if (err?.code && err.code !== "auth/null-user" && err.code !== "auth/no-current-user") {
+          console.error("getRedirectResult error:", err.code);
+        }
       }
+      return false;
+    };
 
-      // Vérifier si déjà connecté
+    const listen = () => {
+      const timeout = setTimeout(() => {
+        if (!handled) setCheckingAuth(false);
+      }, 2000);
+
       const unsub = onAuthStateChanged(auth, async user => {
+        if (handled) return;
         clearTimeout(timeout);
+
         if (!user) { setCheckingAuth(false); return; }
 
         const isGoogle = user.providerData?.some(p => p.providerId === "google.com");
         if (!user.emailVerified && !isGoogle) { setCheckingAuth(false); return; }
 
+        handled = true;
         setShowLoader(true);
         const dest = await resolveUser(user, savedLang);
         if (dest) {
@@ -229,11 +240,25 @@ export default function Login() {
         }
       });
 
-      return () => { clearTimeout(timeout); unsub(); };
+      return unsub;
     };
 
-    init();
-    return () => clearTimeout(timeout);
+    // ✅ D'abord le redirect, puis écouter l'auth state
+    redirect().then(wasRedirect => {
+      if (!wasRedirect) {
+        const unsub = listen();
+        // cleanup stocké pour le return
+        (window as any).__kuabo_unsub = unsub;
+      }
+    });
+
+    return () => {
+      handled = true;
+      if ((window as any).__kuabo_unsub) {
+        (window as any).__kuabo_unsub();
+        delete (window as any).__kuabo_unsub;
+      }
+    };
   }, []);
 
   // ── Login email/password ────────────────────────────────
@@ -281,30 +306,24 @@ export default function Login() {
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
 
-    // ✅ Sur iPhone/Safari → redirect (popup bloqué)
-    // Sur desktop/Chrome → popup (plus rapide)
-    if (isMobileSafari()) {
-      try {
-        await signInWithRedirect(auth, provider);
-        // La page va se recharger — getRedirectResult s'en occupe
-      } catch {
-        setError(text.googleError);
-        setGoogleLoading(false);
-      }
-      return;
-    }
-
-    // Desktop → popup
     try {
-      const cred = await signInWithPopup(auth, provider);
-      setShowLoader(true);
-      const dest = await resolveUser(cred.user, lang);
-      if (dest) {
-        window.location.href = dest;
+      if (isMobile()) {
+        // ✅ Mobile (iOS + Android) → toujours redirect
+        // Pas de popup — Safari et Chrome mobile bloquent tous les deux
+        await signInWithRedirect(auth, provider);
+        // La page recharge — getRedirectResult dans useEffect capte le résultat
       } else {
-        setShowLoader(false);
-        setGoogleLoading(false);
-        setError(text.googleError);
+        // ✅ Desktop → popup (plus rapide, meilleure UX)
+        const cred = await signInWithPopup(auth, provider);
+        setShowLoader(true);
+        const dest = await resolveUser(cred.user, lang);
+        if (dest) {
+          window.location.href = dest;
+        } else {
+          setShowLoader(false);
+          setGoogleLoading(false);
+          setError(text.googleError);
+        }
       }
     } catch (err: any) {
       if (
