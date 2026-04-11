@@ -5,6 +5,8 @@ import { useState, useEffect, useRef } from "react";
 import {
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   sendEmailVerification,
   onAuthStateChanged,
@@ -17,6 +19,15 @@ import type { CSSProperties } from "react";
 type Lang = "en" | "fr" | "es";
 
 const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
+// ✅ Détecte iOS/Safari — doit utiliser redirect au lieu de popup
+const isMobileSafari = () => {
+  if (typeof window === "undefined") return false;
+  const ua = window.navigator.userAgent;
+  return /iPhone|iPad|iPod/i.test(ua) || (
+    /Safari/i.test(ua) && !/Chrome/i.test(ua) && !/CriOS/i.test(ua)
+  );
+};
 
 const T = {
   fr: {
@@ -171,43 +182,58 @@ export default function Login() {
 
   useEffect(() => { setTimeout(() => setMounted(true), 50); }, []);
 
-  // ── Vérifier si déjà connecté au chargement ────────────
+  // ── Vérifier si déjà connecté + résultat redirect Google ──
   useEffect(() => {
     const savedLang = (localStorage.getItem("lang") as Lang) || "fr";
     if (["fr","en","es"].includes(savedLang)) setLang(savedLang);
 
-    // ✅ Timeout court — 2s max pour le check auth initial
     const timeout = setTimeout(() => setCheckingAuth(false), 2000);
 
-    const unsub = onAuthStateChanged(auth, async user => {
-      clearTimeout(timeout);
-
-      if (!user) {
-        setCheckingAuth(false);
-        return;
+    const init = async () => {
+      // ✅ Vérifier d'abord si on revient d'un redirect Google (Safari/mobile)
+      try {
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+          clearTimeout(timeout);
+          setShowLoader(true);
+          const dest = await resolveUser(result.user, savedLang);
+          if (dest) {
+            window.location.href = dest;
+          } else {
+            setShowLoader(false);
+            setCheckingAuth(false);
+            setError(T[savedLang].googleError);
+          }
+          return;
+        }
+      } catch (err: any) {
+        // Pas de redirect result — normal
       }
 
-      // Accepter Google (providerData) OU email vérifié
-      const isGoogle = user.providerData?.some(p => p.providerId === "google.com");
-      if (!user.emailVerified && !isGoogle) {
-        setCheckingAuth(false);
-        return;
-      }
+      // Vérifier si déjà connecté
+      const unsub = onAuthStateChanged(auth, async user => {
+        clearTimeout(timeout);
+        if (!user) { setCheckingAuth(false); return; }
 
-      // User déjà connecté — résoudre et rediriger
-      setShowLoader(true);
-      const dest = await resolveUser(user, savedLang);
-      if (dest) {
-        window.location.href = dest;
-      } else {
-        // Erreur Firestore — afficher erreur, ne pas rediriger
-        setShowLoader(false);
-        setCheckingAuth(false);
-        setError(T[savedLang].googleError);
-      }
-    });
+        const isGoogle = user.providerData?.some(p => p.providerId === "google.com");
+        if (!user.emailVerified && !isGoogle) { setCheckingAuth(false); return; }
 
-    return () => { clearTimeout(timeout); unsub(); };
+        setShowLoader(true);
+        const dest = await resolveUser(user, savedLang);
+        if (dest) {
+          window.location.href = dest;
+        } else {
+          setShowLoader(false);
+          setCheckingAuth(false);
+          setError(T[savedLang].googleError);
+        }
+      });
+
+      return () => { clearTimeout(timeout); unsub(); };
+    };
+
+    init();
+    return () => clearTimeout(timeout);
   }, []);
 
   // ── Login email/password ────────────────────────────────
@@ -246,23 +272,36 @@ export default function Login() {
     }
   };
 
-  // ── Login Google — signInWithPopup ──────────────────────
+  // ── Login Google ───────────────────────────────────────
   const handleGoogle = async () => {
     if (googleLoading || loading) return;
     setError("");
     setGoogleLoading(true);
+
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+
+    // ✅ Sur iPhone/Safari → redirect (popup bloqué)
+    // Sur desktop/Chrome → popup (plus rapide)
+    if (isMobileSafari()) {
+      try {
+        await signInWithRedirect(auth, provider);
+        // La page va se recharger — getRedirectResult s'en occupe
+      } catch {
+        setError(text.googleError);
+        setGoogleLoading(false);
+      }
+      return;
+    }
+
+    // Desktop → popup
     try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: "select_account" });
-      // ✅ signInWithPopup — fonctionne sur tous les navigateurs
-      // Les domaines autorisés dans Firebase Console incluent kuabo-app.vercel.app
       const cred = await signInWithPopup(auth, provider);
       setShowLoader(true);
       const dest = await resolveUser(cred.user, lang);
       if (dest) {
         window.location.href = dest;
       } else {
-        // ✅ Erreur Firestore — ne pas laisser un user vide dans le dash
         setShowLoader(false);
         setGoogleLoading(false);
         setError(text.googleError);
@@ -272,7 +311,6 @@ export default function Login() {
         err.code === "auth/popup-closed-by-user" ||
         err.code === "auth/cancelled-popup-request"
       ) {
-        // User a fermé le popup — pas une erreur
         setGoogleLoading(false);
         return;
       }
