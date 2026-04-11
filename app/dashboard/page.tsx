@@ -11,6 +11,7 @@ import DocumentsTab  from "./components/DocumentsTab";
 import ProfileTab    from "./components/ProfileTab";
 import HomeTab, { BottomNav } from "./components/HomeTab";
 import { SearchModal, StepModal, ArmyGuideModal, PhaseUnlockOverlay } from "./components/Modals";
+import DemoGuide     from "./components/DemoGuide";
 import { PHASE_STEPS } from "./components/data";
 import { getPhaseStats, useStreak } from "./components/utils";
 import type { Lang, PhaseId } from "./components/data";
@@ -33,6 +34,10 @@ export default function Dashboard() {
   const [arrivalDate,    setArrivalDate]    = useState<string | null>(null);
   const [armyStatus,     setArmyStatus]     = useState("");
   const [menuOpen,       setMenuOpen]       = useState(false);
+
+  // ── State démo ─────────────────────────────────────────
+  const [showDemo,       setShowDemo]       = useState(false);
+  const [demoHighlight,  setDemoHighlight]  = useState<string | null>(null);
   const [toast,          setToast]          = useState<string | null>(null);
   const [lastAction,     setLastAction]     = useState<string | null>(null);
   const [preChecklist,   setPreChecklist]   = useState<Record<string, boolean>>({});
@@ -92,6 +97,13 @@ export default function Dashboard() {
         setArmyStatus(data?.armyStatus || "");
         localStorage.setItem("userName", name);
         localStorage.setItem("lang", userLang);
+
+        // ✅ Démo — afficher si jamais vue
+        const demoSeenLocal = localStorage.getItem("kuabo_demo_seen");
+        if (!data?.demoSeen && !demoSeenLocal) {
+          // Petit délai pour que le dash se charge d'abord
+          setTimeout(() => setShowDemo(true), 800);
+        }
       } catch {}
       setReady(true);
     });
@@ -192,6 +204,16 @@ export default function Dashboard() {
   // ── Render ─────────────────────────────────────────────
   return (
     <div style={{ background: "#0b0f1a", height: "100dvh", overflow: "hidden", color: "#f4f1ec" }}>
+
+      {/* ── Démo nouveau user ── */}
+      {showDemo && ready && (
+        <DemoGuide
+          lang={lang}
+          userName={userName}
+          onTabChange={tab => setActiveTab(tab)}
+          onHighlight={target => setDemoHighlight(target)}
+        />
+      )}
 
       {/* Modals globaux */}
       {showSearch && <SearchModal lang={lang} onClose={() => setShowSearch(false)} />}

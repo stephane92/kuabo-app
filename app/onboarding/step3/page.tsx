@@ -393,66 +393,84 @@ export default function Step3() {
             {text.comingSoon}
           </div>
 
-          {/* ✅ Bouton confirmer — grisé si pas d'état sélectionné */}
-          {!showConfirm && (
-            <button
-              id="confirm-btn"
-              onClick={handleConfirm}
-              disabled={!selectedState}
-              style={{ ...nextBtn, opacity:selectedState?1:0.4, marginTop:20 }}
-            >
-              {text.next}
-            </button>
-          )}
-
-          {/* ✅ Modal de confirmation au centre */}
-          {showConfirm && selectedStateData && (
-            <div style={{ marginTop:20, background:"rgba(232,184,75,0.06)", border:"2px solid rgba(232,184,75,0.35)", borderRadius:16, padding:"20px", animation:"confirmPop 0.35s cubic-bezier(.34,1.56,.64,1)" }}>
-              <div style={{ textAlign:"center", marginBottom:14 }}>
-                <div style={{ fontSize:40, marginBottom:8 }}>{selectedStateData.emoji}</div>
-                <div style={{ fontSize:16, fontWeight:700, color:"#f4f1ec", marginBottom:4 }}>
-                  {text.confirmTitle}
-                </div>
-                <div style={{ fontSize:22, fontWeight:900, color:"#e8b84b", marginBottom:8 }}>
-                  {selectedState}
-                </div>
-                <div style={{ fontSize:12, color:"#aaa", lineHeight:1.6, marginBottom:16 }}>
-                  {text.confirmMsg}
-                </div>
-                {/* Fait sur l'état */}
-                <div style={{ background:"rgba(45,212,191,0.06)", border:"1px solid rgba(45,212,191,0.15)", borderRadius:10, padding:"10px 12px", marginBottom:16, textAlign:"left" as const }}>
-                  <div style={{ fontSize:10, color:"#2dd4bf", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, marginBottom:4 }}>{text.factTitle}</div>
-                  <div style={{ fontSize:12, color:"#f4f1ec", lineHeight:1.6 }}>{selectedStateData.fact[lang]}</div>
-                </div>
-              </div>
-              <div style={{ display:"flex", gap:10 }}>
-                <button
-                  onClick={() => setShowConfirm(false)}
-                  style={{ flex:1, padding:"12px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#aaa", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}
-                >
-                  ← {text.changeBtn}
-                </button>
-                <button
-                  onClick={handleFinalConfirm}
-                  disabled={saving}
-                  style={{ flex:2, padding:"12px", background:"#e8b84b", border:"none", borderRadius:12, color:"#000", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:saving?0.7:1 }}
-                >
-                  {saving ? "..." : text.confirmBtn}
-                </button>
-              </div>
-            </div>
-          )}
+          {/* Bouton confirmer — toujours visible, grisé si pas d'état */}
+          <button
+            id="confirm-btn"
+            onClick={handleConfirm}
+            disabled={!selectedState}
+            style={{ ...nextBtn, opacity:selectedState?1:0.4, marginTop:20 }}
+          >
+            {text.next}
+          </button>
 
         </div>
       </div>
 
+      {/* ✅ Modal confirmation — position fixed au CENTRE comme Army */}
+      {showConfirm && selectedStateData && (
+        <>
+          {/* Overlay */}
+          <div
+            style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.88)", zIndex:900, backdropFilter:"blur(6px)" }}
+            onClick={() => setShowConfirm(false)}
+          />
+          {/* Modal centrée */}
+          <div style={{
+            position:"fixed", top:"50%", left:"50%",
+            transform:"translate(-50%,-50%)",
+            zIndex:901,
+            width:"calc(100% - 32px)", maxWidth:420,
+            background:"#0f1521",
+            border:"2px solid rgba(232,184,75,0.35)",
+            borderRadius:22,
+            padding:"28px 22px",
+            animation:"alertPop 0.35s cubic-bezier(.34,1.56,.64,1)",
+          }}>
+            {/* Emoji + nom état */}
+            <div style={{ textAlign:"center", marginBottom:18 }}>
+              <div style={{ fontSize:52, marginBottom:10 }}>{selectedStateData.emoji}</div>
+              <div style={{ fontSize:13, color:"#aaa", marginBottom:4 }}>{text.confirmTitle}</div>
+              <div style={{ fontSize:28, fontWeight:900, color:"#e8b84b", marginBottom:6 }}>{selectedState}</div>
+              <div style={{ fontSize:12, color:"#aaa", lineHeight:1.6 }}>{text.confirmMsg}</div>
+            </div>
+
+            {/* Fait motivant */}
+            <div style={{ background:"rgba(45,212,191,0.06)", border:"1px solid rgba(45,212,191,0.18)", borderRadius:12, padding:"12px 14px", marginBottom:20 }}>
+              <div style={{ fontSize:10, color:"#2dd4bf", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase" as const, marginBottom:5 }}>
+                {text.factTitle}
+              </div>
+              <div style={{ fontSize:12, color:"#f4f1ec", lineHeight:1.65 }}>
+                {selectedStateData.fact[lang]}
+              </div>
+            </div>
+
+            {/* Boutons */}
+            <div style={{ display:"flex", gap:10 }}>
+              <button
+                onClick={() => setShowConfirm(false)}
+                style={{ flex:1, padding:"13px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#aaa", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}
+              >
+                ← {text.changeBtn}
+              </button>
+              <button
+                onClick={handleFinalConfirm}
+                disabled={saving}
+                style={{ flex:2, padding:"13px", background:"#e8b84b", border:"none", borderRadius:12, color:"#000", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:saving?0.7:1 }}
+              >
+                {saving ? "..." : text.confirmBtn}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       <style>{`
         @keyframes spin         { to { transform: rotate(360deg) } }
         @keyframes flagWave     { 0%,100%{transform:rotate(-4deg)} 50%{transform:rotate(4deg)} }
-        @keyframes confirmPop   { 0%{transform:scale(0.9);opacity:0} 100%{transform:scale(1);opacity:1} }
+        @keyframes alertPop     { 0%{transform:translate(-50%,-50%) scale(0.85);opacity:0} 100%{transform:translate(-50%,-50%) scale(1);opacity:1} }
         button:active           { transform: scale(0.98) !important }
         input::placeholder      { color: #444 }
-        input                   { font-size: 16px !important } /* ✅ empêche zoom iOS */
+        input                   { font-size: 16px !important }
         ::-webkit-scrollbar     { width: 4px }
         ::-webkit-scrollbar-track { background: #0f1521 }
         ::-webkit-scrollbar-thumb { background: #2a3448; border-radius: 4px }
