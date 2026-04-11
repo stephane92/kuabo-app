@@ -6,7 +6,6 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   signInWithRedirect,
-  getRedirectResult,
   GoogleAuthProvider,
   sendEmailVerification,
   onAuthStateChanged,
@@ -152,37 +151,40 @@ export default function LoginPage() {
 
   // ── Charger la langue + vérifier si déjà connecté ──────
   useEffect(() => {
-    const saved = localStorage.getItem("lang") as Lang;
-    if (saved && ["fr","en","es"].includes(saved)) setLang(saved);
+    const saved = (localStorage.getItem("lang") as Lang) || "fr";
+    if (["fr","en","es"].includes(saved)) setLang(saved);
 
-    // ✅ 1. Vérifier d'abord le résultat d'un redirect Google (mobile)
-    getRedirectResult(auth)
-      .then(async result => {
-        if (result?.user) {
-          setGLoading(true);
-          await handleUserRedirect(result.user, saved || "fr");
-          return;
-        }
-        // ✅ 2. Vérifier si déjà connecté
-        const unsub = onAuthStateChanged(auth, async user => {
-          unsub();
-          if (!user) { setChecking(false); return; }
-          const isGoogle = user.providerData?.some(p => p.providerId === "google.com");
-          if (!user.emailVerified && !isGoogle) { setChecking(false); return; }
-          await handleUserRedirect(user, saved || "fr");
-        });
-        setTimeout(() => setChecking(false), 2500);
-      })
-      .catch(() => {
-        const unsub = onAuthStateChanged(auth, async user => {
-          unsub();
-          if (!user) { setChecking(false); return; }
-          const isGoogle = user.providerData?.some(p => p.providerId === "google.com");
-          if (!user.emailVerified && !isGoogle) { setChecking(false); return; }
-          await handleUserRedirect(user, saved || "fr");
-        });
-        setTimeout(() => setChecking(false), 2500);
-      });
+    // ✅ onAuthStateChanged suffit pour tout — redirect ET déjà connecté
+    // Après signInWithRedirect, Firebase restaure le user via onAuthStateChanged
+    // getRedirectResult n'est pas nécessaire et cause des bugs sur Next.js
+    const unsub = onAuthStateChanged(auth, async user => {
+      if (!user) {
+        setChecking(false);
+        return;
+      }
+
+      // Accepter Google (pas besoin de emailVerified)
+      // Refuser email non vérifié
+      const isGoogle = user.providerData?.some(p => p.providerId === "google.com");
+
+      if (!user.emailVerified && !isGoogle) {
+        // Email pas vérifié — laisser l'user sur la page login
+        setChecking(false);
+        return;
+      }
+
+      // ✅ User connecté et valide → rediriger
+      setGLoading(true);
+      await handleUserRedirect(user, saved);
+    });
+
+    // Timeout de sécurité — si onAuthStateChanged ne répond pas en 3s
+    const timeout = setTimeout(() => setChecking(false), 3000);
+
+    return () => {
+      unsub();
+      clearTimeout(timeout);
+    };
   }, []);
 
   // ── Login email / password ──────────────────────────────
