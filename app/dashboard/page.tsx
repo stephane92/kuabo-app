@@ -790,15 +790,13 @@ export default function Dashboard() {
                 currentPhase={currentPhase} phaseProgress={phaseProgress}
                 arrivalDate={arrivalDate} armyStatus={armyStatus}
                 userState={userState} userCity={userCity} userCountry={userCountry}
-                streak={streak} preChecklist={preChecklist}
-                userStatus={userStatus}
+                streak={streak} userStatus={userStatus}
                 onOpenStep={setActiveStepModal}
                 onViewArmyGuide={()=>setShowArmyGuide(true)}
-                onTogglePreChecklist={id=>{ const u={...preChecklist,[id]:!preChecklist[id]}; setPreChecklist(u); localStorage.setItem("preChecklist",JSON.stringify(u)); }}
               />
             </>
           )}
-          {activeTab==="explorer" && <ExplorerTab lang={lang}/>}
+          {activeTab==="explorer" && <ExplorerTab lang={lang} completedSteps={completedSteps} userId={userId}/>}
           {activeTab==="jobs"     && <JobsTab lang={lang} userId={userId}/>}
           {activeTab==="profile"  && (
             <div style={{ marginTop:4 }}>
