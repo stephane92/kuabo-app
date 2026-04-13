@@ -1014,7 +1014,7 @@ export default function Dashboard() {
               />
             </>
           )}
-          {activeTab==="explorer" && <ExplorerTab lang={lang} completedSteps={completedSteps} userId={userId}/>}
+          {activeTab==="explorer" && <ExplorerTab lang={lang} completedSteps={completedSteps} userId={userId} userArrival={userArrival} userState={userState}/>}
           {activeTab==="jobs"     && <JobsTab lang={lang} userId={userId}/>}
           {activeTab==="profile"  && (
             <div style={{ marginTop:4 }}>

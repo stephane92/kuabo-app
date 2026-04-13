@@ -12,6 +12,7 @@ type FilterType = "ssn"|"dmv"|"bank"|"uscis"|"clinic"|"food";
 type CommunityUser = { id:string; situation:string; arrival:string; lat:number; lng:number; isNew:boolean; };
 type ExplorerSubTab = "services"|"community"|"documents"|"messages";
 type CommFilter = "all"|"dv"|"work"|"student"|"family"|"refugee";
+type MapMode = "gps"|"usstate"; // ✅ NOUVEAU — mode carte
 
 const FILTERS: { id:FilterType; icon:string; label:Record<Lang,string> }[] = [
   { id:"ssn",    icon:"🪪", label:{ fr:"SSA",       en:"SSA",     es:"SSA"      } },
@@ -31,7 +32,39 @@ const COMM_FILTERS: { id:CommFilter; label:Record<Lang,string> }[] = [
   { id:"refugee", label:{ fr:"Réfugié",    en:"Refugee",  es:"Refugiado" } },
 ];
 
-const MARKER_COLORS: Record<FilterType,string> = { ssn:"#e8b84b", dmv:"#f97316", bank:"#22c55e", uscis:"#a78bfa", clinic:"#2dd4bf", food:"#f472b6" };
+const MARKER_COLORS: Record<FilterType,string> = {
+  ssn:"#e8b84b", dmv:"#f97316", bank:"#22c55e",
+  uscis:"#a78bfa", clinic:"#2dd4bf", food:"#f472b6"
+};
+
+// Coordonnées des capitales d'états US pour le mode "Mon état US"
+const US_STATE_COORDS: Record<string,{lat:number;lng:number;name:string}> = {
+  AL:{lat:32.36,lng:-86.27,name:"Alabama"},AK:{lat:58.30,lng:-134.41,name:"Alaska"},
+  AZ:{lat:33.44,lng:-112.07,name:"Arizona"},AR:{lat:34.74,lng:-92.28,name:"Arkansas"},
+  CA:{lat:38.55,lng:-121.46,name:"California"},CO:{lat:39.74,lng:-104.98,name:"Colorado"},
+  CT:{lat:41.76,lng:-72.68,name:"Connecticut"},DE:{lat:39.15,lng:-75.52,name:"Delaware"},
+  FL:{lat:30.43,lng:-84.28,name:"Florida"},GA:{lat:33.74,lng:-84.38,name:"Georgia"},
+  HI:{lat:21.30,lng:-157.85,name:"Hawaii"},ID:{lat:43.61,lng:-116.20,name:"Idaho"},
+  IL:{lat:39.78,lng:-89.65,name:"Illinois"},IN:{lat:39.77,lng:-86.15,name:"Indiana"},
+  IA:{lat:41.59,lng:-93.62,name:"Iowa"},KS:{lat:39.04,lng:-95.67,name:"Kansas"},
+  KY:{lat:38.18,lng:-84.87,name:"Kentucky"},LA:{lat:30.45,lng:-91.13,name:"Louisiana"},
+  ME:{lat:44.31,lng:-69.77,name:"Maine"},MD:{lat:38.97,lng:-76.49,name:"Maryland"},
+  MA:{lat:42.35,lng:-71.06,name:"Massachusetts"},MI:{lat:42.73,lng:-84.55,name:"Michigan"},
+  MN:{lat:44.94,lng:-93.09,name:"Minnesota"},MS:{lat:32.30,lng:-90.18,name:"Mississippi"},
+  MO:{lat:38.57,lng:-92.17,name:"Missouri"},MT:{lat:46.59,lng:-112.02,name:"Montana"},
+  NE:{lat:40.80,lng:-96.67,name:"Nebraska"},NV:{lat:39.16,lng:-119.76,name:"Nevada"},
+  NH:{lat:43.21,lng:-71.53,name:"New Hampshire"},NJ:{lat:40.22,lng:-74.76,name:"New Jersey"},
+  NM:{lat:35.66,lng:-105.96,name:"New Mexico"},NY:{lat:42.65,lng:-73.75,name:"New York"},
+  NC:{lat:35.77,lng:-78.63,name:"North Carolina"},ND:{lat:46.81,lng:-100.77,name:"North Dakota"},
+  OH:{lat:39.96,lng:-83.00,name:"Ohio"},OK:{lat:35.47,lng:-97.52,name:"Oklahoma"},
+  OR:{lat:44.93,lng:-123.03,name:"Oregon"},PA:{lat:40.26,lng:-76.88,name:"Pennsylvania"},
+  RI:{lat:41.82,lng:-71.42,name:"Rhode Island"},SC:{lat:34.00,lng:-81.03,name:"South Carolina"},
+  SD:{lat:44.36,lng:-100.34,name:"South Dakota"},TN:{lat:36.16,lng:-86.78,name:"Tennessee"},
+  TX:{lat:30.26,lng:-97.74,name:"Texas"},UT:{lat:40.76,lng:-111.89,name:"Utah"},
+  VT:{lat:44.26,lng:-72.57,name:"Vermont"},VA:{lat:37.53,lng:-77.46,name:"Virginia"},
+  WA:{lat:47.03,lng:-122.89,name:"Washington"},WV:{lat:38.34,lng:-81.63,name:"West Virginia"},
+  WI:{lat:43.07,lng:-89.39,name:"Wisconsin"},WY:{lat:41.14,lng:-104.82,name:"Wyoming"},
+};
 
 const mapContainerStyle = { width:"100%", height:"240px" };
 const mapOptions = {
@@ -52,11 +85,98 @@ function getDistanceKm(lat1:number,lng1:number,lat2:number,lng2:number):number {
   const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
-
 function anonLocation(lat:number,lng:number){ return { lat:Math.round(lat*50)/50, lng:Math.round(lng*50)/50 }; }
 
 // ══════════════════════════════════════════════
-// DOCUMENTS SECTION (ex DocumentsTab)
+// MODE "PAS ENCORE ARRIVÉ" — guides préparatoires
+// ══════════════════════════════════════════════
+function PreArrivalExplorer({ lang, targetState }: { lang:Lang; targetState:string }) {
+  const stateName = US_STATE_COORDS[targetState]?.name || targetState || "USA";
+
+  const T = {
+    fr: {
+      title: "Prépare ton arrivée",
+      sub: `Tu n'es pas encore aux USA. Voici ce qu'il faut savoir avant d'arriver${stateName?" à "+stateName:""}. 🌍`,
+      mapNote: "La carte des services sera disponible dès ton arrivée.",
+      guides: [
+        { icon:"🪪", title:"Le SSN — c'est quoi ?", desc:"Le Social Security Number est ton identifiant américain. Tu peux le demander 10 jours après ton arrivée.", urgent:true },
+        { icon:"📱", title:"Carte SIM dès l'aéroport", desc:"T-Mobile ou Mint Mobile. Pas besoin de SSN. Entre $30 et $50/mois.", urgent:true },
+        { icon:"🏦", title:"Ouvrir un compte bancaire", desc:"Chase ou Bank of America acceptent juste ton passeport. Fais-le dans les 2 premières semaines.", urgent:false },
+        { icon:"💳", title:"Ta Green Card arrive par courrier", desc:"USCIS t'envoie ta carte physique en 2-3 semaines. Pas besoin de faire quoi que ce soit.", urgent:false },
+        { icon:"🏠", title:"Trouver un logement", desc:"Zillow, Apartments.com, Facebook Marketplace. Budget moyen : $1200-2000/mois selon l'état.", urgent:false },
+        { icon:"🚗", title:"Permis de conduire", desc:"Passe d'abord l'examen théorique sur le site du DMV de ton état. Ensuite le pratique.", urgent:false },
+      ],
+    },
+    en: {
+      title: "Prepare your arrival",
+      sub: `You haven't arrived in the USA yet. Here's what you need to know before arriving${stateName?" in "+stateName:""}. 🌍`,
+      mapNote: "The services map will be available once you arrive.",
+      guides: [
+        { icon:"🪪", title:"What is the SSN?", desc:"The Social Security Number is your US ID. You can apply 10 days after arrival.", urgent:true },
+        { icon:"📱", title:"Get a SIM at the airport", desc:"T-Mobile or Mint Mobile. No SSN needed. $30-50/month.", urgent:true },
+        { icon:"🏦", title:"Open a bank account", desc:"Chase or Bank of America accept just your passport. Do it in the first 2 weeks.", urgent:false },
+        { icon:"💳", title:"Your Green Card arrives by mail", desc:"USCIS sends your physical card in 2-3 weeks. No action needed.", urgent:false },
+        { icon:"🏠", title:"Finding housing", desc:"Zillow, Apartments.com, Facebook Marketplace. Average: $1200-2000/month.", urgent:false },
+        { icon:"🚗", title:"Driver's license", desc:"First take the written test on your state's DMV website. Then the practical test.", urgent:false },
+      ],
+    },
+    es: {
+      title: "Prepara tu llegada",
+      sub: `Aún no has llegado a EE.UU. Esto es lo que debes saber antes de llegar${stateName?" a "+stateName:""}. 🌍`,
+      mapNote: "El mapa de servicios estará disponible cuando llegues.",
+      guides: [
+        { icon:"🪪", title:"¿Qué es el SSN?", desc:"El Social Security Number es tu identificador americano. Puedes pedirlo 10 días después de llegar.", urgent:true },
+        { icon:"📱", title:"Consigue una SIM en el aeropuerto", desc:"T-Mobile o Mint Mobile. Sin SSN. $30-50/mes.", urgent:true },
+        { icon:"🏦", title:"Abrir cuenta bancaria", desc:"Chase o Bank of America aceptan solo tu pasaporte. Hazlo en las primeras 2 semanas.", urgent:false },
+        { icon:"💳", title:"Tu Green Card llega por correo", desc:"USCIS te envía la tarjeta física en 2-3 semanas. No necesitas hacer nada.", urgent:false },
+        { icon:"🏠", title:"Encontrar vivienda", desc:"Zillow, Apartments.com, Facebook Marketplace. Media: $1200-2000/mes.", urgent:false },
+        { icon:"🚗", title:"Licencia de conducir", desc:"Primero el examen teórico en el sitio del DMV de tu estado. Luego el práctico.", urgent:false },
+      ],
+    },
+  }[lang];
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{ background:"linear-gradient(135deg,rgba(232,184,75,.08),rgba(232,184,75,.04))", border:"1px solid rgba(232,184,75,.2)", borderRadius:14, padding:"16px", marginBottom:14 }}>
+        <div style={{ fontSize:11, color:"#e8b84b", fontWeight:700, letterSpacing:".08em", textTransform:"uppercase" as const, marginBottom:6 }}>
+          🌍 {T.title}
+        </div>
+        <div style={{ fontSize:13, color:"#f4f1ec", lineHeight:1.7 }}>{T.sub}</div>
+      </div>
+
+      {/* Carte grisée avec message */}
+      <div style={{ borderRadius:14, overflow:"hidden", border:"1px solid #1e2a3a", marginBottom:14, position:"relative" }}>
+        <div style={{ height:180, background:"#0a0e17", display:"flex", flexDirection:"column" as const, alignItems:"center", justifyContent:"center", gap:10 }}>
+          <span style={{ fontSize:36 }}>🗺️</span>
+          <div style={{ fontSize:13, color:"#555", textAlign:"center" as const, lineHeight:1.6, padding:"0 20px" }}>{T.mapNote}</div>
+        </div>
+      </div>
+
+      {/* Guides préparatoires */}
+      <div style={{ fontSize:11, color:"#555", letterSpacing:".08em", textTransform:"uppercase" as const, marginBottom:10, fontWeight:600 }}>
+        📚 {lang==="fr"?"Guides essentiels":lang==="es"?"Guías esenciales":"Essential guides"}
+      </div>
+      <div style={{ display:"flex", flexDirection:"column" as const, gap:8 }}>
+        {T.guides.map((guide,i)=>(
+          <div key={i} style={{ background:"#141d2e", border:`1px solid ${guide.urgent?"rgba(232,184,75,.25)":"#1e2a3a"}`, borderRadius:12, padding:"13px 14px", display:"flex", alignItems:"flex-start", gap:12 }}>
+            <span style={{ fontSize:22, flexShrink:0, marginTop:2 }}>{guide.icon}</span>
+            <div style={{ flex:1 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+                <div style={{ fontSize:13, fontWeight:600, color:"#f4f1ec" }}>{guide.title}</div>
+                {guide.urgent&&<span style={{ fontSize:9, color:"#e8b84b", fontWeight:700, background:"rgba(232,184,75,.1)", padding:"2px 6px", borderRadius:6, letterSpacing:".04em" }}>URGENT</span>}
+              </div>
+              <div style={{ fontSize:12, color:"#aaa", lineHeight:1.6 }}>{guide.desc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════
+// DOCUMENTS SECTION
 // ══════════════════════════════════════════════
 function DocumentsSection({ lang, completedSteps }: { lang:Lang; completedSteps:string[] }) {
   const [activeDoc, setActiveDoc] = useState<string|null>(null);
@@ -109,20 +229,19 @@ function DocumentsSection({ lang, completedSteps }: { lang:Lang; completedSteps:
 
   const list=docs[lang];
   const getStatus=(d:DocItem)=>{ if(d.alwaysOk)return "ok"; if(d.linked&&completedSteps.includes(d.linked))return "ok"; if(d.linked)return "pending"; return "missing"; };
-  const sColor ={ ok:"#22c55e",pending:"#e8b84b",missing:"#ef4444" };
-  const sBg    ={ ok:"rgba(34,197,94,0.07)",pending:"rgba(232,184,75,0.07)",missing:"rgba(239,68,68,0.05)" };
+  const sColor={ ok:"#22c55e",pending:"#e8b84b",missing:"#ef4444" };
+  const sBg={ ok:"rgba(34,197,94,0.07)",pending:"rgba(232,184,75,0.07)",missing:"rgba(239,68,68,0.05)" };
   const sBorder={ ok:"rgba(34,197,94,0.18)",pending:"rgba(232,184,75,0.18)",missing:"rgba(239,68,68,0.15)" };
-  const counts ={ ok:0,pending:0,missing:0 };
+  const counts={ ok:0,pending:0,missing:0 };
   list.forEach(d=>{ counts[getStatus(d) as keyof typeof counts]++; });
   const docScore=Math.round((counts.ok/list.length)*100);
-  const selDoc =list.find(d=>d.id===activeDoc);
+  const selDoc=list.find(d=>d.id===activeDoc);
   const lostDoc=list.find(d=>d.id===lostModal);
   const EXP: Record<string,string>={ ssn_card:"ssn",greencard:"uscis",bank_card:"bank",license_c:"dmv",sim:"",passport:"",visa:"" };
   const toggleCons=(id:string)=>{ const u={...conservation,[id]:!conservation[id]}; setConservation(u); localStorage.setItem("doc_conservation",JSON.stringify(u)); };
 
   return (
     <div>
-      {/* Modal info doc */}
       {activeDoc&&selDoc&&(
         <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)",padding:"0 16px" }} onClick={()=>setActiveDoc(null)}>
           <div style={{ background:"#0f1521",border:"1px solid #1e2a3a",borderRadius:20,padding:"24px 18px",width:"100%",maxWidth:480,maxHeight:"85vh",overflowY:"auto",animation:"alertPop 0.3s cubic-bezier(.34,1.56,.64,1)" }} onClick={e=>e.stopPropagation()}>
@@ -142,7 +261,6 @@ function DocumentsSection({ lang, completedSteps }: { lang:Lang; completedSteps:
           </div>
         </div>
       )}
-      {/* Modal perdu */}
       {lostModal&&lostDoc&&(
         <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)",padding:"0 16px" }} onClick={()=>setLostModal(null)}>
           <div style={{ background:"#0f1521",border:"1px solid #1e2a3a",borderRadius:20,padding:"24px 18px",width:"100%",maxWidth:480,maxHeight:"85vh",overflowY:"auto",animation:"alertPop 0.3s cubic-bezier(.34,1.56,.64,1)" }} onClick={e=>e.stopPropagation()}>
@@ -166,7 +284,6 @@ function DocumentsSection({ lang, completedSteps }: { lang:Lang; completedSteps:
       <div style={{ fontSize:11,color:"#555",letterSpacing:".1em",textTransform:"uppercase" as const,marginBottom:12,fontWeight:600 }}>📄 {L.title}</div>
       <div style={{ fontSize:12,color:"#aaa",marginBottom:14 }}>{L.sub}</div>
 
-      {/* Score */}
       <div style={{ background:"#141d2e",border:"1px solid #1e2a3a",borderRadius:12,padding:"14px 16px",marginBottom:14 }}>
         <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8 }}>
           <div style={{ fontSize:12,color:"#aaa" }}>{L.score}</div>
@@ -185,7 +302,6 @@ function DocumentsSection({ lang, completedSteps }: { lang:Lang; completedSteps:
         </div>
       </div>
 
-      {/* Liste */}
       <div style={{ display:"flex",flexDirection:"column" as const,gap:8,marginBottom:18 }}>
         {list.map(d=>{
           const s=getStatus(d);
@@ -207,7 +323,6 @@ function DocumentsSection({ lang, completedSteps }: { lang:Lang; completedSteps:
         })}
       </div>
 
-      {/* Conservation */}
       <div style={{ background:"rgba(45,212,191,0.04)",border:"1px solid rgba(45,212,191,0.13)",borderRadius:12,padding:"16px" }}>
         <div style={{ fontSize:14,fontWeight:700,color:"#2dd4bf",marginBottom:4 }}>{L.conservTitle}</div>
         <div style={{ fontSize:12,color:"#aaa",marginBottom:12 }}>{L.conservSub}</div>
@@ -230,7 +345,7 @@ function DocumentsSection({ lang, completedSteps }: { lang:Lang; completedSteps:
 }
 
 // ══════════════════════════════════════════════
-// MESSAGES KUABO SECTION
+// MESSAGES SECTION
 // ══════════════════════════════════════════════
 function MessagesSection({ lang, userId }: { lang:Lang; userId:string|undefined }) {
   const [messages, setMessages] = useState<any[]>([]);
@@ -247,7 +362,7 @@ function MessagesSection({ lang, userId }: { lang:Lang; userId:string|undefined 
           const adminSnap=await getDoc(doc(db,"admin_messages",d.id)).catch(()=>null);
           if(adminSnap?.exists()){
             const adminData=adminSnap.data() as any;
-            msgs.push({ id:d.id, ...data, title:adminData["title_"+lang]||adminData.title||"", content:adminData["content_"+lang]||adminData.content||"", type:adminData.type, publishedAt:adminData.publishedAt });
+            msgs.push({ id:d.id,...data,title:adminData["title_"+lang]||adminData.title||"",content:adminData["content_"+lang]||adminData.content||"",type:adminData.type,publishedAt:adminData.publishedAt });
           }
         }
         msgs.sort((a,b)=>new Date(b.publishedAt||0).getTime()-new Date(a.publishedAt||0).getTime());
@@ -258,11 +373,7 @@ function MessagesSection({ lang, userId }: { lang:Lang; userId:string|undefined 
     f();
   },[userId,lang]);
 
-  const T = {
-    fr:{ title:"Messages Kuabo", empty:"Aucun message pour l'instant", new:"Nouveau", seen:"Lu" },
-    en:{ title:"Kuabo Messages", empty:"No messages yet",              new:"New",     seen:"Read" },
-    es:{ title:"Mensajes Kuabo", empty:"Sin mensajes por ahora",       new:"Nuevo",   seen:"Leído" },
-  }[lang];
+  const T={ fr:{title:"Messages Kuabo",empty:"Aucun message pour l'instant",new:"Nouveau",seen:"Lu"},en:{title:"Kuabo Messages",empty:"No messages yet",new:"New",seen:"Read"},es:{title:"Mensajes Kuabo",empty:"Sin mensajes por ahora",new:"Nuevo",seen:"Leído"} }[lang];
 
   return (
     <div>
@@ -281,7 +392,7 @@ function MessagesSection({ lang, userId }: { lang:Lang; userId:string|undefined 
           return (
             <div key={msg.id} style={{ background:"#141d2e",border:`1px solid ${color}25`,borderRadius:12,padding:"14px" }}>
               <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6 }}>
-                <div style={{ fontSize:10,color,fontWeight:700,textTransform:"uppercase" as const,letterSpacing:".06em" }}>{isUrgent?"⚠️":"📢"} {lang==="fr"?"Kuabo":"Kuabo"}</div>
+                <div style={{ fontSize:10,color,fontWeight:700,textTransform:"uppercase" as const,letterSpacing:".06em" }}>{isUrgent?"⚠️":"📢"} Kuabo</div>
                 <div style={{ fontSize:10,color:"#555" }}>{msg.seen?T.seen:`🔴 ${T.new}`}</div>
               </div>
               <div style={{ fontSize:13,fontWeight:600,color:"#f4f1ec",marginBottom:4 }}>{msg.title}</div>
@@ -297,14 +408,17 @@ function MessagesSection({ lang, userId }: { lang:Lang; userId:string|undefined 
 // ══════════════════════════════════════════════
 // EXPLORER TAB PRINCIPAL
 // ══════════════════════════════════════════════
-export default function ExplorerTab({ lang, completedSteps, userId }: {
+export default function ExplorerTab({ lang, completedSteps, userId, userArrival, userState: propUserState }: {
   lang: Lang;
   completedSteps?: string[];
   userId?: string;
+  userArrival?: string;   // ✅ "abroad"|"new"|"months"|"settled"
+  userState?: string;     // ✅ état américain enregistré ex: "MD"
 }) {
   const [subTab,         setSubTab]         = useState<ExplorerSubTab>("services");
+  const [mapMode,        setMapMode]        = useState<MapMode>("gps"); // ✅ mode carte
   const [userLocation,   setUserLocation]   = useState<{lat:number;lng:number}|null>(null);
-  const [userState,      setUserState]      = useState("");
+  const [userState,      setUserState]      = useState(propUserState||localStorage.getItem("userState")||"");
   const [userSituation,  setUserSituation]  = useState("default");
   const [locating,       setLocating]       = useState(false);
   const [locError,       setLocError]       = useState<string|false>(false);
@@ -320,18 +434,27 @@ export default function ExplorerTab({ lang, completedSteps, userId }: {
   const [savingToggle,   setSavingToggle]   = useState(false);
   const [mapRef,         setMapRef]         = useState<google.maps.Map|null>(null);
 
+  // ✅ Pas encore arrivé = abroad
+  const isAbroad = userArrival === "abroad" || userArrival === undefined && !userLocation;
+
   const { isLoaded } = useLoadScript({ googleMapsApiKey:process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY||"" });
   const activeColor = MARKER_COLORS[activeFilter];
 
+  // ✅ Centre de la carte selon le mode
+  const effectiveCenter = mapMode === "usstate" && userState && US_STATE_COORDS[userState]
+    ? { lat: US_STATE_COORDS[userState].lat, lng: US_STATE_COORDS[userState].lng }
+    : mapCenter;
+
+  const effectiveZoom = mapMode === "usstate" ? 10 : (userLocation ? 13 : 10);
+
   useEffect(()=>{
     setUserSituation(localStorage.getItem("reason")||"default");
-    setUserState(localStorage.getItem("userState")||"");
-  },[]);
+    if(!propUserState) setUserState(localStorage.getItem("userState")||"");
+  },[propUserState]);
 
   useEffect(()=>{
     const load=async()=>{
-      const user=auth.currentUser;
-      if(!user)return;
+      const user=auth.currentUser; if(!user)return;
       try{ const snap=await getDoc(doc(db,"users",user.uid)); if(snap.exists()) setCommVisible((snap.data() as any)?.communityVisible||false); }catch{}
     };
     load();
@@ -350,8 +473,7 @@ export default function ExplorerTab({ lang, completedSteps, userId }: {
   const fetchCommunity=useCallback(async(loc:{lat:number;lng:number},state:string)=>{
     setLoadingComm(true);
     try{
-      const user=auth.currentUser;
-      if(!user)return;
+      const user=auth.currentUser; if(!user)return;
       const snap=await getDocs(collection(db,"users"));
       const users:CommunityUser[]=[];
       let newCount=0;
@@ -377,17 +499,15 @@ export default function ExplorerTab({ lang, completedSteps, userId }: {
     try{ await updateDoc(doc(db,"users",user.uid),{ location:{ lat:loc.lat,lng:loc.lng,state,city,updatedAt:new Date().toISOString() } }); }catch{}
   },[]);
 
-  // ✅ Fix localisation iOS Safari
   const geolocate=useCallback(async()=>{
     if(!navigator.geolocation){ setLocError("unavailable"); return; }
     setLocating(true); setLocError(false);
-
-    // Essai 1 : haute précision (GPS)
     const tryGeo=(highAccuracy:boolean)=>{
       navigator.geolocation.getCurrentPosition(
         async pos=>{
-          const loc={ lat:pos.coords.latitude, lng:pos.coords.longitude };
+          const loc={ lat:pos.coords.latitude,lng:pos.coords.longitude };
           setUserLocation(loc); setMapCenter(loc); setLocating(false); setLocError(false);
+          setMapMode("gps");
           fetchPlaces(loc,"ssn");
           try{
             const res=await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${loc.lat},${loc.lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}`);
@@ -402,65 +522,76 @@ export default function ExplorerTab({ lang, completedSteps, userId }: {
           }catch{}
         },
         err=>{
-          if(err.code===1){
-            // PERMISSION_DENIED → message clair
-            setLocating(false); setLocError("permission");
-          } else if(highAccuracy){
-            // Timeout ou position unavailable → réessai sans haute précision
-            tryGeo(false);
-          } else {
-            // Échec définitif → message générique
-            setLocating(false); setLocError("failed");
-          }
+          if(err.code===1){ setLocating(false); setLocError("permission"); }
+          else if(highAccuracy){ tryGeo(false); }
+          else { setLocating(false); setLocError("failed"); }
         },
-        { timeout: highAccuracy?12000:20000, enableHighAccuracy:highAccuracy, maximumAge:300000 }
+        { timeout:highAccuracy?12000:20000, enableHighAccuracy:highAccuracy, maximumAge:300000 }
       );
     };
     tryGeo(true);
   },[fetchPlaces,fetchCommunity,saveLocation]);
 
-  useEffect(()=>{ geolocate(); },[geolocate]);
+  // ✅ Mode état US : charger les services de la capitale d'état
+  const loadUSStateServices = useCallback((stateCode:string, filter:FilterType) => {
+    const coords = US_STATE_COORDS[stateCode];
+    if (!coords) return;
+    setMapCenter({ lat:coords.lat, lng:coords.lng });
+    fetchPlaces({ lat:coords.lat, lng:coords.lng }, filter);
+    fetchCommunity({ lat:coords.lat, lng:coords.lng }, stateCode);
+  }, [fetchPlaces, fetchCommunity]);
 
-  const handleFilter=(f:FilterType)=>{ setActiveFilter(f); if(userLocation)fetchPlaces(userLocation,f); };
+  // ✅ Quand on passe en mode "Mon état US"
+  const switchToUSState = () => {
+    if (!userState) return;
+    setMapMode("usstate");
+    setLocError(false);
+    loadUSStateServices(userState, activeFilter);
+  };
+
+  // ✅ Ne pas demander GPS automatiquement si abroad
+  useEffect(()=>{
+    if(isAbroad) return; // pas de géoloc si pas encore arrivé
+    // Si un état US est connu → démarrer en mode état US par défaut
+    if(userState && !userLocation){
+      setMapMode("usstate");
+      loadUSStateServices(userState, activeFilter);
+    } else {
+      geolocate();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
+
+  const handleFilter=(f:FilterType)=>{
+    setActiveFilter(f);
+    if(mapMode==="gps" && userLocation) fetchPlaces(userLocation,f);
+    else if(mapMode==="usstate" && userState) loadUSStateServices(userState,f);
+  };
+
   const filteredUsers=commFilter==="all"?communityUsers:communityUsers.filter(u=>u.situation===commFilter);
-
   const toggleCommVisible=async()=>{
     const user=auth.currentUser; if(!user)return;
     setSavingToggle(true); const newVal=!commVisible; setCommVisible(newVal);
     try{ await updateDoc(doc(db,"users",user.uid),{ communityVisible:newVal }); if(newVal&&userLocation)fetchCommunity(userLocation,userState); }catch{}
     setSavingToggle(false);
   };
-
   const onMapLoad=useCallback((m:google.maps.Map)=>{ setMapRef(m); m.setOptions({ gestureHandling:"none",scrollwheel:false }); },[]);
 
-  const subTabs = [
-    { id:"services",  label:lang==="fr"?"🏢 Services":lang==="es"?"🏢 Servicios":"🏢 Services"        },
-    { id:"community", label:lang==="fr"?"👥 Communauté":lang==="es"?"👥 Comunidad":"👥 Community"      },
-    { id:"documents", label:lang==="fr"?"📄 Documents":lang==="es"?"📄 Documentos":"📄 Documents"      },
-    { id:"messages",  label:lang==="fr"?"📨 Messages":lang==="es"?"📨 Mensajes":"📨 Messages"           },
-  ];
-
-  const locBtn = lang==="fr"?"📍 Activer la localisation":lang==="es"?"📍 Activar ubicación":"📍 Enable location";
+  const locErrMessages: Record<string,Record<Lang,string>> = {
+    permission:{ fr:"❌ Localisation bloquée. Sur iPhone : Réglages → Confidentialité → Service de localisation → Safari → « Lors de l'utilisation ».",en:"❌ Location blocked. On iPhone: Settings → Privacy → Location Services → Safari → 'While Using'.",es:"❌ Ubicación bloqueada. En iPhone: Ajustes → Privacidad → Localización → Safari → 'Al usar la app'." },
+    failed:{ fr:"📍 Impossible de te localiser. Active le WiFi ou rapproche-toi d'une fenêtre.",en:"📍 Can't locate you. Enable WiFi or move near a window.",es:"📍 No se puede localizarte. Activa el WiFi o acércate a una ventana." },
+    unavailable:{ fr:"❌ Géolocalisation indisponible. Essaie Safari.",en:"❌ Geolocation unavailable. Try Safari.",es:"❌ Geolocalización no disponible. Intenta con Safari." },
+  };
+  const locErrMsg = locError ? (locErrMessages[locError as string]?.[lang]||locErrMessages.failed[lang]) : "";
+  const locBtn = lang==="fr"?"📍 Ma position réelle":lang==="es"?"📍 Mi posición real":"📍 My real location";
   const locBtnLoading = lang==="fr"?"Localisation...":lang==="es"?"Ubicando...":"Locating...";
 
-  const locErrMessages: Record<string, Record<Lang, string>> = {
-    permission: {
-      fr:"❌ Localisation bloquée. Sur iPhone : Réglages → Confidentialité → Service de localisation → Safari → « Lors de l'utilisation ». Puis reviens ici et actualise.",
-      en:"❌ Location blocked. On iPhone: Settings → Privacy → Location Services → Safari → 'While Using'. Then come back and refresh.",
-      es:"❌ Ubicación bloqueada. En iPhone: Ajustes → Privacidad → Localización → Safari → 'Al usar la app'. Luego vuelve y actualiza.",
-    },
-    failed: {
-      fr:"📍 Impossible de te localiser. Active le WiFi ou rapproche-toi d'une fenêtre.",
-      en:"📍 Can't locate you. Enable WiFi or move near a window.",
-      es:"📍 No se puede localizarte. Activa el WiFi o acércate a una ventana.",
-    },
-    unavailable: {
-      fr:"❌ Géolocalisation indisponible sur ce navigateur. Essaie Safari.",
-      en:"❌ Geolocation unavailable on this browser. Try Safari.",
-      es:"❌ Geolocalización no disponible en este navegador. Intenta con Safari.",
-    },
-  };
-  const locErrMsg = locError ? (locErrMessages[locError as string]?.[lang] || locErrMessages.failed[lang]) : "";
+  const subTabs = [
+    { id:"services",  label:lang==="fr"?"🏢 Services":lang==="es"?"🏢 Servicios":"🏢 Services" },
+    { id:"community", label:lang==="fr"?"👥 Communauté":lang==="es"?"👥 Comunidad":"👥 Community" },
+    { id:"documents", label:lang==="fr"?"📄 Documents":lang==="es"?"📄 Documentos":"📄 Documents" },
+    { id:"messages",  label:lang==="fr"?"📨 Messages":lang==="es"?"📨 Mensajes":"📨 Messages" },
+  ];
 
   return (
     <div style={{ marginTop:8 }}>
@@ -468,7 +599,7 @@ export default function ExplorerTab({ lang, completedSteps, userId }: {
         <div style={{ fontSize:20,fontWeight:700,color:"#fff",marginBottom:4 }}>Explorer</div>
       </div>
 
-      {/* Sub tabs — scrollable horizontalement */}
+      {/* Sub tabs */}
       <div style={{ display:"flex",gap:6,overflowX:"auto",marginBottom:16,paddingBottom:4 }}>
         {subTabs.map(t=>(
           <button key={t.id} onClick={()=>setSubTab(t.id as ExplorerSubTab)}
@@ -481,70 +612,99 @@ export default function ExplorerTab({ lang, completedSteps, userId }: {
       {/* ══ SERVICES ══ */}
       {subTab==="services"&&(
         <>
-          <div style={{ borderRadius:16,overflow:"hidden",border:"1px solid #1e2a3a",marginBottom:12 }}>
-            {isLoaded?(
-              <GoogleMap mapContainerStyle={mapContainerStyle} center={mapCenter} zoom={userLocation?13:10} options={mapOptions} onLoad={onMapLoad}>
-                {userLocation&&<Marker position={userLocation} icon={{ path:google.maps.SymbolPath.CIRCLE,scale:8,fillColor:"#e8b84b",fillOpacity:1,strokeColor:"#fff",strokeWeight:2 }}/>}
-                {places.map(p=><Marker key={p.id} position={{lat:p.lat,lng:p.lng}} icon={{ path:google.maps.SymbolPath.CIRCLE,scale:7,fillColor:activeColor,fillOpacity:1,strokeColor:"#fff",strokeWeight:1.5 }} onClick={()=>window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.name)}&destination_place_id=${p.id}`,"_blank")}/>)}
-              </GoogleMap>
-            ):(
-              <div style={{ height:240,background:"#0f1521",display:"flex",alignItems:"center",justifyContent:"center" }}><div style={{ color:"#555",fontSize:13 }}>...</div></div>
-            )}
-          </div>
+          {/* ✅ Si pas encore arrivé → guides préparatoires */}
+          {isAbroad ? (
+            <PreArrivalExplorer lang={lang} targetState={userState}/>
+          ) : (
+            <>
+              {/* ✅ Toggle mode carte */}
+              {userState&&(
+                <div style={{ display:"flex",gap:6,marginBottom:12 }}>
+                  <button onClick={()=>{ setMapMode("gps"); if(userLocation)fetchPlaces(userLocation,activeFilter); else geolocate(); }}
+                    style={{ flex:1,padding:"9px",borderRadius:10,background:mapMode==="gps"?"#e8b84b":"#141d2e",border:"1px solid "+(mapMode==="gps"?"#e8b84b":"#1e2a3a"),color:mapMode==="gps"?"#000":"#aaa",fontSize:12,fontWeight:mapMode==="gps"?700:400,cursor:"pointer",fontFamily:"inherit" }}>
+                    📍 {lang==="fr"?"Ma position":lang==="es"?"Mi posición":"My location"}
+                  </button>
+                  <button onClick={switchToUSState}
+                    style={{ flex:1,padding:"9px",borderRadius:10,background:mapMode==="usstate"?"#2dd4bf":"#141d2e",border:"1px solid "+(mapMode==="usstate"?"#2dd4bf":"#1e2a3a"),color:mapMode==="usstate"?"#000":"#aaa",fontSize:12,fontWeight:mapMode==="usstate"?700:400,cursor:"pointer",fontFamily:"inherit" }}>
+                    🇺🇸 {US_STATE_COORDS[userState]?.name||userState}
+                  </button>
+                </div>
+              )}
 
-          {/* Message d'erreur localisation */}
-          {locError&&(
-            <div style={{ background:locError==="permission"?"rgba(239,68,68,0.08)":"rgba(232,184,75,0.08)", border:`1px solid ${locError==="permission"?"rgba(239,68,68,0.25)":"rgba(232,184,75,0.25)"}`, borderRadius:12, padding:"12px 14px", marginBottom:12 }}>
-              <div style={{ fontSize:12, color:locError==="permission"?"#ef4444":"#e8b84b", lineHeight:1.6, marginBottom:locError!=="permission"?10:0 }}>
-                {locErrMsg}
+              {/* Carte */}
+              <div style={{ borderRadius:16,overflow:"hidden",border:"1px solid #1e2a3a",marginBottom:12 }}>
+                {isLoaded?(
+                  <GoogleMap mapContainerStyle={mapContainerStyle} center={effectiveCenter} zoom={effectiveZoom} options={mapOptions} onLoad={onMapLoad}>
+                    {mapMode==="gps"&&userLocation&&<Marker position={userLocation} icon={{ path:google.maps.SymbolPath.CIRCLE,scale:8,fillColor:"#e8b84b",fillOpacity:1,strokeColor:"#fff",strokeWeight:2 }}/>}
+                    {mapMode==="usstate"&&userState&&US_STATE_COORDS[userState]&&<Marker position={{ lat:US_STATE_COORDS[userState].lat,lng:US_STATE_COORDS[userState].lng }} icon={{ path:google.maps.SymbolPath.CIRCLE,scale:10,fillColor:"#2dd4bf",fillOpacity:1,strokeColor:"#fff",strokeWeight:2 }}/>}
+                    {places.map(p=><Marker key={p.id} position={{lat:p.lat,lng:p.lng}} icon={{ path:google.maps.SymbolPath.CIRCLE,scale:7,fillColor:activeColor,fillOpacity:1,strokeColor:"#fff",strokeWeight:1.5 }} onClick={()=>window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.name)}&destination_place_id=${p.id}`,"_blank")}/>)}
+                  </GoogleMap>
+                ):(
+                  <div style={{ height:240,background:"#0f1521",display:"flex",alignItems:"center",justifyContent:"center" }}><div style={{ color:"#555",fontSize:13 }}>...</div></div>
+                )}
               </div>
-              {/* Si pas un problème de permission → bouton réessayer */}
-              {locError!=="permission"&&(
-                <button onClick={geolocate} style={{ padding:"8px 14px", background:"rgba(232,184,75,0.1)", border:"1px solid rgba(232,184,75,0.3)", borderRadius:9, color:"#e8b84b", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
-                  🔄 {lang==="fr"?"Réessayer":lang==="es"?"Reintentar":"Try again"}
+
+              {/* Badge mode actif */}
+              {mapMode==="usstate"&&userState&&(
+                <div style={{ display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"rgba(45,212,191,.08)",border:"1px solid rgba(45,212,191,.2)",borderRadius:10,marginBottom:12 }}>
+                  <span style={{ fontSize:14 }}>🇺🇸</span>
+                  <span style={{ fontSize:12,color:"#2dd4bf",flex:1 }}>
+                    {lang==="fr"?`Services autour de ${US_STATE_COORDS[userState]?.name||userState}`:lang==="es"?`Servicios cerca de ${US_STATE_COORDS[userState]?.name||userState}`:`Services near ${US_STATE_COORDS[userState]?.name||userState}`}
+                  </span>
+                  <button onClick={geolocate} style={{ fontSize:11,color:"#555",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit" }}>
+                    {lang==="fr"?"Utiliser ma position":lang==="es"?"Usar mi posición":"Use my location"}
+                  </button>
+                </div>
+              )}
+
+              {/* Erreurs GPS */}
+              {locError&&mapMode==="gps"&&(
+                <div style={{ background:locError==="permission"?"rgba(239,68,68,0.08)":"rgba(232,184,75,0.08)",border:`1px solid ${locError==="permission"?"rgba(239,68,68,0.25)":"rgba(232,184,75,0.25)"}`,borderRadius:12,padding:"12px 14px",marginBottom:12 }}>
+                  <div style={{ fontSize:12,color:locError==="permission"?"#ef4444":"#e8b84b",lineHeight:1.6,marginBottom:locError!=="permission"?10:0 }}>{locErrMsg}</div>
+                  {locError!=="permission"&&<button onClick={geolocate} style={{ padding:"8px 14px",background:"rgba(232,184,75,0.1)",border:"1px solid rgba(232,184,75,0.3)",borderRadius:9,color:"#e8b84b",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit" }}>🔄 {lang==="fr"?"Réessayer":lang==="es"?"Reintentar":"Try again"}</button>}
+                </div>
+              )}
+
+              {/* Bouton activer GPS si mode GPS sans position */}
+              {mapMode==="gps"&&!userLocation&&!locError&&(
+                <button onClick={geolocate} disabled={locating} style={{ width:"100%",padding:"13px",background:"rgba(232,184,75,0.1)",border:"1px solid rgba(232,184,75,0.3)",borderRadius:14,color:"#e8b84b",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
+                  {locating?locBtnLoading:locBtn}
                 </button>
               )}
-            </div>
-          )}
 
-          {!userLocation&&!locError&&(
-            <button onClick={geolocate} disabled={locating} style={{ width:"100%",padding:"13px",background:"rgba(232,184,75,0.1)",border:"1px solid rgba(232,184,75,0.3)",borderRadius:14,color:"#e8b84b",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
-              {locating?locBtnLoading:locBtn}
-            </button>
-          )}
+              {/* Bouton refresh GPS */}
+              {mapMode==="gps"&&userLocation&&(
+                <button onClick={geolocate} disabled={locating} style={{ width:"100%",padding:"10px",background:"transparent",border:"1px solid #1e2a3a",borderRadius:12,color:"#555",fontSize:12,cursor:"pointer",fontFamily:"inherit",marginBottom:12 }}>
+                  🔄 {lang==="fr"?"Actualiser ma position":lang==="es"?"Actualizar posición":"Refresh location"}
+                </button>
+              )}
 
-          {userLocation&&!locError&&(
-            <button onClick={geolocate} disabled={locating} style={{ width:"100%",padding:"10px",background:"transparent",border:"1px solid #1e2a3a",borderRadius:12,color:"#555",fontSize:12,cursor:"pointer",fontFamily:"inherit",marginBottom:12 }}>
-              🔄 {lang==="fr"?"Actualiser ma position":lang==="es"?"Actualizar posición":"Refresh location"}
-            </button>
-          )}
-
-          <div style={{ display:"flex",gap:8,overflowX:"auto",marginBottom:14,paddingBottom:4 }}>
-            {FILTERS.map(f=>{
-              const active=activeFilter===f.id;
-              return <button key={f.id} onClick={()=>handleFilter(f.id)} style={{ background:active?activeColor:"#141d2e",border:"1px solid "+(active?activeColor:"#1e2a3a"),borderRadius:20,padding:"6px 14px",color:active?"#000":"#aaa",fontSize:11,fontWeight:active?700:400,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap" as const,flexShrink:0,display:"flex",alignItems:"center",gap:5 }}>{f.icon} {f.label[lang]}</button>;
-            })}
-          </div>
-
-          {loadingPlaces&&<div style={{ textAlign:"center" as const,padding:"24px",color:"#555",fontSize:13 }}>🔍</div>}
-          {!loadingPlaces&&places.length===0&&userLocation&&<div style={{ textAlign:"center" as const,padding:"24px",color:"#555",fontSize:13 }}>{lang==="fr"?"Aucun résultat":lang==="es"?"Sin resultados":"No results"}</div>}
-
-          <div style={{ display:"flex",flexDirection:"column" as const,gap:10 }}>
-            {places.map(p=>(
-              <div key={p.id} style={{ background:"#141d2e",border:`1px solid ${activeColor}33`,borderRadius:14,padding:"14px",display:"flex",alignItems:"center",gap:12 }}>
-                <div style={{ width:42,height:42,borderRadius:12,background:`${activeColor}18`,border:`1px solid ${activeColor}33`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0 }}>{FILTERS.find(f=>f.id===activeFilter)?.icon}</div>
-                <div style={{ flex:1,minWidth:0 }}>
-                  <div style={{ fontSize:13,fontWeight:600,color:"#f4f1ec",marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const }}>{p.name}</div>
-                  <div style={{ fontSize:11,color:"#aaa",display:"flex",alignItems:"center",gap:6 }}>
-                    <span style={{ color:p.open===true?"#22c55e":p.open===false?"#ef4444":"#555",fontWeight:600 }}>{p.open===true?(lang==="fr"?"Ouvert":lang==="es"?"Abierto":"Open"):p.open===false?(lang==="fr"?"Fermé":lang==="es"?"Cerrado":"Closed"):"?"}</span>
-                    <span>·</span><span>{p.distance}</span>
-                    {p.rating&&<><span>·</span><span>⭐ {p.rating}</span></>}
-                  </div>
-                </div>
-                <button onClick={()=>window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.name)}&destination_place_id=${p.id}`,"_blank")} style={{ background:"none",border:"none",color:"#e8b84b",fontSize:18,cursor:"pointer",flexShrink:0,padding:4 }}>→</button>
+              {/* Filtres */}
+              <div style={{ display:"flex",gap:8,overflowX:"auto",marginBottom:14,paddingBottom:4 }}>
+                {FILTERS.map(f=>{ const active=activeFilter===f.id; return <button key={f.id} onClick={()=>handleFilter(f.id)} style={{ background:active?activeColor:"#141d2e",border:"1px solid "+(active?activeColor:"#1e2a3a"),borderRadius:20,padding:"6px 14px",color:active?"#000":"#aaa",fontSize:11,fontWeight:active?700:400,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap" as const,flexShrink:0,display:"flex",alignItems:"center",gap:5 }}>{f.icon} {f.label[lang]}</button>; })}
               </div>
-            ))}
-          </div>
+
+              {loadingPlaces&&<div style={{ textAlign:"center" as const,padding:"24px",color:"#555",fontSize:13 }}>🔍</div>}
+              {!loadingPlaces&&places.length===0&&(userLocation||mapMode==="usstate")&&<div style={{ textAlign:"center" as const,padding:"24px",color:"#555",fontSize:13 }}>{lang==="fr"?"Aucun résultat":lang==="es"?"Sin resultados":"No results"}</div>}
+
+              <div style={{ display:"flex",flexDirection:"column" as const,gap:10 }}>
+                {places.map(p=>(
+                  <div key={p.id} style={{ background:"#141d2e",border:`1px solid ${activeColor}33`,borderRadius:14,padding:"14px",display:"flex",alignItems:"center",gap:12 }}>
+                    <div style={{ width:42,height:42,borderRadius:12,background:`${activeColor}18`,border:`1px solid ${activeColor}33`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0 }}>{FILTERS.find(f=>f.id===activeFilter)?.icon}</div>
+                    <div style={{ flex:1,minWidth:0 }}>
+                      <div style={{ fontSize:13,fontWeight:600,color:"#f4f1ec",marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const }}>{p.name}</div>
+                      <div style={{ fontSize:11,color:"#aaa",display:"flex",alignItems:"center",gap:6 }}>
+                        <span style={{ color:p.open===true?"#22c55e":p.open===false?"#ef4444":"#555",fontWeight:600 }}>{p.open===true?(lang==="fr"?"Ouvert":lang==="es"?"Abierto":"Open"):p.open===false?(lang==="fr"?"Fermé":lang==="es"?"Cerrado":"Closed"):"?"}</span>
+                        <span>·</span><span>{p.distance}</span>
+                        {p.rating&&<><span>·</span><span>⭐ {p.rating}</span></>}
+                      </div>
+                    </div>
+                    <button onClick={()=>window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.name)}&destination_place_id=${p.id}`,"_blank")} style={{ background:"none",border:"none",color:"#e8b84b",fontSize:18,cursor:"pointer",flexShrink:0,padding:4 }}>→</button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </>
       )}
 
@@ -555,7 +715,7 @@ export default function ExplorerTab({ lang, completedSteps, userId }: {
             <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between" }}>
               <div>
                 <div style={{ fontSize:13,fontWeight:600,color:"#f4f1ec",marginBottom:2 }}>{lang==="fr"?"Apparaître sur la carte":lang==="es"?"Aparecer en el mapa":"Appear on map"}</div>
-                <div style={{ fontSize:11,color:"#aaa" }}>{lang==="fr"?"Anonyme — position approximative (~2km)":"Anonymous — approximate position (~2km)"}</div>
+                <div style={{ fontSize:11,color:"#aaa" }}>Anonymous — ~2km</div>
               </div>
               <button onClick={toggleCommVisible} disabled={savingToggle} style={{ width:48,height:26,borderRadius:13,background:commVisible?"#e8b84b":"#2a3448",border:"none",cursor:"pointer",position:"relative",transition:"background 0.2s",flexShrink:0 }}>
                 <div style={{ position:"absolute",top:3,left:commVisible?24:3,width:20,height:20,borderRadius:"50%",background:"#fff",transition:"left 0.2s" }}/>
@@ -563,7 +723,7 @@ export default function ExplorerTab({ lang, completedSteps, userId }: {
             </div>
           </div>
 
-          {userLocation&&(
+          {(userLocation||mapMode==="usstate")&&(
             <div style={{ display:"flex",gap:8,marginBottom:12 }}>
               <div style={{ flex:1,background:"#141d2e",border:"1px solid #1e2a3a",borderRadius:12,padding:"12px",textAlign:"center" as const }}>
                 <div style={{ fontSize:22,fontWeight:800,color:"#e8b84b",lineHeight:1 }}>{communityUsers.length}</div>
@@ -577,15 +737,12 @@ export default function ExplorerTab({ lang, completedSteps, userId }: {
           )}
 
           <div style={{ display:"flex",gap:6,overflowX:"auto",marginBottom:12,paddingBottom:4 }}>
-            {COMM_FILTERS.map(f=>{
-              const active=commFilter===f.id;
-              return <button key={f.id} onClick={()=>setCommFilter(f.id)} style={{ background:active?"#2dd4bf":"#141d2e",border:"1px solid "+(active?"#2dd4bf":"#1e2a3a"),borderRadius:20,padding:"5px 12px",color:active?"#000":"#aaa",fontSize:10,fontWeight:active?700:400,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap" as const,flexShrink:0 }}>{f.label[lang]}</button>;
-            })}
+            {COMM_FILTERS.map(f=>{ const active=commFilter===f.id; return <button key={f.id} onClick={()=>setCommFilter(f.id)} style={{ background:active?"#2dd4bf":"#141d2e",border:"1px solid "+(active?"#2dd4bf":"#1e2a3a"),borderRadius:20,padding:"5px 12px",color:active?"#000":"#aaa",fontSize:10,fontWeight:active?700:400,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap" as const,flexShrink:0 }}>{f.label[lang]}</button>; })}
           </div>
 
           <div style={{ borderRadius:16,overflow:"hidden",border:"1px solid rgba(45,212,191,0.2)",marginBottom:12 }}>
             {isLoaded?(
-              <GoogleMap mapContainerStyle={mapContainerStyle} center={mapCenter} zoom={userLocation?11:10} options={mapOptions} onLoad={onMapLoad}>
+              <GoogleMap mapContainerStyle={mapContainerStyle} center={effectiveCenter} zoom={mapMode==="usstate"?8:(userLocation?11:10)} options={mapOptions} onLoad={onMapLoad}>
                 {userLocation&&<Marker position={userLocation} icon={{ path:google.maps.SymbolPath.CIRCLE,scale:10,fillColor:"#e8b84b",fillOpacity:1,strokeColor:"#fff",strokeWeight:3 }}/>}
                 {filteredUsers.map(u=><Marker key={u.id} position={{lat:u.lat,lng:u.lng}} icon={{ path:google.maps.SymbolPath.CIRCLE,scale:u.isNew?8:6,fillColor:u.isNew?"#2dd4bf":"#60a5fa",fillOpacity:0.85,strokeColor:"#fff",strokeWeight:1.5 }}/>)}
               </GoogleMap>
@@ -594,25 +751,21 @@ export default function ExplorerTab({ lang, completedSteps, userId }: {
             )}
           </div>
 
-          {!userLocation&&(
-            <button onClick={geolocate} disabled={locating} style={{ width:"100%",padding:"13px",background:"rgba(45,212,191,0.1)",border:"1px solid rgba(45,212,191,0.3)",borderRadius:14,color:"#2dd4bf",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
-              📍 {locating?locBtnLoading:locBtn}
+          {!userLocation&&!isAbroad&&(
+            <button onClick={geolocate} disabled={locating} style={{ width:"100%",padding:"13px",background:"rgba(45,212,191,0.1)",border:"1px solid rgba(45,212,191,0.3)",borderRadius:14,color:"#2dd4bf",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:10 }}>
+              📍 {locating?lang==="fr"?"Localisation...":"Locating...":lang==="fr"?"Activer ma position":lang==="es"?"Activar posición":"Enable location"}
             </button>
           )}
-          {locError&&<div style={{ fontSize:12, color:locError==="permission"?"#ef4444":"#e8b84b", lineHeight:1.6, padding:"8px 0" }}>{locErrMsg}</div>}
+          {locError&&<div style={{ fontSize:12,color:locError==="permission"?"#ef4444":"#e8b84b",lineHeight:1.6,padding:"8px 0" }}>{locErrMsg}</div>}
           {loadingComm&&<div style={{ textAlign:"center" as const,padding:"20px",color:"#555",fontSize:13 }}>...</div>}
         </>
       )}
 
-      {/* ══ DOCUMENTS ══ */}
-      {subTab==="documents"&&(
-        <DocumentsSection lang={lang} completedSteps={completedSteps||[]}/>
-      )}
+      {/* ══ DOCUMENTS ══*/}
+      {subTab==="documents"&&<DocumentsSection lang={lang} completedSteps={completedSteps||[]}/>}
 
-      {/* ══ MESSAGES KUABO ══ */}
-      {subTab==="messages"&&(
-        <MessagesSection lang={lang} userId={userId}/>
-      )}
+      {/* ══ MESSAGES ══ */}
+      {subTab==="messages"&&<MessagesSection lang={lang} userId={userId}/>}
 
       <style>{`
         ::-webkit-scrollbar { display:none; }
