@@ -26,12 +26,13 @@ function ArrivalBanner({ lang, userName, arrivalDate, userId, onConfirmed }: {
   userId: string; onConfirmed: () => void;
 }) {
   const [showConfirm1,   setShowConfirm1]   = useState(false);
-  const [showDatePick,   setShowDatePick]   = useState(false); // ← NOUVEAU
+  const [showDatePick,   setShowDatePick]   = useState(false);
   const [showConfirm2,   setShowConfirm2]   = useState(false);
   const [showDateUpdate, setShowDateUpdate] = useState(false);
   const [showConfetti,   setShowConfetti]   = useState(false);
   const [newDate,        setNewDate]        = useState("");
-  const [pickedDate,     setPickedDate]     = useState(new Date().toISOString().split("T")[0]); // date arrivée réelle
+  const [pickedDate,     setPickedDate]     = useState(new Date().toISOString().split("T")[0]);
+  const [alreadyDone,    setAlreadyDone]    = useState<string[]>([]); // ✅ étapes déjà faites
   const [saving,         setSaving]         = useState(false);
   const [dismissed,      setDismissed]      = useState(false);
 
@@ -123,14 +124,22 @@ function ArrivalBanner({ lang, userName, arrivalDate, userId, onConfirmed }: {
     if (!userId || saving) return;
     setSaving(true);
     try {
-      // ✅ Utilise la date choisie par l'user (pas forcément aujourd'hui)
       const days = Math.max(0, Math.floor((Date.now() - new Date(pickedDate).getTime()) / 86400000));
       const status = days < 30 ? "new" : days < 365 ? "settling" : "established";
+
+      // ✅ Fusionner les étapes déjà faites avec les completedSteps existantes
+      const existingSnap = await getDoc(doc(db, "users", userId));
+      const existingSteps: string[] = existingSnap.exists()
+        ? (existingSnap.data() as any)?.completedSteps || []
+        : [];
+      const mergedSteps = Array.from(new Set([...existingSteps, ...alreadyDone]));
+
       await updateDoc(doc(db, "users", userId), {
         arrivalConfirmed: true,
         arrivalDate:      pickedDate,
         status,
         daysInUSA:        days,
+        completedSteps:   mergedSteps, // ✅ étapes cochées sauvegardées
       });
       setShowConfirm2(false);
       setShowConfetti(true);
@@ -204,17 +213,18 @@ function ArrivalBanner({ lang, userName, arrivalDate, userId, onConfirmed }: {
         </div>
       )}
 
-      {/* ← NOUVEAU : Modal "Depuis quand ?" */}
+      {/* ← Modal "Depuis quand ?" + checklist étapes déjà faites */}
       {showDatePick && (
         <div style={{ position:"fixed", inset:0, background:"rgba(11,15,26,.93)", backdropFilter:"blur(8px)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}
           onClick={()=>setShowDatePick(false)}>
-          <div style={{ background:"#0f1521", border:"1.5px solid rgba(45,212,191,.3)", borderRadius:22, padding:"28px 22px", maxWidth:380, width:"100%", animation:"alertPop .4s cubic-bezier(.34,1.56,.64,1)" }}
+          <div style={{ background:"#0f1521", border:"1.5px solid rgba(45,212,191,.3)", borderRadius:22, padding:"24px 20px", maxWidth:380, width:"100%", maxHeight:"90vh", overflowY:"auto", animation:"alertPop .4s cubic-bezier(.34,1.56,.64,1)" }}
             onClick={e=>e.stopPropagation()}>
-            <div style={{ fontSize:52, textAlign:"center" as const, marginBottom:14 }}>📅</div>
-            <h3 style={{ fontSize:18, fontWeight:800, textAlign:"center" as const, marginBottom:8, color:"#f4f1ec" }}>{T.dpTitle}</h3>
-            <p style={{ fontSize:12, color:"#aaa", textAlign:"center" as const, lineHeight:1.65, marginBottom:18 }}>{T.dpSub}</p>
+            <div style={{ fontSize:44, textAlign:"center" as const, marginBottom:10 }}>📅</div>
+            <h3 style={{ fontSize:17, fontWeight:800, textAlign:"center" as const, marginBottom:6, color:"#f4f1ec" }}>{T.dpTitle}</h3>
+            <p style={{ fontSize:12, color:"#aaa", textAlign:"center" as const, lineHeight:1.6, marginBottom:16 }}>{T.dpSub}</p>
 
-            <div style={{ marginBottom:16 }}>
+            {/* Sélecteur de date */}
+            <div style={{ marginBottom:10 }}>
               <div style={{ fontSize:11, color:"#aaa", marginBottom:6 }}>{T.dpLabel}</div>
               <input type="date"
                 value={pickedDate}
@@ -222,9 +232,8 @@ function ArrivalBanner({ lang, userName, arrivalDate, userId, onConfirmed }: {
                 max={new Date().toISOString().split("T")[0]}
                 style={{ width:"100%", padding:"13px", background:"#141d2e", border:"1px solid #2dd4bf", borderRadius:11, color:"#f4f1ec", fontSize:16, fontFamily:"inherit", outline:"none", boxSizing:"border-box" as const }}
               />
-              {/* Aperçu du nombre de jours */}
               {pickedDate && (
-                <div style={{ marginTop:10, padding:"10px 14px", background:"rgba(45,212,191,.08)", border:"1px solid rgba(45,212,191,.2)", borderRadius:10, textAlign:"center" as const }}>
+                <div style={{ marginTop:8, padding:"9px 14px", background:"rgba(45,212,191,.08)", border:"1px solid rgba(45,212,191,.2)", borderRadius:10, textAlign:"center" as const }}>
                   <span style={{ fontSize:13, color:"#2dd4bf", fontWeight:600 }}>
                     {daysAgo === 0
                       ? (lang==="fr"?"Tu arrives aujourd'hui 🛬":lang==="es"?"Llegas hoy 🛬":"You're arriving today 🛬")
@@ -235,11 +244,51 @@ function ArrivalBanner({ lang, userName, arrivalDate, userId, onConfirmed }: {
               )}
             </div>
 
-            {/* Bouton "Aujourd'hui" rapide */}
+            {/* Bouton Aujourd'hui */}
             <button onClick={()=>setPickedDate(new Date().toISOString().split("T")[0])}
-              style={{ width:"100%", padding:"9px", background:"transparent", border:"1px dashed #2a3448", borderRadius:10, color:"#555", fontSize:12, cursor:"pointer", fontFamily:"inherit", marginBottom:12 }}>
+              style={{ width:"100%", padding:"8px", background:"transparent", border:"1px dashed #2a3448", borderRadius:10, color:"#555", fontSize:12, cursor:"pointer", fontFamily:"inherit", marginBottom:16 }}>
               📅 {T.dpToday}
             </button>
+
+            {/* ✅ Checklist étapes déjà faites — si daysAgo >= 10 */}
+            {daysAgo >= 10 && (() => {
+              const allSteps = [
+                { id:"ssn",        emoji:"🪪", minDays:10,  label:{ fr:"Numéro SSN obtenu",         en:"SSN obtained",            es:"SSN obtenido"          } },
+                { id:"phone",      emoji:"📱", minDays:1,   label:{ fr:"Carte SIM / Téléphone US",   en:"US SIM card",             es:"SIM card de EE.UU."    } },
+                { id:"bank",       emoji:"🏦", minDays:14,  label:{ fr:"Compte bancaire ouvert",     en:"Bank account opened",     es:"Cuenta bancaria abierta"} },
+                { id:"greencard",  emoji:"💳", minDays:21,  label:{ fr:"Green Card reçue",           en:"Green Card received",     es:"Green Card recibida"   } },
+                { id:"housing",    emoji:"🏠", minDays:30,  label:{ fr:"Logement permanent",         en:"Permanent housing",       es:"Vivienda permanente"   } },
+                { id:"license",    emoji:"🚗", minDays:45,  label:{ fr:"Permis de conduire",         en:"Driver's license",        es:"Licencia de conducir"  } },
+                { id:"job",        emoji:"💼", minDays:60,  label:{ fr:"Premier emploi trouvé",      en:"First job found",         es:"Primer empleo encontrado"} },
+                { id:"credit_score",emoji:"📈",minDays:60,  label:{ fr:"Credit score en cours",      en:"Credit score started",    es:"Credit score iniciado" } },
+              ].filter(s => daysAgo >= s.minDays);
+
+              return (
+                <div style={{ marginBottom:16 }}>
+                  <div style={{ fontSize:11, color:"#e8b84b", fontWeight:700, letterSpacing:".08em", textTransform:"uppercase" as const, marginBottom:10 }}>
+                    ✅ {lang==="fr"?"Qu'est-ce que tu as déjà fait ?":lang==="es"?"¿Qué ya has hecho?":"What have you already done?"}
+                  </div>
+                  <div style={{ fontSize:11, color:"#555", marginBottom:10 }}>
+                    {lang==="fr"?"Ces étapes seront marquées comme complétées dans ton parcours.":lang==="es"?"Estos pasos se marcarán como completados en tu recorrido.":"These steps will be marked as completed in your journey."}
+                  </div>
+                  <div style={{ display:"flex", flexDirection:"column" as const, gap:7 }}>
+                    {allSteps.map(step => {
+                      const checked = alreadyDone.includes(step.id);
+                      return (
+                        <div key={step.id} onClick={()=>setAlreadyDone(prev=>prev.includes(step.id)?prev.filter(x=>x!==step.id):[...prev,step.id])}
+                          style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", background:checked?"rgba(34,197,94,.06)":"#141d2e", border:`1px solid ${checked?"rgba(34,197,94,.25)":"#1e2a3a"}`, borderRadius:11, cursor:"pointer", transition:"all .15s" }}>
+                          <div style={{ width:20, height:20, borderRadius:6, background:checked?"#22c55e":"transparent", border:`2px solid ${checked?"#22c55e":"#2a3448"}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                            {checked&&<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                          </div>
+                          <span style={{ fontSize:16 }}>{step.emoji}</span>
+                          <span style={{ fontSize:13, color:checked?"#22c55e":"#f4f1ec", fontWeight:checked?600:400 }}>{step.label[lang]}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
 
             <div style={{ display:"flex", gap:10 }}>
               <button onClick={()=>{ setShowDatePick(false); setShowConfirm1(true); }}

@@ -445,19 +445,19 @@ export default function ExplorerTab({ lang, completedSteps, userId }: {
 
   const locErrMessages: Record<string, Record<Lang, string>> = {
     permission: {
-      fr:"❌ Permission refusée. Va dans Réglages → Safari → Localisation → Autoriser.",
-      en:"❌ Permission denied. Go to Settings → Safari → Location → Allow.",
-      es:"❌ Permiso denegado. Ve a Ajustes → Safari → Ubicación → Permitir.",
+      fr:"❌ Localisation bloquée. Sur iPhone : Réglages → Confidentialité → Service de localisation → Safari → « Lors de l'utilisation ». Puis reviens ici et actualise.",
+      en:"❌ Location blocked. On iPhone: Settings → Privacy → Location Services → Safari → 'While Using'. Then come back and refresh.",
+      es:"❌ Ubicación bloqueada. En iPhone: Ajustes → Privacidad → Localización → Safari → 'Al usar la app'. Luego vuelve y actualiza.",
     },
     failed: {
-      fr:"📍 Impossible de te localiser. Essaie de te rapprocher d'une fenêtre ou active le WiFi.",
-      en:"📍 Can't locate you. Try moving near a window or enable WiFi.",
-      es:"📍 No se puede localizarte. Intenta acercarte a una ventana o activa el WiFi.",
+      fr:"📍 Impossible de te localiser. Active le WiFi ou rapproche-toi d'une fenêtre.",
+      en:"📍 Can't locate you. Enable WiFi or move near a window.",
+      es:"📍 No se puede localizarte. Activa el WiFi o acércate a una ventana.",
     },
     unavailable: {
-      fr:"❌ La géolocalisation n'est pas disponible sur ce navigateur.",
-      en:"❌ Geolocation is not available on this browser.",
-      es:"❌ La geolocalización no está disponible en este navegador.",
+      fr:"❌ Géolocalisation indisponible sur ce navigateur. Essaie Safari.",
+      en:"❌ Geolocation unavailable on this browser. Try Safari.",
+      es:"❌ Geolocalización no disponible en este navegador. Intenta con Safari.",
     },
   };
   const locErrMsg = locError ? (locErrMessages[locError as string]?.[lang] || locErrMessages.failed[lang]) : "";
