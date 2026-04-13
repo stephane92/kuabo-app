@@ -84,12 +84,13 @@ const US_STATES = [
 ];
 
 // ══════════════════════════════════════════════
-// MODAL AJOUTER JOB
+// MODAL AJOUTER JOB — 2 étapes, centré, responsive
 // ══════════════════════════════════════════════
 function AddJobModal({ lang, userId, onClose, onSaved }: {
   lang: Lang; userId: string;
   onClose: () => void; onSaved: (job: MyJob) => void;
 }) {
+  const [step, setStep] = useState<1|2|3>(1); // 1=explication, 2=infos, 3=détails
   const [form, setForm] = useState({
     company:"", position:"", city:"", state:"", sector:"tech",
     visaType:"DV Lottery", startDate:"", endDate:"", current:false,
@@ -98,15 +99,83 @@ function AddJobModal({ lang, userId, onClose, onSaved }: {
   const [error,  setError]  = useState("");
 
   const T = {
-    fr:{ title:"Ajouter un job", company:"Entreprise", position:"Poste / Titre", city:"Ville", state:"État US", sector:"Secteur", visa:"Type de visa", startDate:"Date début", endDate:"Date fin", current:"Poste actuel", save:"Enregistrer", cancel:"Annuler", required:"Champs obligatoires manquants" },
-    en:{ title:"Add a job", company:"Company", position:"Position / Title", city:"City", state:"US State", sector:"Sector", visa:"Visa type", startDate:"Start date", endDate:"End date", current:"Current position", save:"Save", cancel:"Cancel", required:"Missing required fields" },
-    es:{ title:"Agregar trabajo", company:"Empresa", position:"Puesto / Título", city:"Ciudad", state:"Estado US", sector:"Sector", visa:"Tipo de visa", startDate:"Fecha inicio", endDate:"Fecha fin", current:"Puesto actual", save:"Guardar", cancel:"Cancelar", required:"Campos obligatorios faltantes" },
+    fr:{
+      // Étape 1 — explication
+      expTitle:"À quoi sert cette section ?",
+      expSub:"Ajouter tes jobs passés et actuels",
+      exp1:"📋 Garde une trace de ton parcours professionnel aux USA",
+      exp2:"🤝 Tes infos restent privées — elles ne sont PAS partagées avec la communauté",
+      exp3:"💡 Elles t'aident à remplir tes futurs formulaires USCIS",
+      expBtn:"Ajouter mon job →",
+      // Étape 2 — infos principales
+      step2Title:"Infos principales",
+      step2Sub:"Étape 1 sur 2",
+      company:"Nom de l'entreprise *", position:"Poste / Titre *",
+      city:"Ville *", state:"État US",
+      next:"Continuer →", cancel:"Annuler",
+      // Étape 3 — détails
+      step3Title:"Détails du job",
+      step3Sub:"Étape 2 sur 2",
+      sector:"Secteur d'activité", visa:"Type de visa utilisé",
+      startDate:"Date de début *", endDate:"Date de fin",
+      current:"Poste actuel (toujours en cours)",
+      save:"✅ Enregistrer", back:"← Retour",
+      required:"Remplis les champs obligatoires *",
+    },
+    en:{
+      expTitle:"What is this section for?",
+      expSub:"Add your past and current jobs",
+      exp1:"📋 Keep track of your professional journey in the USA",
+      exp2:"🤝 Your info stays private — NOT shared with the community",
+      exp3:"💡 Helps you fill future USCIS forms",
+      expBtn:"Add my job →",
+      step2Title:"Main info",
+      step2Sub:"Step 1 of 2",
+      company:"Company name *", position:"Position / Title *",
+      city:"City *", state:"US State",
+      next:"Continue →", cancel:"Cancel",
+      step3Title:"Job details",
+      step3Sub:"Step 2 of 2",
+      sector:"Industry sector", visa:"Visa type used",
+      startDate:"Start date *", endDate:"End date",
+      current:"Current position (still ongoing)",
+      save:"✅ Save", back:"← Back",
+      required:"Fill in the required fields *",
+    },
+    es:{
+      expTitle:"¿Para qué sirve esta sección?",
+      expSub:"Agrega tus trabajos pasados y actuales",
+      exp1:"📋 Lleva un registro de tu trayectoria profesional en EE.UU.",
+      exp2:"🤝 Tu info es privada — NO se comparte con la comunidad",
+      exp3:"💡 Te ayuda a completar futuros formularios USCIS",
+      expBtn:"Agregar mi trabajo →",
+      step2Title:"Información principal",
+      step2Sub:"Paso 1 de 2",
+      company:"Nombre de empresa *", position:"Puesto / Título *",
+      city:"Ciudad *", state:"Estado US",
+      next:"Continuar →", cancel:"Cancelar",
+      step3Title:"Detalles del trabajo",
+      step3Sub:"Paso 2 de 2",
+      sector:"Sector de actividad", visa:"Tipo de visa usado",
+      startDate:"Fecha de inicio *", endDate:"Fecha de fin",
+      current:"Puesto actual (sigue en curso)",
+      save:"✅ Guardar", back:"← Atrás",
+      required:"Completa los campos obligatorios *",
+    },
   }[lang];
 
+  const inp = (label: string, field: keyof typeof form, type = "text", plh = "") => (
+    <div style={{ marginBottom:14 }}>
+      <div style={{ fontSize:12, color:"#aaa", marginBottom:6, fontWeight:500 }}>{label}</div>
+      <input type={type} value={form[field] as string} placeholder={plh}
+        onChange={e => { setForm(p => ({ ...p, [field]: e.target.value })); setError(""); }}
+        style={{ width:"100%", padding:"13px 14px", background:"#0b0f1a", border:`1px solid ${(form[field] as string) ? "#e8b84b" : "#1e2a3a"}`, borderRadius:12, color:"#f4f1ec", fontSize:16, fontFamily:"inherit", outline:"none", boxSizing:"border-box" as const }}
+      />
+    </div>
+  );
+
   const handleSave = async () => {
-    if (!form.company.trim() || !form.position.trim() || !form.startDate) {
-      setError(T.required); return;
-    }
+    if (!form.company.trim() || !form.startDate) { setError(T.required); return; }
     setSaving(true);
     try {
       const jobData = { ...form, createdAt: new Date().toISOString() };
@@ -117,93 +186,119 @@ function AddJobModal({ lang, userId, onClose, onSaved }: {
     setSaving(false);
   };
 
-  const input = (label: string, field: keyof typeof form, type = "text", placeholder = "") => (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 11, color: "#aaa", marginBottom: 5, fontWeight: 500 }}>{label}</div>
-      <input
-        type={type}
-        value={form[field] as string}
-        onChange={e => setForm(p => ({ ...p, [field]: e.target.value }))}
-        placeholder={placeholder}
-        style={{ width:"100%", padding:"11px 12px", background:"#0b0f1a", border:"1px solid #1e2a3a", borderRadius:10, color:"#f4f1ec", fontSize:15, fontFamily:"inherit", outline:"none", boxSizing:"border-box" as const }}
-      />
-    </div>
-  );
-
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.88)", zIndex:700, display:"flex", alignItems:"flex-end", justifyContent:"center", backdropFilter:"blur(6px)", padding:"0 0 0 0" }}
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.9)", zIndex:700, display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(8px)", padding:"16px" }}
       onClick={onClose}>
-      <div style={{ background:"#0f1521", border:"1px solid #1e2a3a", borderRadius:"22px 22px 0 0", padding:"24px 18px 32px", width:"100%", maxWidth:480, maxHeight:"90vh", overflowY:"auto", animation:"slideUp .4s ease" }}
+      <div style={{ background:"#0f1521", border:"1.5px solid #1e2a3a", borderRadius:22, padding:"24px 20px", width:"100%", maxWidth:420, animation:"alertPop .4s cubic-bezier(.34,1.56,.64,1)" }}
         onClick={e => e.stopPropagation()}>
-        <div style={{ width:40, height:4, background:"#2a3448", borderRadius:4, margin:"0 auto 20px" }}/>
-        <div style={{ fontSize:17, fontWeight:800, color:"#f4f1ec", marginBottom:18 }}>💼 {T.title}</div>
 
-        {input(T.company,  "company",  "text", "ex: Amazon, Walmart...")}
-        {input(T.position, "position", "text", "ex: Warehouse Associate...")}
-
-        <div style={{ display:"flex", gap:10, marginBottom:12 }}>
-          <div style={{ flex:2 }}>
-            {input(T.city, "city", "text", "ex: Arlington")}
-          </div>
-          <div style={{ flex:1 }}>
-            <div style={{ fontSize:11, color:"#aaa", marginBottom:5, fontWeight:500 }}>{T.state}</div>
-            <select value={form.state} onChange={e => setForm(p => ({ ...p, state: e.target.value }))}
-              style={{ width:"100%", padding:"11px 8px", background:"#0b0f1a", border:"1px solid #1e2a3a", borderRadius:10, color:"#f4f1ec", fontSize:14, fontFamily:"inherit", outline:"none" }}>
-              <option value="">—</option>
-              {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
+        {/* Barre de progression */}
+        <div style={{ display:"flex", gap:6, marginBottom:20 }}>
+          {[1,2,3].map(n => (
+            <div key={n} style={{ flex:1, height:3, borderRadius:3, background: step >= n ? "#e8b84b" : "#1e2a3a", transition:"background .3s" }}/>
+          ))}
         </div>
 
-        <div style={{ marginBottom:12 }}>
-          <div style={{ fontSize:11, color:"#aaa", marginBottom:5, fontWeight:500 }}>{T.sector}</div>
-          <select value={form.sector} onChange={e => setForm(p => ({ ...p, sector: e.target.value }))}
-            style={{ width:"100%", padding:"11px 12px", background:"#0b0f1a", border:"1px solid #1e2a3a", borderRadius:10, color:"#f4f1ec", fontSize:14, fontFamily:"inherit", outline:"none" }}>
-            {SECTORS[lang].map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-          </select>
-        </div>
+        {/* ── Étape 1 : Explication ── */}
+        {step === 1 && (
+          <>
+            <div style={{ fontSize:36, textAlign:"center" as const, marginBottom:12 }}>💼</div>
+            <div style={{ fontSize:17, fontWeight:800, color:"#f4f1ec", textAlign:"center" as const, marginBottom:4 }}>{T.expTitle}</div>
+            <div style={{ fontSize:12, color:"#aaa", textAlign:"center" as const, marginBottom:20 }}>{T.expSub}</div>
+            <div style={{ display:"flex", flexDirection:"column" as const, gap:10, marginBottom:24 }}>
+              {[T.exp1, T.exp2, T.exp3].map((t, i) => (
+                <div key={i} style={{ fontSize:13, color:"#f4f1ec", lineHeight:1.6, padding:"10px 14px", background:"#141d2e", borderRadius:11, border:"1px solid #1e2a3a" }}>{t}</div>
+              ))}
+            </div>
+            <div style={{ display:"flex", gap:10 }}>
+              <button onClick={onClose} style={{ flex:1, padding:"12px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#aaa", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>{T.cancel}</button>
+              <button onClick={() => setStep(2)} style={{ flex:2, padding:"12px", background:"#e8b84b", border:"none", borderRadius:12, color:"#000", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>{T.expBtn}</button>
+            </div>
+          </>
+        )}
 
-        <div style={{ marginBottom:12 }}>
-          <div style={{ fontSize:11, color:"#aaa", marginBottom:5, fontWeight:500 }}>{T.visa}</div>
-          <select value={form.visaType} onChange={e => setForm(p => ({ ...p, visaType: e.target.value }))}
-            style={{ width:"100%", padding:"11px 12px", background:"#0b0f1a", border:"1px solid #1e2a3a", borderRadius:10, color:"#f4f1ec", fontSize:14, fontFamily:"inherit", outline:"none" }}>
-            {VISA_TYPES.map(v => <option key={v} value={v}>{v}</option>)}
-          </select>
-        </div>
+        {/* ── Étape 2 : Infos principales ── */}
+        {step === 2 && (
+          <>
+            <div style={{ fontSize:12, color:"#e8b84b", fontWeight:700, letterSpacing:".08em", textTransform:"uppercase" as const, marginBottom:4 }}>{T.step2Sub}</div>
+            <div style={{ fontSize:16, fontWeight:800, color:"#f4f1ec", marginBottom:20 }}>{T.step2Title}</div>
+            {inp(T.company,  "company",  "text", "ex: Amazon, Walmart...")}
+            {inp(T.position, "position", "text", "ex: Warehouse Associate...")}
+            {inp(T.city,     "city",     "text", "ex: Arlington")}
+            <div style={{ marginBottom:14 }}>
+              <div style={{ fontSize:12, color:"#aaa", marginBottom:6, fontWeight:500 }}>{T.state}</div>
+              <select value={form.state} onChange={e => setForm(p => ({ ...p, state: e.target.value }))}
+                style={{ width:"100%", padding:"13px 14px", background:"#0b0f1a", border:"1px solid #1e2a3a", borderRadius:12, color: form.state ? "#f4f1ec" : "#555", fontSize:16, fontFamily:"inherit", outline:"none" }}>
+                <option value="">— {T.state} —</option>
+                {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            {error && <div style={{ fontSize:12, color:"#ef4444", marginBottom:10 }}>⚠️ {error}</div>}
+            <div style={{ display:"flex", gap:10 }}>
+              <button onClick={onClose} style={{ flex:1, padding:"13px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#aaa", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>{T.cancel}</button>
+              <button onClick={() => {
+                if (!form.company.trim() || !form.position.trim() || !form.city.trim()) { setError(T.required); return; }
+                setError(""); setStep(3);
+              }} style={{ flex:2, padding:"13px", background:"#e8b84b", border:"none", borderRadius:12, color:"#000", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>{T.next}</button>
+            </div>
+          </>
+        )}
 
-        <div style={{ display:"flex", gap:10, marginBottom:12 }}>
-          <div style={{ flex:1 }}>{input(T.startDate, "startDate", "date")}</div>
-          {!form.current && <div style={{ flex:1 }}>{input(T.endDate, "endDate", "date")}</div>}
-        </div>
+        {/* ── Étape 3 : Détails ── */}
+        {step === 3 && (
+          <>
+            <div style={{ fontSize:12, color:"#e8b84b", fontWeight:700, letterSpacing:".08em", textTransform:"uppercase" as const, marginBottom:4 }}>{T.step3Sub}</div>
+            <div style={{ fontSize:16, fontWeight:800, color:"#f4f1ec", marginBottom:20 }}>{T.step3Title}</div>
 
-        <div onClick={() => setForm(p => ({ ...p, current: !p.current }))}
-          style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", background: form.current ? "rgba(34,197,94,.06)" : "#141d2e", border:`1px solid ${form.current ? "rgba(34,197,94,.3)" : "#1e2a3a"}`, borderRadius:10, cursor:"pointer", marginBottom:20 }}>
-          <div style={{ width:20, height:20, borderRadius:6, background: form.current ? "#22c55e" : "transparent", border:`2px solid ${form.current ? "#22c55e" : "#2a3448"}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-            {form.current && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-          </div>
-          <span style={{ fontSize:13, color: form.current ? "#22c55e" : "#f4f1ec" }}>✅ {T.current}</span>
-        </div>
+            <div style={{ marginBottom:14 }}>
+              <div style={{ fontSize:12, color:"#aaa", marginBottom:6, fontWeight:500 }}>{T.sector}</div>
+              <select value={form.sector} onChange={e => setForm(p => ({ ...p, sector: e.target.value }))}
+                style={{ width:"100%", padding:"13px 14px", background:"#0b0f1a", border:"1px solid #1e2a3a", borderRadius:12, color:"#f4f1ec", fontSize:16, fontFamily:"inherit", outline:"none" }}>
+                {SECTORS[lang].map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+              </select>
+            </div>
 
-        {error && <div style={{ fontSize:12, color:"#ef4444", marginBottom:12 }}>⚠️ {error}</div>}
+            <div style={{ marginBottom:14 }}>
+              <div style={{ fontSize:12, color:"#aaa", marginBottom:6, fontWeight:500 }}>{T.visa}</div>
+              <select value={form.visaType} onChange={e => setForm(p => ({ ...p, visaType: e.target.value }))}
+                style={{ width:"100%", padding:"13px 14px", background:"#0b0f1a", border:"1px solid #1e2a3a", borderRadius:12, color:"#f4f1ec", fontSize:16, fontFamily:"inherit", outline:"none" }}>
+                {VISA_TYPES.map(v => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </div>
 
-        <div style={{ display:"flex", gap:10 }}>
-          <button onClick={onClose} style={{ flex:1, padding:"13px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#aaa", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>{T.cancel}</button>
-          <button onClick={handleSave} disabled={saving} style={{ flex:2, padding:"13px", background:"#e8b84b", border:"none", borderRadius:12, color:"#000", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity: saving ? .7 : 1 }}>
-            {saving ? "⏳..." : T.save}
-          </button>
-        </div>
+            {inp(T.startDate, "startDate", "date")}
+            {!form.current && inp(T.endDate, "endDate", "date")}
+
+            <div onClick={() => setForm(p => ({ ...p, current: !p.current }))}
+              style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 14px", background: form.current ? "rgba(34,197,94,.06)" : "#141d2e", border:`1px solid ${form.current ? "rgba(34,197,94,.3)" : "#1e2a3a"}`, borderRadius:12, cursor:"pointer", marginBottom:20 }}>
+              <div style={{ width:22, height:22, borderRadius:6, background: form.current ? "#22c55e" : "transparent", border:`2px solid ${form.current ? "#22c55e" : "#2a3448"}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                {form.current && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+              </div>
+              <span style={{ fontSize:13, color: form.current ? "#22c55e" : "#aaa" }}>{T.current}</span>
+            </div>
+
+            {error && <div style={{ fontSize:12, color:"#ef4444", marginBottom:10 }}>⚠️ {error}</div>}
+            <div style={{ display:"flex", gap:10 }}>
+              <button onClick={() => setStep(2)} style={{ flex:1, padding:"13px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#aaa", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>{T.back}</button>
+              <button onClick={handleSave} disabled={saving} style={{ flex:2, padding:"13px", background:"#22c55e", border:"none", borderRadius:12, color:"#000", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity: saving ? .7 : 1 }}>
+                {saving ? "⏳..." : T.save}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
 // ══════════════════════════════════════════════
-// MODAL RECOMMANDER EMPLOYEUR
+// MODAL RECOMMANDER EMPLOYEUR — 2 étapes, centré
 // ══════════════════════════════════════════════
 function RecommendModal({ lang, userId, onClose, onSaved }: {
   lang: Lang; userId: string;
   onClose: () => void; onSaved: (job: CommunityJob) => void;
 }) {
+  const [step, setStep] = useState<1|2|3>(1);
   const [form, setForm] = useState({
     company:"", city:"", state:"", sector:"tech",
     visaFriendly:[] as string[], rating:5, note:"",
@@ -212,9 +307,75 @@ function RecommendModal({ lang, userId, onClose, onSaved }: {
   const [error,  setError]  = useState("");
 
   const T = {
-    fr:{ title:"Recommander un employeur", company:"Nom de l'entreprise", city:"Ville", state:"État US", sector:"Secteur", visa:"Compatible avec quel(s) visa(s) ?", rating:"Note (1 à 5)", note:"Ton avis (optionnel)", notePlh:"Ex: Super employeur, très sympa avec les immigrants...", save:"Recommander ⭐", cancel:"Annuler", required:"Entreprise, ville et visa requis" },
-    en:{ title:"Recommend an employer", company:"Company name", city:"City", state:"US State", sector:"Sector", visa:"Compatible with which visa(s)?", rating:"Rating (1 to 5)", note:"Your review (optional)", notePlh:"e.g: Great employer, very friendly with immigrants...", save:"Recommend ⭐", cancel:"Cancel", required:"Company, city and visa required" },
-    es:{ title:"Recomendar empleador", company:"Nombre de empresa", city:"Ciudad", state:"Estado US", sector:"Sector", visa:"¿Compatible con qué visa(s)?", rating:"Calificación (1 a 5)", note:"Tu opinión (opcional)", notePlh:"Ej: Gran empleador, muy amigable con inmigrantes...", save:"Recomendar ⭐", cancel:"Cancelar", required:"Empresa, ciudad y visa requeridos" },
+    fr:{
+      expTitle:"Aide la communauté Kuabo !",
+      expSub:"Recommander un employeur",
+      exp1:"🤝 Tu as travaillé quelque part ? Partage ton expérience",
+      exp2:"🌍 Aide d'autres immigrants à trouver un bon employeur",
+      exp3:"✅ Ton avis est anonyme et aide toute la communauté",
+      expBtn:"Recommander →",
+      step2Title:"L'entreprise",
+      step2Sub:"Étape 1 sur 2",
+      company:"Nom de l'entreprise *",
+      city:"Ville *", state:"État US",
+      sector:"Secteur d'activité",
+      next:"Continuer →", cancel:"Annuler",
+      step3Title:"Ton avis",
+      step3Sub:"Étape 2 sur 2",
+      visa:"Compatible avec quel(s) visa(s) ? *",
+      rating:"Ta note",
+      note:"Ton avis (optionnel)",
+      notePlh:"Ex: Super employeur, très sympa avec les immigrants...",
+      save:"⭐ Publier ma recommandation",
+      back:"← Retour",
+      required:"Remplis les champs obligatoires *",
+    },
+    en:{
+      expTitle:"Help the Kuabo community!",
+      expSub:"Recommend an employer",
+      exp1:"🤝 Worked somewhere? Share your experience",
+      exp2:"🌍 Help other immigrants find a good employer",
+      exp3:"✅ Your review is anonymous and helps the whole community",
+      expBtn:"Recommend →",
+      step2Title:"The company",
+      step2Sub:"Step 1 of 2",
+      company:"Company name *",
+      city:"City *", state:"US State",
+      sector:"Industry sector",
+      next:"Continue →", cancel:"Cancel",
+      step3Title:"Your review",
+      step3Sub:"Step 2 of 2",
+      visa:"Compatible with which visa(s)? *",
+      rating:"Your rating",
+      note:"Your review (optional)",
+      notePlh:"e.g: Great employer, very friendly with immigrants...",
+      save:"⭐ Publish my recommendation",
+      back:"← Back",
+      required:"Fill in the required fields *",
+    },
+    es:{
+      expTitle:"¡Ayuda a la comunidad Kuabo!",
+      expSub:"Recomendar un empleador",
+      exp1:"🤝 ¿Trabajaste en algún lugar? Comparte tu experiencia",
+      exp2:"🌍 Ayuda a otros inmigrantes a encontrar un buen empleador",
+      exp3:"✅ Tu reseña es anónima y ayuda a toda la comunidad",
+      expBtn:"Recomendar →",
+      step2Title:"La empresa",
+      step2Sub:"Paso 1 de 2",
+      company:"Nombre de empresa *",
+      city:"Ciudad *", state:"Estado US",
+      sector:"Sector de actividad",
+      next:"Continuar →", cancel:"Cancelar",
+      step3Title:"Tu opinión",
+      step3Sub:"Paso 2 de 2",
+      visa:"¿Compatible con qué visa(s)? *",
+      rating:"Tu calificación",
+      note:"Tu opinión (opcional)",
+      notePlh:"Ej: Gran empleador, muy amigable con inmigrantes...",
+      save:"⭐ Publicar mi recomendación",
+      back:"← Atrás",
+      required:"Completa los campos obligatorios *",
+    },
   }[lang];
 
   const toggleVisa = (v: string) => setForm(p => ({
@@ -230,10 +391,7 @@ function RecommendModal({ lang, userId, onClose, onSaved }: {
     }
     setSaving(true);
     try {
-      const jobData = {
-        ...form, addedBy: userId, verified: false,
-        reviewCount: 1, createdAt: new Date().toISOString(),
-      };
+      const jobData = { ...form, addedBy: userId, verified: false, reviewCount: 1, createdAt: new Date().toISOString() };
       const ref = await addDoc(collection(db, "community_jobs"), jobData);
       onSaved({ id: ref.id, ...jobData });
       onClose();
@@ -242,85 +400,133 @@ function RecommendModal({ lang, userId, onClose, onSaved }: {
   };
 
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.88)", zIndex:700, display:"flex", alignItems:"flex-end", justifyContent:"center", backdropFilter:"blur(6px)" }}
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.9)", zIndex:700, display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(8px)", padding:"16px" }}
       onClick={onClose}>
-      <div style={{ background:"#0f1521", border:"1px solid #1e2a3a", borderRadius:"22px 22px 0 0", padding:"24px 18px 32px", width:"100%", maxWidth:480, maxHeight:"90vh", overflowY:"auto", animation:"slideUp .4s ease" }}
+      <div style={{ background:"#0f1521", border:"1.5px solid #1e2a3a", borderRadius:22, padding:"24px 20px", width:"100%", maxWidth:420, animation:"alertPop .4s cubic-bezier(.34,1.56,.64,1)" }}
         onClick={e => e.stopPropagation()}>
-        <div style={{ width:40, height:4, background:"#2a3448", borderRadius:4, margin:"0 auto 20px" }}/>
-        <div style={{ fontSize:17, fontWeight:800, color:"#f4f1ec", marginBottom:18 }}>⭐ {T.title}</div>
 
-        <div style={{ marginBottom:12 }}>
-          <div style={{ fontSize:11, color:"#aaa", marginBottom:5 }}>{T.company} *</div>
-          <input value={form.company} onChange={e => setForm(p => ({ ...p, company: e.target.value }))} placeholder="ex: Amazon, UPS, McDonald's..."
-            style={{ width:"100%", padding:"11px 12px", background:"#0b0f1a", border:"1px solid #1e2a3a", borderRadius:10, color:"#f4f1ec", fontSize:15, fontFamily:"inherit", outline:"none", boxSizing:"border-box" as const }}/>
+        {/* Barre de progression */}
+        <div style={{ display:"flex", gap:6, marginBottom:20 }}>
+          {[1,2,3].map(n => (
+            <div key={n} style={{ flex:1, height:3, borderRadius:3, background: step >= n ? "#22c55e" : "#1e2a3a", transition:"background .3s" }}/>
+          ))}
         </div>
 
-        <div style={{ display:"flex", gap:10, marginBottom:12 }}>
-          <div style={{ flex:2 }}>
-            <div style={{ fontSize:11, color:"#aaa", marginBottom:5 }}>{T.city} *</div>
-            <input value={form.city} onChange={e => setForm(p => ({ ...p, city: e.target.value }))} placeholder="ex: Dallas"
-              style={{ width:"100%", padding:"11px 12px", background:"#0b0f1a", border:"1px solid #1e2a3a", borderRadius:10, color:"#f4f1ec", fontSize:15, fontFamily:"inherit", outline:"none", boxSizing:"border-box" as const }}/>
-          </div>
-          <div style={{ flex:1 }}>
-            <div style={{ fontSize:11, color:"#aaa", marginBottom:5 }}>{T.state}</div>
-            <select value={form.state} onChange={e => setForm(p => ({ ...p, state: e.target.value }))}
-              style={{ width:"100%", padding:"11px 8px", background:"#0b0f1a", border:"1px solid #1e2a3a", borderRadius:10, color:"#f4f1ec", fontSize:14, fontFamily:"inherit", outline:"none" }}>
-              <option value="">—</option>
-              {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-        </div>
+        {/* ── Étape 1 : Explication ── */}
+        {step === 1 && (
+          <>
+            <div style={{ fontSize:36, textAlign:"center" as const, marginBottom:12 }}>⭐</div>
+            <div style={{ fontSize:17, fontWeight:800, color:"#f4f1ec", textAlign:"center" as const, marginBottom:4 }}>{T.expTitle}</div>
+            <div style={{ fontSize:12, color:"#aaa", textAlign:"center" as const, marginBottom:20 }}>{T.expSub}</div>
+            <div style={{ display:"flex", flexDirection:"column" as const, gap:10, marginBottom:24 }}>
+              {[T.exp1, T.exp2, T.exp3].map((t, i) => (
+                <div key={i} style={{ fontSize:13, color:"#f4f1ec", lineHeight:1.6, padding:"10px 14px", background:"#141d2e", borderRadius:11, border:"1px solid #1e2a3a" }}>{t}</div>
+              ))}
+            </div>
+            <div style={{ display:"flex", gap:10 }}>
+              <button onClick={onClose} style={{ flex:1, padding:"12px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#aaa", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>{T.cancel}</button>
+              <button onClick={() => setStep(2)} style={{ flex:2, padding:"12px", background:"#22c55e", border:"none", borderRadius:12, color:"#000", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>{T.expBtn}</button>
+            </div>
+          </>
+        )}
 
-        <div style={{ marginBottom:12 }}>
-          <div style={{ fontSize:11, color:"#aaa", marginBottom:5 }}>{T.sector}</div>
-          <select value={form.sector} onChange={e => setForm(p => ({ ...p, sector: e.target.value }))}
-            style={{ width:"100%", padding:"11px 12px", background:"#0b0f1a", border:"1px solid #1e2a3a", borderRadius:10, color:"#f4f1ec", fontSize:14, fontFamily:"inherit", outline:"none" }}>
-            {SECTORS[lang].map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-          </select>
-        </div>
+        {/* ── Étape 2 : L'entreprise ── */}
+        {step === 2 && (
+          <>
+            <div style={{ fontSize:12, color:"#22c55e", fontWeight:700, letterSpacing:".08em", textTransform:"uppercase" as const, marginBottom:4 }}>{T.step2Sub}</div>
+            <div style={{ fontSize:16, fontWeight:800, color:"#f4f1ec", marginBottom:20 }}>{T.step2Title}</div>
 
-        {/* Visa types */}
-        <div style={{ marginBottom:16 }}>
-          <div style={{ fontSize:11, color:"#aaa", marginBottom:8 }}>{T.visa} *</div>
-          <div style={{ display:"flex", flexWrap:"wrap" as const, gap:6 }}>
-            {VISA_TYPES.map(v => {
-              const sel = form.visaFriendly.includes(v);
-              return (
-                <button key={v} onClick={() => toggleVisa(v)}
-                  style={{ padding:"6px 12px", borderRadius:20, background: sel ? "rgba(34,197,94,.1)" : "#141d2e", border:`1px solid ${sel ? "rgba(34,197,94,.4)" : "#1e2a3a"}`, color: sel ? "#22c55e" : "#aaa", fontSize:11, fontWeight: sel ? 700 : 400, cursor:"pointer", fontFamily:"inherit" }}>
-                  {sel ? "✓ " : ""}{v}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Rating stars */}
-        <div style={{ marginBottom:16 }}>
-          <div style={{ fontSize:11, color:"#aaa", marginBottom:8 }}>{T.rating}</div>
-          <div style={{ display:"flex", gap:8 }}>
-            {[1,2,3,4,5].map(n => (
-              <button key={n} onClick={() => setForm(p => ({ ...p, rating: n }))}
-                style={{ fontSize:28, background:"none", border:"none", cursor:"pointer", opacity: n <= form.rating ? 1 : 0.3, transition:"opacity .15s" }}>⭐</button>
+            {[
+              { label: T.company, field: "company" as const, plh: "ex: Amazon, McDonald's..." },
+              { label: T.city,    field: "city"    as const, plh: "ex: Dallas" },
+            ].map(({ label, field, plh }) => (
+              <div key={field} style={{ marginBottom:14 }}>
+                <div style={{ fontSize:12, color:"#aaa", marginBottom:6, fontWeight:500 }}>{label}</div>
+                <input value={form[field] as string} placeholder={plh}
+                  onChange={e => { setForm(p => ({ ...p, [field]: e.target.value })); setError(""); }}
+                  style={{ width:"100%", padding:"13px 14px", background:"#0b0f1a", border:`1px solid ${(form[field] as string) ? "#22c55e" : "#1e2a3a"}`, borderRadius:12, color:"#f4f1ec", fontSize:16, fontFamily:"inherit", outline:"none", boxSizing:"border-box" as const }}
+                />
+              </div>
             ))}
-          </div>
-        </div>
 
-        {/* Note */}
-        <div style={{ marginBottom:20 }}>
-          <div style={{ fontSize:11, color:"#aaa", marginBottom:5 }}>{T.note}</div>
-          <textarea value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} placeholder={T.notePlh} rows={3}
-            style={{ width:"100%", padding:"11px 12px", background:"#0b0f1a", border:"1px solid #1e2a3a", borderRadius:10, color:"#f4f1ec", fontSize:14, fontFamily:"inherit", outline:"none", resize:"none", boxSizing:"border-box" as const }}/>
-        </div>
+            <div style={{ display:"flex", gap:10, marginBottom:14 }}>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:12, color:"#aaa", marginBottom:6, fontWeight:500 }}>{T.state}</div>
+                <select value={form.state} onChange={e => setForm(p => ({ ...p, state: e.target.value }))}
+                  style={{ width:"100%", padding:"13px 10px", background:"#0b0f1a", border:"1px solid #1e2a3a", borderRadius:12, color: form.state ? "#f4f1ec" : "#555", fontSize:15, fontFamily:"inherit", outline:"none" }}>
+                  <option value="">—</option>
+                  {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:12, color:"#aaa", marginBottom:6, fontWeight:500 }}>{T.sector}</div>
+                <select value={form.sector} onChange={e => setForm(p => ({ ...p, sector: e.target.value }))}
+                  style={{ width:"100%", padding:"13px 10px", background:"#0b0f1a", border:"1px solid #1e2a3a", borderRadius:12, color:"#f4f1ec", fontSize:15, fontFamily:"inherit", outline:"none" }}>
+                  {SECTORS[lang].map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                </select>
+              </div>
+            </div>
 
-        {error && <div style={{ fontSize:12, color:"#ef4444", marginBottom:12 }}>⚠️ {error}</div>}
+            {error && <div style={{ fontSize:12, color:"#ef4444", marginBottom:10 }}>⚠️ {error}</div>}
+            <div style={{ display:"flex", gap:10 }}>
+              <button onClick={onClose} style={{ flex:1, padding:"13px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#aaa", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>{T.cancel}</button>
+              <button onClick={() => {
+                if (!form.company.trim() || !form.city.trim()) { setError(T.required); return; }
+                setError(""); setStep(3);
+              }} style={{ flex:2, padding:"13px", background:"#22c55e", border:"none", borderRadius:12, color:"#000", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>{T.next}</button>
+            </div>
+          </>
+        )}
 
-        <div style={{ display:"flex", gap:10 }}>
-          <button onClick={onClose} style={{ flex:1, padding:"13px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#aaa", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>{T.cancel}</button>
-          <button onClick={handleSave} disabled={saving} style={{ flex:2, padding:"13px", background:"#22c55e", border:"none", borderRadius:12, color:"#000", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity: saving ? .7 : 1 }}>
-            {saving ? "⏳..." : T.save}
-          </button>
-        </div>
+        {/* ── Étape 3 : Avis ── */}
+        {step === 3 && (
+          <>
+            <div style={{ fontSize:12, color:"#22c55e", fontWeight:700, letterSpacing:".08em", textTransform:"uppercase" as const, marginBottom:4 }}>{T.step3Sub}</div>
+            <div style={{ fontSize:16, fontWeight:800, color:"#f4f1ec", marginBottom:16 }}>{T.step3Title}</div>
+
+            {/* Visa */}
+            <div style={{ marginBottom:16 }}>
+              <div style={{ fontSize:12, color:"#aaa", marginBottom:8, fontWeight:500 }}>{T.visa}</div>
+              <div style={{ display:"flex", flexWrap:"wrap" as const, gap:6 }}>
+                {VISA_TYPES.map(v => {
+                  const sel = form.visaFriendly.includes(v);
+                  return (
+                    <button key={v} onClick={() => { toggleVisa(v); setError(""); }}
+                      style={{ padding:"7px 12px", borderRadius:20, background: sel ? "rgba(34,197,94,.12)" : "#141d2e", border:`1px solid ${sel ? "rgba(34,197,94,.4)" : "#1e2a3a"}`, color: sel ? "#22c55e" : "#aaa", fontSize:12, fontWeight: sel ? 700 : 400, cursor:"pointer", fontFamily:"inherit" }}>
+                      {sel ? "✓ " : ""}{v}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Stars */}
+            <div style={{ marginBottom:16 }}>
+              <div style={{ fontSize:12, color:"#aaa", marginBottom:8, fontWeight:500 }}>{T.rating}</div>
+              <div style={{ display:"flex", gap:6 }}>
+                {[1,2,3,4,5].map(n => (
+                  <button key={n} onClick={() => setForm(p => ({ ...p, rating: n }))}
+                    style={{ fontSize:30, background:"none", border:"none", cursor:"pointer", opacity: n <= form.rating ? 1 : 0.25, transition:"opacity .15s", padding:0 }}>⭐</button>
+                ))}
+              </div>
+            </div>
+
+            {/* Avis */}
+            <div style={{ marginBottom:20 }}>
+              <div style={{ fontSize:12, color:"#aaa", marginBottom:6, fontWeight:500 }}>{T.note}</div>
+              <textarea value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} placeholder={T.notePlh} rows={3}
+                style={{ width:"100%", padding:"13px 14px", background:"#0b0f1a", border:"1px solid #1e2a3a", borderRadius:12, color:"#f4f1ec", fontSize:15, fontFamily:"inherit", outline:"none", resize:"none", boxSizing:"border-box" as const }}/>
+            </div>
+
+            {error && <div style={{ fontSize:12, color:"#ef4444", marginBottom:10 }}>⚠️ {error}</div>}
+            <div style={{ display:"flex", gap:10 }}>
+              <button onClick={() => setStep(2)} style={{ flex:1, padding:"13px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#aaa", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>{T.back}</button>
+              <button onClick={handleSave} disabled={saving} style={{ flex:2, padding:"13px", background:"#22c55e", border:"none", borderRadius:12, color:"#000", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity: saving ? .7 : 1 }}>
+                {saving ? "⏳..." : T.save}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
