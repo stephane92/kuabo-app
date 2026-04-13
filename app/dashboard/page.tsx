@@ -527,8 +527,8 @@ export default function Dashboard() {
   return (
     <div style={{ background:"#0b0f1a", height:"100dvh", overflow:"hidden", color:"#f4f1ec" }}>
 
-      {/* ✅ FCM SETUP — demande permission notifications */}
-      {userId && <FCMSetup userId={userId} lang={lang} />}
+      {/* ✅ FCM SETUP — désactivé iOS, crash Safari */}
+      {userId && typeof window !== "undefined" && !/iPhone|iPad|iPod/.test(navigator.userAgent) && <FCMSetup userId={userId} lang={lang} />}
 
       {showDemo && ready && <DemoGuide lang={lang} userName={userName} onTabChange={tab=>setActiveTab(tab)} onHighlight={()=>{}}/>}
 
