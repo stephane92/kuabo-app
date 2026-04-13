@@ -192,9 +192,10 @@ export default function Dashboard() {
 
         // ✅ STATUS SYSTEM
         const status = computeStatus({
-          arrivalConfirmed: data?.arrivalConfirmed,
-          arrivalDate:      data?.arrivalDate,
-          arrival:          data?.arrival,
+          arrivalConfirmed:    data?.arrivalConfirmed,
+          arrivalDate:         data?.arrivalDate,
+          arrival:             data?.arrival,
+          preArrivalCompleted: data?.preArrivalCompleted, // ✅ manquait !
         });
         setUserStatus(status);
 
