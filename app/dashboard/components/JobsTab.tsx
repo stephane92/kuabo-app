@@ -16,7 +16,8 @@ type MyJob = {
 type CommunityJob = {
   id: string; company: string; city: string; state: string;
   sector: string; visaFriendly: string[]; rating: number;
-  reviewCount: number; addedBy: string; verified: boolean; note: string;
+  reviewCount: number; addedBy: string; verified: boolean;
+  note: string; createdAt?: string; // ✅ fix
 };
 
 // ── Données ──────────────────────────────────
