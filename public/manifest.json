@@ -1,0 +1,40 @@
+{
+    "name": "Kuabo — Immigrants USA",
+    "short_name": "Kuabo",
+    "description": "L'app qui accompagne les immigrants aux USA — SSN, Green Card, emploi, logement.",
+    "start_url": "/dashboard",
+    "display": "standalone",
+    "background_color": "#0b0f1a",
+    "theme_color": "#0b0f1a",
+    "orientation": "portrait",
+    "lang": "fr",
+    "categories": ["lifestyle", "utilities"],
+    "icons": [
+      { "src": "/icons/icon-72.png",  "sizes": "72x72",   "type": "image/png" },
+      { "src": "/icons/icon-96.png",  "sizes": "96x96",   "type": "image/png" },
+      { "src": "/icons/icon-128.png", "sizes": "128x128", "type": "image/png" },
+      { "src": "/icons/icon-144.png", "sizes": "144x144", "type": "image/png" },
+      { "src": "/icons/icon-152.png", "sizes": "152x152", "type": "image/png" },
+      { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+      { "src": "/icons/icon-384.png", "sizes": "384x384", "type": "image/png" },
+      { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    ],
+    "shortcuts": [
+      {
+        "name": "Mon Dashboard",
+        "short_name": "Dashboard",
+        "url": "/dashboard",
+        "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96" }]
+      },
+      {
+        "name": "Explorer",
+        "short_name": "Explorer",
+        "url": "/dashboard?tab=explorer",
+        "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96" }]
+      }
+    ],
+    "screenshots": [],
+    "related_applications": [],
+    "prefer_related_applications": false
+  }
+  
