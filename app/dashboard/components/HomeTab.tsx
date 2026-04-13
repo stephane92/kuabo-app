@@ -291,13 +291,15 @@ function ArmyBanner({ armyStatus, lang, onViewGuide }: { armyStatus:string; lang
 }
 
 // ══════════════════════════════════════════════
-// ADMIN EVENTS + PUB
+// ADMIN EVENTS + PUB — avec modals détail + images
 // ══════════════════════════════════════════════
 function AdminEventsAndPub({ lang, userState, userCountry, userId }: { lang:Lang; userState:string; userCountry:string; userId:string }) {
-  const [events, setEvents]   = useState<any[]>([]);
-  const [pub,    setPub]      = useState<any>(null);
-  const [pubClosed, setPubClosed] = useState(false);
-  const [participating, setParticipating] = useState<Record<string,boolean>>({});
+  const [events,       setEvents]       = useState<any[]>([]);
+  const [pub,          setPub]          = useState<any>(null);
+  const [pubClosed,    setPubClosed]    = useState(false);
+  const [participating,setParticipating]= useState<Record<string,boolean>>({});
+  const [selectedPub,  setSelectedPub]  = useState<any>(null);  // ✅ modal pub
+  const [selectedEvt,  setSelectedEvt]  = useState<any>(null);  // ✅ modal event
 
   useEffect(()=>{
     const f=async()=>{
@@ -338,22 +340,190 @@ function AdminEventsAndPub({ lang, userState, userCountry, userId }: { lang:Lang
     }catch{}
   };
 
+  // ✅ Emoji auto selon contenu pub
+  const getPubEmoji=(title:string):string=>{
+    const t=(title||"").toLowerCase();
+    if(t.includes("bank")||t.includes("banque")||t.includes("chase")||t.includes("compte")) return "🏦";
+    if(t.includes("phone")||t.includes("sim")||t.includes("mobile")) return "📱";
+    if(t.includes("job")||t.includes("emploi")||t.includes("work")) return "💼";
+    if(t.includes("housing")||t.includes("logement")||t.includes("apartment")) return "🏠";
+    if(t.includes("insurance")||t.includes("assurance")) return "🛡️";
+    if(t.includes("credit")||t.includes("card")||t.includes("carte")) return "💳";
+    if(t.includes("car")||t.includes("voiture")||t.includes("auto")) return "🚗";
+    if(t.includes("health")||t.includes("santé")||t.includes("medical")) return "🏥";
+    return "📢";
+  };
+
+  // ✅ Lecture correcte des champs Firebase
+  const getPubFields=(p:any, l:Lang)=>({
+    title: p?.[`title_${l}`]||p?.title_fr||p?.title||"",
+    desc:  p?.[`desc_${l}`] ||p?.desc_fr ||p?.desc ||"",
+    cta:   p?.[`cta_${l}`]  ||p?.cta_fr  ||p?.cta  ||"",
+    url:   p?.linkUrl||p?.link_url||p?.url||"",
+    image: p?.imageUrl||p?.image_url||"",
+  });
+
+  const getEvtFields=(e:any, l:Lang)=>({
+    title: e?.[`title_${l}`]||e?.title_fr||e?.title||"",
+    desc:  e?.[`desc_${l}`] ||e?.desc_fr ||e?.desc ||"",
+    image: e?.imageUrl||e?.image_url||"",
+  });
+
+  if(!pub&&events.length===0) return null;
+
+  const pubF = pub ? getPubFields(pub, lang) : null;
+  const pubEmoji = pubF ? getPubEmoji(pubF.title) : "📢";
+
   return (
     <>
-      {/* PUB */}
-      {pub&&!pubClosed&&(
+      {/* ── MODAL DÉTAIL PUB ── */}
+      {selectedPub&&(()=>{
+        const f=getPubFields(selectedPub,lang);
+        const emoji=getPubEmoji(f.title);
+        return (
+          <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,.92)",zIndex:600,display:"flex",alignItems:"flex-end",justifyContent:"center",backdropFilter:"blur(8px)" }}
+            onClick={()=>setSelectedPub(null)}>
+            <div style={{ background:"#0f1521",borderRadius:"22px 22px 0 0",width:"100%",maxWidth:480,maxHeight:"92vh",overflowY:"auto",animation:"slideUp .35s ease" }}
+              onClick={e=>e.stopPropagation()}>
+              {/* Image */}
+              {f.image?(
+                <div style={{ width:"100%",height:200,overflow:"hidden",borderRadius:"22px 22px 0 0",position:"relative" }}>
+                  <img src={f.image} alt={f.title} style={{ width:"100%",height:"100%",objectFit:"cover" }} onError={e=>(e.currentTarget.style.display="none")}/>
+                  <div style={{ position:"absolute",inset:0,background:"linear-gradient(to bottom,transparent 40%,rgba(15,21,33,.9))" }}/>
+                  <button onClick={()=>setSelectedPub(null)} style={{ position:"absolute",top:14,right:14,width:32,height:32,borderRadius:"50%",background:"rgba(0,0,0,.5)",border:"none",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>✕</button>
+                  <div style={{ position:"absolute",bottom:12,left:16 }}>
+                    <div style={{ fontSize:9,color:"#e8b84b",fontWeight:700,letterSpacing:".08em",background:"rgba(0,0,0,.6)",padding:"3px 8px",borderRadius:6 }}>PARTENAIRE KUABO</div>
+                  </div>
+                </div>
+              ):(
+                <div style={{ padding:"20px 20px 0",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+                  <div style={{ fontSize:9,color:"#e8b84b",fontWeight:700,letterSpacing:".08em" }}>PARTENAIRE KUABO</div>
+                  <button onClick={()=>setSelectedPub(null)} style={{ background:"none",border:"none",color:"#555",fontSize:20,cursor:"pointer" }}>✕</button>
+                </div>
+              )}
+              <div style={{ padding:"20px" }}>
+                <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:14 }}>
+                  <div style={{ width:52,height:52,borderRadius:14,background:"rgba(232,184,75,.12)",border:"1px solid rgba(232,184,75,.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,flexShrink:0 }}>{emoji}</div>
+                  <div>
+                    <div style={{ fontSize:18,fontWeight:800,color:"#f4f1ec" }}>{f.title}</div>
+                    {f.desc&&<div style={{ fontSize:13,color:"#aaa",marginTop:3,lineHeight:1.6 }}>{f.desc}</div>}
+                  </div>
+                </div>
+                {f.url&&(
+                  <button onClick={()=>window.open(f.url,"_blank")}
+                    style={{ width:"100%",padding:"15px",background:"#e8b84b",border:"none",borderRadius:14,color:"#000",fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit",marginBottom:10 }}>
+                    {f.cta||"Voir l'offre →"}
+                  </button>
+                )}
+                <button onClick={()=>setSelectedPub(null)}
+                  style={{ width:"100%",padding:"12px",background:"transparent",border:"1px solid #1e2a3a",borderRadius:12,color:"#555",fontSize:13,cursor:"pointer",fontFamily:"inherit" }}>
+                  {lang==="fr"?"Fermer":lang==="es"?"Cerrar":"Close"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── MODAL DÉTAIL EVENT ── */}
+      {selectedEvt&&(()=>{
+        const f=getEvtFields(selectedEvt,lang);
+        const isIn=participating[selectedEvt.id];
+        const dateStr=selectedEvt.eventDate?new Date(selectedEvt.eventDate).toLocaleDateString(lang==="fr"?"fr-FR":lang==="es"?"es-ES":"en-US",{ weekday:"long",day:"numeric",month:"long",year:"numeric" }):"";
+        return (
+          <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,.92)",zIndex:600,display:"flex",alignItems:"flex-end",justifyContent:"center",backdropFilter:"blur(8px)" }}
+            onClick={()=>setSelectedEvt(null)}>
+            <div style={{ background:"#0f1521",borderRadius:"22px 22px 0 0",width:"100%",maxWidth:480,maxHeight:"92vh",overflowY:"auto",animation:"slideUp .35s ease" }}
+              onClick={e=>e.stopPropagation()}>
+              {/* Image */}
+              {f.image?(
+                <div style={{ width:"100%",height:200,overflow:"hidden",borderRadius:"22px 22px 0 0",position:"relative" }}>
+                  <img src={f.image} alt={f.title} style={{ width:"100%",height:"100%",objectFit:"cover" }} onError={e=>(e.currentTarget.style.display="none")}/>
+                  <div style={{ position:"absolute",inset:0,background:"linear-gradient(to bottom,transparent 40%,rgba(15,21,33,.9))" }}/>
+                  <button onClick={()=>setSelectedEvt(null)} style={{ position:"absolute",top:14,right:14,width:32,height:32,borderRadius:"50%",background:"rgba(0,0,0,.5)",border:"none",color:"#fff",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center" }}>✕</button>
+                </div>
+              ):(
+                <div style={{ padding:"20px 20px 0",display:"flex",justifyContent:"flex-end" }}>
+                  <button onClick={()=>setSelectedEvt(null)} style={{ background:"none",border:"none",color:"#555",fontSize:20,cursor:"pointer" }}>✕</button>
+                </div>
+              )}
+              <div style={{ padding:"20px" }}>
+                <div style={{ fontSize:9,color:"#2dd4bf",fontWeight:700,letterSpacing:".08em",marginBottom:8 }}>📅 ÉVÉNEMENT KUABO</div>
+                <div style={{ fontSize:20,fontWeight:800,color:"#f4f1ec",marginBottom:14 }}>{f.title}</div>
+                {/* Infos */}
+                <div style={{ display:"flex",flexDirection:"column" as const,gap:8,marginBottom:16 }}>
+                  {dateStr&&(
+                    <div style={{ display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"rgba(45,212,191,.06)",border:"1px solid rgba(45,212,191,.2)",borderRadius:10 }}>
+                      <span style={{ fontSize:18 }}>📅</span>
+                      <div>
+                        <div style={{ fontSize:13,fontWeight:600,color:"#2dd4bf" }}>{dateStr}</div>
+                        {selectedEvt.eventTime&&<div style={{ fontSize:11,color:"#aaa" }}>{selectedEvt.eventTime}</div>}
+                      </div>
+                    </div>
+                  )}
+                  {selectedEvt.eventLocation&&(
+                    <div style={{ display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"rgba(167,139,250,.06)",border:"1px solid rgba(167,139,250,.2)",borderRadius:10 }}>
+                      <span style={{ fontSize:18 }}>📍</span>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:13,fontWeight:600,color:"#a78bfa" }}>{selectedEvt.eventLocation}</div>
+                      </div>
+                      <button onClick={()=>window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedEvt.eventLocation)}`,"_blank")}
+                        style={{ padding:"5px 10px",background:"rgba(167,139,250,.1)",border:"1px solid rgba(167,139,250,.3)",borderRadius:8,color:"#a78bfa",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit" }}>
+                        Maps →
+                      </button>
+                    </div>
+                  )}
+                  <div style={{ display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#141d2e",border:"1px solid #1e2a3a",borderRadius:10 }}>
+                    <span style={{ fontSize:18 }}>👥</span>
+                    <span style={{ fontSize:13,color:"#aaa" }}>{(selectedEvt.participants||[]).length} {lang==="fr"?"participants":lang==="es"?"participantes":"participants"}</span>
+                  </div>
+                </div>
+                {f.desc&&<div style={{ fontSize:13,color:"#aaa",lineHeight:1.7,marginBottom:16 }}>{f.desc}</div>}
+                <button onClick={()=>{ handleParticipate(selectedEvt.id); setSelectedEvt(null); }}
+                  style={{ width:"100%",padding:"15px",background:isIn?"rgba(239,68,68,.1)":"#2dd4bf",border:isIn?"1px solid rgba(239,68,68,.3)":"none",borderRadius:14,color:isIn?"#ef4444":"#000",fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit",marginBottom:10 }}>
+                  {isIn?(lang==="fr"?"❌ Se désinscrire":lang==="es"?"❌ Cancelar":"❌ Cancel"):(lang==="fr"?"✅ Je participe !":lang==="es"?"✅ ¡Participo!":"✅ I'm in!")}
+                </button>
+                <button onClick={()=>setSelectedEvt(null)}
+                  style={{ width:"100%",padding:"12px",background:"transparent",border:"1px solid #1e2a3a",borderRadius:12,color:"#555",fontSize:13,cursor:"pointer",fontFamily:"inherit" }}>
+                  {lang==="fr"?"Fermer":lang==="es"?"Cerrar":"Close"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* PUB CARD */}
+      {pub&&pubF&&!pubClosed&&(
         <div style={{ marginBottom:14 }}>
-          <div style={{ fontSize:9, color:"#333", textTransform:"uppercase" as const, letterSpacing:".08em", marginBottom:3, textAlign:"right" as const }}>
+          <div style={{ fontSize:9,color:"#333",textTransform:"uppercase" as const,letterSpacing:".08em",marginBottom:3,textAlign:"right" as const }}>
             {lang==="fr"?"Publicité · Partenaire Kuabo":lang==="es"?"Publicidad · Socio Kuabo":"Ad · Kuabo Partner"}
           </div>
-          <div style={{ position:"relative", background:"linear-gradient(135deg,#1a1a2e,#16213e)", border:"1px solid rgba(232,184,75,0.15)", borderRadius:12, padding:"12px 14px", display:"flex", alignItems:"center", gap:12, cursor:"pointer" }}
-            onClick={()=>pub.linkUrl&&window.open(pub.linkUrl,"_blank")}>
-            <button onClick={e=>{ e.stopPropagation(); setPubClosed(true); }} style={{ position:"absolute", top:6, right:8, background:"none", border:"none", color:"#555", cursor:"pointer", fontSize:15 }}>✕</button>
-            <div style={{ width:36, height:36, borderRadius:8, background:"rgba(232,184,75,0.1)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>📢</div>
-            <div style={{ flex:1, paddingRight:16 }}>
-              <div style={{ fontSize:13, fontWeight:700, color:"#f4f1ec", marginBottom:2 }}>{pub["title_"+lang]||pub.title||""}</div>
-              <div style={{ fontSize:11, color:"#aaa" }}>{pub["desc_"+lang]||pub.desc||""}</div>
-              {(pub["cta_"+lang]||pub.cta)&&<div style={{ fontSize:11, color:"#e8b84b", fontWeight:600, marginTop:3 }}>{pub["cta_"+lang]||pub.cta} →</div>}
+          <div style={{ position:"relative",background:"linear-gradient(135deg,#141d2e,#0f1521)",border:"1px solid rgba(232,184,75,0.2)",borderRadius:14,overflow:"hidden",cursor:"pointer" }}
+            onClick={()=>setSelectedPub(pub)}>
+            {/* Barre dorée */}
+            <div style={{ height:2,background:"linear-gradient(to right,#e8b84b,#f97316)" }}/>
+            {/* Image si disponible */}
+            {pubF.image&&(
+              <div style={{ width:"100%",height:120,overflow:"hidden",position:"relative" }}>
+                <img src={pubF.image} alt={pubF.title} style={{ width:"100%",height:"100%",objectFit:"cover" }} onError={e=>(e.currentTarget.style.display="none")}/>
+                <div style={{ position:"absolute",inset:0,background:"linear-gradient(to bottom,transparent 30%,rgba(20,29,46,.95))" }}/>
+              </div>
+            )}
+            <div style={{ padding:"12px 14px",display:"flex",alignItems:"center",gap:12 }}>
+              <button onClick={e=>{ e.stopPropagation(); setPubClosed(true); }} style={{ position:"absolute",top:8,right:10,background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:16,zIndex:10 }}>✕</button>
+              <div style={{ width:46,height:46,borderRadius:13,background:"rgba(232,184,75,.12)",border:"1px solid rgba(232,184,75,.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0 }}>
+                {pubEmoji}
+              </div>
+              <div style={{ flex:1,minWidth:0,paddingRight:20 }}>
+                <div style={{ fontSize:14,fontWeight:700,color:"#f4f1ec",marginBottom:2 }}>{pubF.title||"..."}</div>
+                {pubF.desc&&<div style={{ fontSize:11,color:"#aaa",marginBottom:4,lineHeight:1.4,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical" as const }}>{pubF.desc}</div>}
+                {pubF.cta&&(
+                  <div style={{ display:"inline-flex",alignItems:"center",gap:6,padding:"4px 10px",background:"rgba(232,184,75,.1)",border:"1px solid rgba(232,184,75,.3)",borderRadius:18 }}>
+                    <span style={{ fontSize:11,color:"#e8b84b",fontWeight:700 }}>{pubF.cta} →</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -362,25 +532,34 @@ function AdminEventsAndPub({ lang, userState, userCountry, userId }: { lang:Lang
       {/* EVENTS */}
       {events.length>0&&(
         <div style={{ marginBottom:14 }}>
-          <div style={{ fontSize:11, color:"#555", letterSpacing:".08em", textTransform:"uppercase" as const, marginBottom:10, fontWeight:600 }}>
+          <div style={{ fontSize:11,color:"#555",letterSpacing:".08em",textTransform:"uppercase" as const,marginBottom:10,fontWeight:600 }}>
             📅 {lang==="fr"?"Événements Kuabo":lang==="es"?"Eventos Kuabo":"Kuabo Events"}
           </div>
           {events.map(event=>{
-            const title=event["title_"+lang]||event.title||"";
+            const ef=getEvtFields(event,lang);
             const isIn=participating[event.id];
             const dateStr=event.eventDate?new Date(event.eventDate).toLocaleDateString(lang==="fr"?"fr-FR":lang==="es"?"es-ES":"en-US",{ day:"numeric",month:"long" }):"";
             return (
-              <div key={event.id} style={{ background:"#141d2e", border:"1px solid rgba(45,212,191,0.2)", borderRadius:12, padding:"14px", overflow:"hidden", position:"relative", marginBottom:8 }}>
-                <div style={{ position:"absolute", top:0, left:0, right:0, height:2, background:"linear-gradient(to right,#2dd4bf,#e8b84b)" }}/>
-                <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:12 }}>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:14, fontWeight:700, color:"#f4f1ec", marginBottom:3 }}>{title}</div>
-                    <div style={{ fontSize:11, color:"#2dd4bf" }}>📅 {dateStr}{event.eventTime?` · ${event.eventTime}`:""}</div>
-                    {event.eventLocation&&<div style={{ fontSize:11, color:"#aaa", marginTop:2 }}>📍 {event.eventLocation}</div>}
-                    <div style={{ fontSize:10, color:"#555", marginTop:3 }}>👥 {(event.participants||[]).length} {lang==="fr"?"participants":lang==="es"?"participantes":"participants"}</div>
+              <div key={event.id} style={{ background:"#141d2e",border:"1px solid rgba(45,212,191,0.2)",borderRadius:14,overflow:"hidden",position:"relative",marginBottom:8,cursor:"pointer" }}
+                onClick={()=>setSelectedEvt(event)}>
+                <div style={{ position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(to right,#2dd4bf,#e8b84b)" }}/>
+                {/* Image event si disponible */}
+                {ef.image&&(
+                  <div style={{ width:"100%",height:100,overflow:"hidden",position:"relative" }}>
+                    <img src={ef.image} alt={ef.title} style={{ width:"100%",height:"100%",objectFit:"cover" }} onError={e=>(e.currentTarget.style.display="none")}/>
+                    <div style={{ position:"absolute",inset:0,background:"linear-gradient(to bottom,transparent 30%,rgba(20,29,46,.9))" }}/>
                   </div>
-                  <button onClick={()=>handleParticipate(event.id)} style={{ padding:"8px 12px", borderRadius:16, border:"1px solid "+(isIn?"rgba(34,197,94,0.4)":"rgba(45,212,191,0.4)"), background:isIn?"rgba(34,197,94,0.1)":"rgba(45,212,191,0.1)", color:isIn?"#22c55e":"#2dd4bf", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", flexShrink:0, whiteSpace:"nowrap" as const }}>
-                    {isIn?(lang==="fr"?"✓ Inscrit":lang==="es"?"✓ Inscrito":"✓ Going"):(lang==="fr"?"Participer":lang==="es"?"Participar":"Join")}
+                )}
+                <div style={{ padding:"12px 14px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12 }}>
+                  <div style={{ flex:1,minWidth:0 }}>
+                    <div style={{ fontSize:14,fontWeight:700,color:"#f4f1ec",marginBottom:3 }}>{ef.title}</div>
+                    <div style={{ fontSize:11,color:"#2dd4bf" }}>📅 {dateStr}{event.eventTime?` · ${event.eventTime}`:""}</div>
+                    {event.eventLocation&&<div style={{ fontSize:11,color:"#aaa",marginTop:2 }}>📍 {event.eventLocation}</div>}
+                    <div style={{ fontSize:10,color:"#555",marginTop:3 }}>👥 {(event.participants||[]).length} {lang==="fr"?"participants":"participants"}</div>
+                  </div>
+                  <button onClick={e=>{ e.stopPropagation(); handleParticipate(event.id); }}
+                    style={{ padding:"8px 12px",borderRadius:16,border:"1px solid "+(isIn?"rgba(34,197,94,0.4)":"rgba(45,212,191,0.4)"),background:isIn?"rgba(34,197,94,0.1)":"rgba(45,212,191,0.1)",color:isIn?"#22c55e":"#2dd4bf",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap" as const }}>
+                    {isIn?(lang==="fr"?"✓ Inscrit":"✓ Going"):(lang==="fr"?"Participer":"Join")}
                   </button>
                 </div>
               </div>

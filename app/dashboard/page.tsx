@@ -622,6 +622,7 @@ export default function Dashboard() {
   const [deleteInput,      setDeleteInput]      = useState("");
   const [deleting,         setDeleting]         = useState(false);
   const [deleteError,      setDeleteError]      = useState("");
+  const [adminPopupMsg,    setAdminPopupMsg]    = useState<any>(null); // ✅ popup message admin
 
   const streak                        = useStreak(userId);
   const { currentPhase, phaseProgress } = getPhaseStats(completedSteps);
@@ -704,6 +705,22 @@ export default function Dashboard() {
           localStorage.removeItem("kuabo_pending_delete");
           setTimeout(() => setShowDeleteModal(true), 1000);
         }
+
+        // ✅ Charger message admin urgent non vu
+        try {
+          const msgSnap = await getDocs(collection(db, "admin_messages"));
+          for (const d of msgSnap.docs) {
+            const mdata = d.data() as any;
+            if (!mdata.active || (mdata.type !== "urgent" && mdata.type !== "info")) continue;
+            if (mdata.target !== "all" && mdata.target !== `state:${data?.state}` && mdata.target !== data?.reason) continue;
+            // Vérifier si déjà vu
+            const seenSnap = await getDoc(doc(db, "users", user.uid, "messages", d.id)).catch(() => null);
+            if (!seenSnap?.exists() || !seenSnap.data()?.seen) {
+              setTimeout(() => setAdminPopupMsg({ id: d.id, ...mdata }), 1500);
+              break;
+            }
+          }
+        } catch {}
 
         // Mettre à jour daysInUSA en background
         if (data?.arrivalDate && data?.arrivalConfirmed) {
@@ -846,7 +863,63 @@ export default function Dashboard() {
         <DemoGuide lang={lang} userName={userName} onTabChange={tab=>setActiveTab(tab)} onHighlight={target=>setDemoHighlight(target)}/>
       )}
 
-      {/* Animation bienvenue — avant lightCheck */}
+      {/* ✅ POPUP ANIMÉE MESSAGE ADMIN URGENT */}
+      {adminPopupMsg && (
+        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,.88)",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(8px)",padding:"0 20px" }}
+          onClick={()=>setAdminPopupMsg(null)}>
+          <div style={{ background:"#0f1521",border:`1.5px solid ${adminPopupMsg.type==="urgent"?"rgba(239,68,68,.4)":"rgba(232,184,75,.3)"}`,borderRadius:22,padding:"28px 22px",width:"100%",maxWidth:380,animation:"alertPop .5s cubic-bezier(.34,1.56,.64,1)" }}
+            onClick={e=>e.stopPropagation()}>
+            {/* Icône animée */}
+            <div style={{ textAlign:"center",marginBottom:16 }}>
+              <div style={{ fontSize:52,animation:"emojiPop .4s cubic-bezier(.34,1.56,.64,1)" }}>
+                {adminPopupMsg.type==="urgent"?"⚠️":"📢"}
+              </div>
+            </div>
+            <div style={{ fontSize:10,color:adminPopupMsg.type==="urgent"?"#ef4444":"#e8b84b",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase" as const,textAlign:"center",marginBottom:8 }}>
+              {adminPopupMsg.type==="urgent"
+                ? (lang==="fr"?"Message urgent Kuabo":lang==="es"?"Mensaje urgente Kuabo":"Urgent Kuabo message")
+                : (lang==="fr"?"Information Kuabo":lang==="es"?"Información Kuabo":"Kuabo Information")}
+            </div>
+            <div style={{ fontSize:17,fontWeight:800,color:"#f4f1ec",textAlign:"center",marginBottom:10,lineHeight:1.4 }}>
+              {adminPopupMsg[`title_${lang}`]||adminPopupMsg.title_fr||adminPopupMsg.title||""}
+            </div>
+            {(adminPopupMsg[`content_${lang}`]||adminPopupMsg.content_fr||adminPopupMsg.content)&&(
+              <div style={{ fontSize:13,color:"#aaa",textAlign:"center",lineHeight:1.7,marginBottom:20 }}>
+                {adminPopupMsg[`content_${lang}`]||adminPopupMsg.content_fr||adminPopupMsg.content}
+              </div>
+            )}
+            <div style={{ display:"flex",gap:10 }}>
+              <button onClick={async()=>{
+                // Sauvegarder dans messages user
+                if (userId) {
+                  try {
+                    const { setDoc, doc: fDoc } = await import("firebase/firestore");
+                    await setDoc(fDoc(db,"users",userId,"messages",adminPopupMsg.id),{
+                      seen:true, seenAt:new Date().toISOString(), savedInDocs:true
+                    });
+                  } catch {}
+                }
+                setAdminPopupMsg(null);
+              }} style={{ flex:1,padding:"13px",background:"#141d2e",border:"1px solid #1e2a3a",borderRadius:12,color:"#aaa",fontSize:13,cursor:"pointer",fontFamily:"inherit" }}>
+                {lang==="fr"?"Garder dans Messages":lang==="es"?"Guardar":"Save in Messages"}
+              </button>
+              <button onClick={async()=>{
+                if (userId) {
+                  try {
+                    const { setDoc, doc: fDoc } = await import("firebase/firestore");
+                    await setDoc(fDoc(db,"users",userId,"messages",adminPopupMsg.id),{
+                      seen:true, seenAt:new Date().toISOString(), savedInDocs:false
+                    });
+                  } catch {}
+                }
+                setAdminPopupMsg(null);
+              }} style={{ flex:1,padding:"13px",background:adminPopupMsg.type==="urgent"?"#ef4444":"#e8b84b",border:"none",borderRadius:12,color:"#000",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit" }}>
+                {lang==="fr"?"✓ Lu":lang==="es"?"✓ Leído":"✓ Got it"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showWelcome && (
         <WelcomeAnimation
           lang={lang}

@@ -324,6 +324,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const [pubDesc,     setPubDesc]     = useState({ fr:"", en:"", es:"" });
   const [pubCta,      setPubCta]      = useState({ fr:"", en:"", es:"" });
   const [pubUrl,      setPubUrl]      = useState("");
+  const [pubImg,      setPubImg]      = useState(""); // ✅ image URL pub
   const [pubTarget,   setPubTarget]   = useState("all");
   const [pubLang,     setPubLang]     = useState<Lang>("fr");
   const [savingPub,   setSavingPub]   = useState(false);
@@ -332,9 +333,11 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   // ── Événements ──
   const [events,      setEvents]      = useState<any[]>([]);
   const [evtTitle,    setEvtTitle]    = useState({ fr:"", en:"", es:"" });
+  const [evtDesc,     setEvtDesc]     = useState({ fr:"", en:"", es:"" }); // ✅ description event
   const [evtDate,     setEvtDate]     = useState("");
   const [evtTime,     setEvtTime]     = useState("");
   const [evtLocation, setEvtLocation] = useState("");
+  const [evtImg,      setEvtImg]      = useState(""); // ✅ image URL event
   const [evtTarget,   setEvtTarget]   = useState("all");
   const [evtLang,     setEvtLang]     = useState<Lang>("fr");
   const [savingEvt,   setSavingEvt]   = useState(false);
@@ -422,6 +425,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         desc_fr: pubDesc.fr, desc_en: pubDesc.en, desc_es: pubDesc.es,
         cta_fr: pubCta.fr, cta_en: pubCta.en, cta_es: pubCta.es,
         linkUrl: pubUrl,
+        imageUrl: pubImg||null,
         isAd: true,
         active: true,
         publishedAt: new Date().toISOString(),
@@ -429,7 +433,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       setPubTitle({ fr:"", en:"", es:"" });
       setPubDesc({ fr:"", en:"", es:"" });
       setPubCta({ fr:"", en:"", es:"" });
-      setPubUrl("");
+      setPubUrl(""); setPubImg("");
       setPubSuccess(true);
       setTimeout(() => setPubSuccess(false), 3000);
       loadAll();
@@ -445,15 +449,18 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         type: "event",
         target: evtTarget,
         title_fr: evtTitle.fr, title_en: evtTitle.en, title_es: evtTitle.es,
+        desc_fr: evtDesc.fr, desc_en: evtDesc.en, desc_es: evtDesc.es,
         eventDate: evtDate,
         eventTime: evtTime,
         eventLocation: evtLocation,
+        imageUrl: evtImg||null,
         participants: [],
         active: true,
         publishedAt: new Date().toISOString(),
       });
       setEvtTitle({ fr:"", en:"", es:"" });
-      setEvtDate(""); setEvtTime(""); setEvtLocation("");
+      setEvtDesc({ fr:"", en:"", es:"" });
+      setEvtDate(""); setEvtTime(""); setEvtLocation(""); setEvtImg("");
       setEvtSuccess(true);
       setTimeout(() => setEvtSuccess(false), 3000);
       loadAll();
@@ -649,6 +656,8 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                 placeholder={`CTA bouton ex: "Ouvrir un compte" (${pubLang})`} style={inputStyle}/>
               <input value={pubUrl} onChange={e=>setPubUrl(e.target.value)}
                 placeholder="URL de redirection (https://...)" style={inputStyle}/>
+              <input value={pubImg} onChange={e=>setPubImg(e.target.value)}
+                placeholder="🖼️ URL image optionnelle (Imgur, Drive...)" style={{ ...inputStyle, borderColor: pubImg?"rgba(45,212,191,.4)":"#1e2a3a" }}/>
 
               <Section title="Cibler"/>
               <select value={pubTarget} onChange={e=>setPubTarget(e.target.value)}
@@ -712,6 +721,8 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
               <input value={evtTitle[evtLang]} onChange={e=>setEvtTitle(p=>({...p,[evtLang]:e.target.value}))}
                 placeholder={`Titre de l'événement (${evtLang})`} style={inputStyle}/>
+              <textarea value={evtDesc[evtLang]} onChange={e=>setEvtDesc(p=>({...p,[evtLang]:e.target.value}))}
+                placeholder={`Description de l'événement (${evtLang})`} style={textareaStyle}/>
 
               <div style={{ display:"flex", gap:8, marginBottom:8 }}>
                 <input type="date" value={evtDate} onChange={e=>setEvtDate(e.target.value)}
@@ -722,6 +733,8 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
               <input value={evtLocation} onChange={e=>setEvtLocation(e.target.value)}
                 placeholder="Lieu (ex: Silver Spring, MD)" style={{ ...inputStyle, marginTop:8 }}/>
+              <input value={evtImg} onChange={e=>setEvtImg(e.target.value)}
+                placeholder="🖼️ URL image optionnelle (Imgur, Drive...)" style={{ ...inputStyle, borderColor:evtImg?"rgba(45,212,191,.4)":"#1e2a3a" }}/>
 
               <Section title="Cibler"/>
               <select value={evtTarget} onChange={e=>setEvtTarget(e.target.value)}
@@ -751,7 +764,22 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                       </div>
                       <div style={{ fontSize:13, fontWeight:600, color:"#f4f1ec" }}>{evt.title_fr}</div>
                       {evt.eventLocation&&<div style={{ fontSize:11, color:"#555", marginTop:2 }}>📍 {evt.eventLocation}</div>}
-                      <div style={{ fontSize:11, color:"#555", marginTop:2 }}>👥 {(evt.participants||[]).length} participants</div>
+                      <div onClick={async()=>{
+                        if(!(evt.participants?.length>0)){ alert("Aucun participant pour l'instant."); return; }
+                        try{
+                          const names:string[]=[];
+                          for(const uid of evt.participants.slice(0,20)){
+                            const usnap=await getDoc(doc(db,"users",uid)).catch(()=>null);
+                            if(usnap?.exists()){
+                              const d=usnap.data() as any;
+                              names.push(`• ${d.name||"User"} — ${d.email||uid}`);
+                            }
+                          }
+                          alert(`👥 Participants (${evt.participants.length}) :\n\n${names.join("\n")}${evt.participants.length>20?"\n...":"" }`);
+                        }catch{ alert("Erreur chargement participants"); }
+                      }} style={{ fontSize:11,color:evt.participants?.length>0?"#2dd4bf":"#555",marginTop:4,cursor:evt.participants?.length>0?"pointer":"default",textDecoration:evt.participants?.length>0?"underline":"none" }}>
+                        👥 {(evt.participants||[]).length} participant{(evt.participants||[]).length!==1?"s":""} {evt.participants?.length>0?"— voir →":""}
+                      </div>
                     </div>
                     <div style={{ display:"flex", gap:6, flexShrink:0 }}>
                       <button onClick={()=>toggleActive(evt.id,evt.active)}
@@ -809,8 +837,8 @@ export default function AdminPage() {
     // ✅ Couche 1 : vérifier UID Firebase
     const unsub = onAuthStateChanged(auth, user => {
       if (!user || user.uid !== ADMIN_UID) {
-        // Pas le bon user → redirect silencieux
-        window.location.href = "/dashboard";
+        // Pas le bon user → redirect login
+        window.location.href = "/login";
         return;
       }
       setIsAuthorized(true);
