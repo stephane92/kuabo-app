@@ -199,8 +199,225 @@ function ChangeStatusModal({ lang, currentArrival, userId, onClose, onChanged }:
 }
 
 // ══════════════════════════════════════════════
-// PROFILE TAB
+// LISTE DES 50 ÉTATS US
 // ══════════════════════════════════════════════
+const US_STATES = [
+  { code:"AL",name:"Alabama" },{ code:"AK",name:"Alaska" },{ code:"AZ",name:"Arizona" },
+  { code:"AR",name:"Arkansas" },{ code:"CA",name:"California" },{ code:"CO",name:"Colorado" },
+  { code:"CT",name:"Connecticut" },{ code:"DE",name:"Delaware" },{ code:"FL",name:"Florida" },
+  { code:"GA",name:"Georgia" },{ code:"HI",name:"Hawaii" },{ code:"ID",name:"Idaho" },
+  { code:"IL",name:"Illinois" },{ code:"IN",name:"Indiana" },{ code:"IA",name:"Iowa" },
+  { code:"KS",name:"Kansas" },{ code:"KY",name:"Kentucky" },{ code:"LA",name:"Louisiana" },
+  { code:"ME",name:"Maine" },{ code:"MD",name:"Maryland" },{ code:"MA",name:"Massachusetts" },
+  { code:"MI",name:"Michigan" },{ code:"MN",name:"Minnesota" },{ code:"MS",name:"Mississippi" },
+  { code:"MO",name:"Missouri" },{ code:"MT",name:"Montana" },{ code:"NE",name:"Nebraska" },
+  { code:"NV",name:"Nevada" },{ code:"NH",name:"New Hampshire" },{ code:"NJ",name:"New Jersey" },
+  { code:"NM",name:"New Mexico" },{ code:"NY",name:"New York" },{ code:"NC",name:"North Carolina" },
+  { code:"ND",name:"North Dakota" },{ code:"OH",name:"Ohio" },{ code:"OK",name:"Oklahoma" },
+  { code:"OR",name:"Oregon" },{ code:"PA",name:"Pennsylvania" },{ code:"RI",name:"Rhode Island" },
+  { code:"SC",name:"South Carolina" },{ code:"SD",name:"South Dakota" },{ code:"TN",name:"Tennessee" },
+  { code:"TX",name:"Texas" },{ code:"UT",name:"Utah" },{ code:"VT",name:"Vermont" },
+  { code:"VA",name:"Virginia" },{ code:"WA",name:"Washington" },{ code:"WV",name:"West Virginia" },
+  { code:"WI",name:"Wisconsin" },{ code:"WY",name:"Wyoming" },
+];
+
+// ══════════════════════════════════════════════
+// MODAL CHANGEMENT D'ÉTAT AMÉRICAIN
+// ══════════════════════════════════════════════
+function ChangeUSStateModal({ lang, currentState, userId, onClose, onChanged }: {
+  lang: Lang; currentState: string; userId: string;
+  onClose: () => void; onChanged: (newState: string) => void;
+}) {
+  const [step,     setStep]     = useState<1|2|3>(1);
+  const [search,   setSearch]   = useState("");
+  const [selected, setSelected] = useState("");
+  const [saving,   setSaving]   = useState(false);
+
+  const T = {
+    fr: {
+      title:      "Changer mon état américain",
+      sub:        "Tu as déménagé ? Mets à jour ta localisation.",
+      searchPlh:  "Rechercher un état...",
+      current:    "État actuel",
+      choose:     "Choisir un nouvel état",
+      confirm:    "Confirmer le déménagement",
+      confirmSub: "Tes services Explorer seront mis à jour pour ton nouvel état.",
+      back:       "← Retour", cancel:"Annuler", save:"✅ Confirmer",
+      success:    "Déménagement enregistré !",
+      successSub: "Bienvenue dans ton nouvel état ! 🎉",
+      noResult:   "Aucun état trouvé",
+    },
+    en: {
+      title:      "Change my US state",
+      sub:        "Did you move? Update your location.",
+      searchPlh:  "Search a state...",
+      current:    "Current state",
+      choose:     "Choose a new state",
+      confirm:    "Confirm the move",
+      confirmSub: "Your Explorer services will be updated for your new state.",
+      back:       "← Back", cancel:"Cancel", save:"✅ Confirm",
+      success:    "Move recorded!",
+      successSub: "Welcome to your new state! 🎉",
+      noResult:   "No state found",
+    },
+    es: {
+      title:      "Cambiar mi estado americano",
+      sub:        "¿Te mudaste? Actualiza tu ubicación.",
+      searchPlh:  "Buscar un estado...",
+      current:    "Estado actual",
+      choose:     "Elegir un nuevo estado",
+      confirm:    "Confirmar la mudanza",
+      confirmSub: "Tus servicios Explorer se actualizarán para tu nuevo estado.",
+      back:       "← Volver", cancel:"Cancelar", save:"✅ Confirmar",
+      success:    "¡Mudanza registrada!",
+      successSub: "¡Bienvenido a tu nuevo estado! 🎉",
+      noResult:   "No se encontró ningún estado",
+    },
+  }[lang];
+
+  const filtered = US_STATES.filter(s =>
+    s.name.toLowerCase().includes(search.toLowerCase()) ||
+    s.code.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const selectedState = US_STATES.find(s => s.code === selected);
+  const currentStateName = US_STATES.find(s => s.code === currentState)?.name || currentState;
+
+  const handleSave = async () => {
+    if (!selected || !userId || saving) return;
+    setSaving(true);
+    try {
+      const snap = await getDoc(doc(db, "users", userId));
+      const data = snap.exists() ? snap.data() as any : {};
+      const locHistory = data?.locationHistory || [];
+      await updateDoc(doc(db, "users", userId), {
+        "location.state": selected,
+        state: selected,
+        locationHistory: [
+          ...locHistory,
+          { from: currentState, to: selected, at: new Date().toISOString() },
+        ],
+      });
+      setStep(3);
+      setTimeout(() => { onChanged(selected); onClose(); }, 2500);
+    } catch {}
+    setSaving(false);
+  };
+
+  return (
+    <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,.9)",zIndex:700,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(6px)",padding:"0 16px" }}
+      onClick={onClose}>
+      <div style={{ background:"#0f1521",border:"1.5px solid #1e2a3a",borderRadius:22,padding:"24px 20px",width:"100%",maxWidth:480,maxHeight:"88vh",display:"flex",flexDirection:"column" as const,animation:"alertPop .4s cubic-bezier(.34,1.56,.64,1)" }}
+        onClick={e=>e.stopPropagation()}>
+
+        {/* Étape 1 — Choisir */}
+        {step===1&&(<>
+          <div style={{ fontSize:17,fontWeight:800,color:"#f4f1ec",marginBottom:4 }}>🗺️ {T.title}</div>
+          <div style={{ fontSize:12,color:"#aaa",marginBottom:14,lineHeight:1.6 }}>{T.sub}</div>
+
+          {/* État actuel */}
+          {currentState&&(
+            <div style={{ marginBottom:12 }}>
+              <div style={{ fontSize:10,color:"#555",letterSpacing:".08em",textTransform:"uppercase" as const,marginBottom:6 }}>{T.current}</div>
+              <div style={{ display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"rgba(45,212,191,.08)",border:"1px solid rgba(45,212,191,.25)",borderRadius:11 }}>
+                <span style={{ fontSize:18 }}>📍</span>
+                <span style={{ fontSize:14,fontWeight:600,color:"#2dd4bf" }}>{currentStateName}</span>
+                <span style={{ marginLeft:"auto",fontSize:11,color:"#2dd4bf",fontWeight:600 }}>✓ Actuel</span>
+              </div>
+            </div>
+          )}
+
+          {/* Recherche */}
+          <div style={{ fontSize:10,color:"#555",letterSpacing:".08em",textTransform:"uppercase" as const,marginBottom:8 }}>{T.choose}</div>
+          <input
+            value={search} onChange={e=>setSearch(e.target.value)}
+            placeholder={T.searchPlh}
+            style={{ width:"100%",padding:"11px 14px",background:"#141d2e",border:"1px solid #1e2a3a",borderRadius:11,color:"#f4f1ec",fontSize:16,fontFamily:"inherit",outline:"none",boxSizing:"border-box" as const,marginBottom:10 }}
+          />
+
+          {/* Liste états scrollable */}
+          <div style={{ flex:1,overflowY:"auto",display:"flex",flexDirection:"column" as const,gap:6,marginBottom:14,maxHeight:300 }}>
+            {filtered.length===0&&(
+              <div style={{ textAlign:"center" as const,padding:"20px",color:"#555",fontSize:13 }}>{T.noResult}</div>
+            )}
+            {filtered.map(state=>{
+              const isCurrent = state.code===currentState;
+              const isSel     = state.code===selected;
+              return (
+                <button key={state.code}
+                  onClick={()=>{ if(!isCurrent) setSelected(state.code); }}
+                  style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",background:isSel?"rgba(232,184,75,.1)":isCurrent?"rgba(45,212,191,.05)":"#141d2e",border:`1.5px solid ${isSel?"#e8b84b":isCurrent?"rgba(45,212,191,.3)":"#1e2a3a"}`,borderRadius:11,cursor:isCurrent?"default":"pointer",fontFamily:"inherit",transition:"all .15s",textAlign:"left" as const,width:"100%" }}>
+                  <span style={{ fontSize:16 }}>📍</span>
+                  <div style={{ flex:1 }}>
+                    <span style={{ fontSize:14,color:isSel?"#e8b84b":isCurrent?"#2dd4bf":"#f4f1ec",fontWeight:isSel||isCurrent?700:400 }}>{state.name}</span>
+                    <span style={{ fontSize:11,color:"#555",marginLeft:6 }}>{state.code}</span>
+                  </div>
+                  {isCurrent&&<span style={{ fontSize:11,color:"#2dd4bf",fontWeight:600 }}>Actuel</span>}
+                  {isSel&&!isCurrent&&<div style={{ width:18,height:18,borderRadius:"50%",background:"#e8b84b",display:"flex",alignItems:"center",justifyContent:"center" }}><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3 5.5L8 1" stroke="#000" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></div>}
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{ display:"flex",gap:10 }}>
+            <button onClick={onClose} style={{ flex:1,padding:"12px",background:"#141d2e",border:"1px solid #1e2a3a",borderRadius:12,color:"#aaa",fontSize:13,cursor:"pointer",fontFamily:"inherit" }}>{T.cancel}</button>
+            <button onClick={()=>setStep(2)} disabled={!selected}
+              style={{ flex:2,padding:"12px",background:selected?"#e8b84b":"#1e2a3a",border:"none",borderRadius:12,color:selected?"#000":"#555",fontSize:14,fontWeight:700,cursor:selected?"pointer":"default",fontFamily:"inherit" }}>
+              {lang==="fr"?"Continuer →":lang==="es"?"Continuar →":"Continue →"}
+            </button>
+          </div>
+        </>)}
+
+        {/* Étape 2 — Confirmer */}
+        {step===2&&selectedState&&(<>
+          <div style={{ fontSize:42,textAlign:"center" as const,marginBottom:12 }}>🚚</div>
+          <div style={{ fontSize:17,fontWeight:800,color:"#f4f1ec",textAlign:"center" as const,marginBottom:6 }}>{T.confirm}</div>
+          <div style={{ fontSize:12,color:"#aaa",textAlign:"center" as const,lineHeight:1.6,marginBottom:16 }}>{T.confirmSub}</div>
+
+          {/* Résumé */}
+          <div style={{ background:"#141d2e",border:"1px solid #1e2a3a",borderRadius:14,padding:"16px",marginBottom:20 }}>
+            {currentState&&(
+              <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:12,opacity:.6 }}>
+                <span style={{ fontSize:18 }}>📍</span>
+                <span style={{ fontSize:14,color:"#aaa" }}>{currentStateName}</span>
+              </div>
+            )}
+            <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:currentState?0:0 }}>
+              <span style={{ fontSize:18,color:"#555" }}>↓</span>
+            </div>
+            <div style={{ display:"flex",alignItems:"center",gap:10,marginTop:currentState?8:0 }}>
+              <span style={{ fontSize:18 }}>📍</span>
+              <span style={{ fontSize:16,fontWeight:800,color:"#e8b84b" }}>{selectedState.name}</span>
+              <span style={{ marginLeft:"auto",fontSize:12,color:"#22c55e",fontWeight:600 }}>→ Nouveau</span>
+            </div>
+          </div>
+
+          <div style={{ display:"flex",gap:10 }}>
+            <button onClick={()=>setStep(1)} style={{ flex:1,padding:"13px",background:"#141d2e",border:"1px solid #1e2a3a",borderRadius:12,color:"#aaa",fontSize:13,cursor:"pointer",fontFamily:"inherit" }}>{T.back}</button>
+            <button onClick={handleSave} disabled={saving}
+              style={{ flex:2,padding:"13px",background:saving?"#555":"#22c55e",border:"none",borderRadius:12,color:"#000",fontSize:14,fontWeight:700,cursor:saving?"default":"pointer",fontFamily:"inherit",opacity:saving?.7:1 }}>
+              {saving?"⏳...":T.save}
+            </button>
+          </div>
+        </>)}
+
+        {/* Étape 3 — Succès */}
+        {step===3&&(
+          <div style={{ textAlign:"center" as const,padding:"32px 0" }}>
+            <div style={{ fontSize:64,marginBottom:16 }}>🎉</div>
+            <div style={{ fontSize:20,fontWeight:800,color:"#22c55e",marginBottom:8 }}>{T.success}</div>
+            <div style={{ fontSize:15,color:"#e8b84b",fontWeight:700,marginBottom:8 }}>
+              {selectedState?.name} 🗺️
+            </div>
+            <div style={{ fontSize:13,color:"#aaa",lineHeight:1.6 }}>{T.successSub}</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
 export default function ProfileTab({
   userName, userEmail, userCountry, userState, userCity,
   lang, completedSteps, armyStatus, userArrival,
@@ -228,7 +445,9 @@ export default function ProfileTab({
   const [displayName,     setDisplayName]     = useState(userName);
   const [showArmyModal,   setShowArmyModal]   = useState(false);
   const [armyConfirmOpt,  setArmyConfirmOpt]  = useState<string|null>(null);
-  const [showStatusModal, setShowStatusModal] = useState(false); // ✅ NOUVEAU
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showUSStateModal,setShowUSStateModal]= useState(false); // ✅ NOUVEAU
+  const [currentUSState,  setCurrentUSState]  = useState(userState); // ✅ NOUVEAU
   const [userId,          setUserId]          = useState("");
 
   const { currentPhase, phaseProgress } = getPhaseStats(completedSteps);
@@ -293,9 +512,12 @@ export default function ProfileTab({
   const currentArrivalLabel=arrivalLabels[userArrival]?.[lang]||"—";
 
   const L={
-    fr:{title:"Mon Profil",globalScore:"Score global Kuabo",phase:"Phase",of:"sur",saveName:"Sauvegarder",cancelName:"Annuler",nameSaved:"✅ Nom modifié !",editNameTitle:"Modifier ton nom",editNameSub:"Entre ton nouveau nom",security:"Sécurité",changePass:"Changer le mot de passe",passSent:"✅ Email envoyé !",preferences:"Préférences",language:"Langue",privacy:"Confidentialité",commMap:"Carte communauté",commSub:"Apparaître anonymement",messages:"Messages",msgSub:"Recevoir des messages",notifications:"Notifications",notifSub:"Rappels quotidiens",share:"Partager Kuabo",shareSub:"Inviter un ami immigrant",help:"Aide",legal:"Légal",terms:"Conditions d'utilisation",privacy2:"Politique de confidentialité",account:"Compte",logout:"Déconnexion",deleteAccount:"Supprimer mon compte",deleteSub:"Action irréversible",version:"Version 1.0 · Kuabo",phases:"Mes phases",armySection:"Statut Army",armyChange:"Modifier",armyModalTitle:"Mon statut Army",statusSection:"Ma situation",statusChange:"Changer mon état",statusCurrent:"Situation actuelle"},
-    en:{title:"My Profile",globalScore:"Global Kuabo Score",phase:"Phase",of:"of",saveName:"Save",cancelName:"Cancel",nameSaved:"✅ Name updated!",editNameTitle:"Edit your name",editNameSub:"Enter your new name",security:"Security",changePass:"Change password",passSent:"✅ Email sent!",preferences:"Preferences",language:"Language",privacy:"Privacy",commMap:"Community map",commSub:"Appear anonymously",messages:"Messages",msgSub:"Receive messages",notifications:"Notifications",notifSub:"Daily reminders",share:"Share Kuabo",shareSub:"Invite an immigrant friend",help:"Help",legal:"Legal",terms:"Terms of Service",privacy2:"Privacy Policy",account:"Account",logout:"Logout",deleteAccount:"Delete my account",deleteSub:"Irreversible action",version:"Version 1.0 · Kuabo",phases:"My phases",armySection:"Army Status",armyChange:"Edit",armyModalTitle:"My Army status",statusSection:"My situation",statusChange:"Change my status",statusCurrent:"Current situation"},
-    es:{title:"Mi Perfil",globalScore:"Puntuación global Kuabo",phase:"Fase",of:"de",saveName:"Guardar",cancelName:"Cancelar",nameSaved:"✅ ¡Nombre actualizado!",editNameTitle:"Editar tu nombre",editNameSub:"Ingresa tu nuevo nombre",security:"Seguridad",changePass:"Cambiar contraseña",passSent:"✅ ¡Email enviado!",preferences:"Preferencias",language:"Idioma",privacy:"Privacidad",commMap:"Mapa comunidad",commSub:"Aparecer anónimamente",messages:"Mensajes",msgSub:"Recibir mensajes",notifications:"Notificaciones",notifSub:"Recordatorios diarios",share:"Compartir Kuabo",shareSub:"Invitar un amigo inmigrante",help:"Ayuda",legal:"Legal",terms:"Términos de Servicio",privacy2:"Política de Privacidad",account:"Cuenta",logout:"Cerrar sesión",deleteAccount:"Eliminar mi cuenta",deleteSub:"Acción irreversible",version:"Versión 1.0 · Kuabo",phases:"Mis fases",armySection:"Estado Army",armyChange:"Editar",armyModalTitle:"Mi estado Army",statusSection:"Mi situación",statusChange:"Cambiar mi estado",statusCurrent:"Situación actual"},
+    fr:{title:"Mon Profil",globalScore:"Score global Kuabo",phase:"Phase",of:"sur",saveName:"Sauvegarder",cancelName:"Annuler",nameSaved:"✅ Nom modifié !",editNameTitle:"Modifier ton nom",editNameSub:"Entre ton nouveau nom",security:"Sécurité",changePass:"Changer le mot de passe",passSent:"✅ Email envoyé !",preferences:"Préférences",language:"Langue",privacy:"Confidentialité",commMap:"Carte communauté",commSub:"Apparaître anonymement",messages:"Messages",msgSub:"Recevoir des messages",notifications:"Notifications",notifSub:"Rappels quotidiens",share:"Partager Kuabo",shareSub:"Inviter un ami immigrant",help:"Aide",legal:"Légal",terms:"Conditions d'utilisation",privacy2:"Politique de confidentialité",account:"Compte",logout:"Déconnexion",deleteAccount:"Supprimer mon compte",deleteSub:"Action irréversible",version:"Version 1.0 · Kuabo",phases:"Mes phases",armySection:"Statut Army",armyChange:"Modifier",armyModalTitle:"Mon statut Army",statusSection:"Ma situation",statusChange:"Changer mon état",statusCurrent:"Situation actuelle",
+      usStateSection:"Mon état américain",usStateCurrent:"État actuel",usStateChange:"Déménager",usStateNone:"Non défini"},
+    en:{title:"My Profile",globalScore:"Global Kuabo Score",phase:"Phase",of:"of",saveName:"Save",cancelName:"Cancel",nameSaved:"✅ Name updated!",editNameTitle:"Edit your name",editNameSub:"Enter your new name",security:"Security",changePass:"Change password",passSent:"✅ Email sent!",preferences:"Preferences",language:"Language",privacy:"Privacy",commMap:"Community map",commSub:"Appear anonymously",messages:"Messages",msgSub:"Receive messages",notifications:"Notifications",notifSub:"Daily reminders",share:"Share Kuabo",shareSub:"Invite an immigrant friend",help:"Help",legal:"Legal",terms:"Terms of Service",privacy2:"Privacy Policy",account:"Account",logout:"Logout",deleteAccount:"Delete my account",deleteSub:"Irreversible action",version:"Version 1.0 · Kuabo",phases:"My phases",armySection:"Army Status",armyChange:"Edit",armyModalTitle:"My Army status",statusSection:"My situation",statusChange:"Change my status",statusCurrent:"Current situation",
+      usStateSection:"My US state",usStateCurrent:"Current state",usStateChange:"I moved",usStateNone:"Not set"},
+    es:{title:"Mi Perfil",globalScore:"Puntuación global Kuabo",phase:"Fase",of:"de",saveName:"Guardar",cancelName:"Cancelar",nameSaved:"✅ ¡Nombre actualizado!",editNameTitle:"Editar tu nombre",editNameSub:"Ingresa tu nuevo nombre",security:"Seguridad",changePass:"Cambiar contraseña",passSent:"✅ ¡Email enviado!",preferences:"Preferencias",language:"Idioma",privacy:"Privacidad",commMap:"Mapa comunidad",commSub:"Aparecer anónimamente",messages:"Mensajes",msgSub:"Recibir mensajes",notifications:"Notificaciones",notifSub:"Recordatorios diarios",share:"Compartir Kuabo",shareSub:"Invitar un amigo inmigrante",help:"Ayuda",legal:"Legal",terms:"Términos de Servicio",privacy2:"Política de Privacidad",account:"Cuenta",logout:"Cerrar sesión",deleteAccount:"Eliminar mi cuenta",deleteSub:"Acción irreversible",version:"Versión 1.0 · Kuabo",phases:"Mis fases",armySection:"Estado Army",armyChange:"Editar",armyModalTitle:"Mi estado Army",statusSection:"Mi situación",statusChange:"Cambiar mi estado",statusCurrent:"Situación actual",
+      usStateSection:"Mi estado americano",usStateCurrent:"Estado actual",usStateChange:"Me mudé",usStateNone:"No definido"},
   }[lang];
 
   const initials=displayName.split(" ").map((n:string)=>n[0]).join("").toUpperCase().slice(0,2)||"👤";
@@ -311,6 +533,20 @@ export default function ProfileTab({
         <ChangeStatusModal lang={lang} currentArrival={userArrival} userId={userId}
           onClose={()=>setShowStatusModal(false)}
           onChanged={(newArrival,newStatus)=>{ onStatusChanged(newArrival,newStatus); setShowStatusModal(false); }}
+        />
+      )}
+
+      {/* ── Modal changement état américain ── */}
+      {showUSStateModal&&userId&&(
+        <ChangeUSStateModal
+          lang={lang}
+          currentState={currentUSState}
+          userId={userId}
+          onClose={()=>setShowUSStateModal(false)}
+          onChanged={(newState)=>{
+            setCurrentUSState(newState);
+            setShowUSStateModal(false);
+          }}
         />
       )}
 
@@ -433,6 +669,26 @@ export default function ProfileTab({
           <button onClick={()=>setShowStatusModal(true)}
             style={{ padding:"9px 14px",background:"rgba(232,184,75,.1)",border:"1px solid rgba(232,184,75,.3)",borderRadius:10,color:"#e8b84b",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0 }}>
             ✏️ {L.statusChange}
+          </button>
+        </div>
+      </div>
+
+      {/* ── ✅ Mon état américain ── */}
+      <Section title={L.usStateSection}/>
+      <div style={{ background:"#141d2e",border:"1px solid #1e2a3a",borderRadius:12,padding:"14px 16px",marginBottom:4 }}>
+        <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",gap:12 }}>
+          <div>
+            <div style={{ fontSize:10,color:"#555",marginBottom:4 }}>{L.usStateCurrent}</div>
+            <div style={{ fontSize:15,fontWeight:700,color:"#f4f1ec" }}>
+              {currentUSState
+                ? `📍 ${US_STATES.find(s=>s.code===currentUSState)?.name||currentUSState}`
+                : <span style={{ color:"#555",fontSize:13 }}>{L.usStateNone}</span>
+              }
+            </div>
+          </div>
+          <button onClick={()=>setShowUSStateModal(true)}
+            style={{ padding:"9px 14px",background:"rgba(45,212,191,.1)",border:"1px solid rgba(45,212,191,.3)",borderRadius:10,color:"#2dd4bf",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0 }}>
+            🚚 {L.usStateChange}
           </button>
         </div>
       </div>
