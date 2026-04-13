@@ -27,6 +27,7 @@ const T: Record<Lang, Record<string, string>> = {
     errEmail:"Email invalide.", errTooMany:"Trop de tentatives. Réessaie plus tard.",
     errVerify:"Vérifie ton email avant de te connecter.", errGoogle:"Erreur Google. Réessaie.",
     resend:"Renvoyer l'email de vérification", resendOk:"✅ Email renvoyé !", resendErr:"Erreur. Réessaie.",
+    pwaGoogle:"Ouvrir dans Safari pour Google",
   },
   en: {
     title:"Welcome back 👋", sub:"Sign in to continue your journey",
@@ -38,6 +39,7 @@ const T: Record<Lang, Record<string, string>> = {
     errEmail:"Invalid email address.", errTooMany:"Too many attempts. Try again later.",
     errVerify:"Please verify your email before signing in.", errGoogle:"Google error. Please try again.",
     resend:"Resend verification email", resendOk:"✅ Email sent!", resendErr:"Error. Try again.",
+    pwaGoogle:"Open in Safari for Google",
   },
   es: {
     title:"Bienvenido de vuelta 👋", sub:"Inicia sesión para continuar",
@@ -49,46 +51,40 @@ const T: Record<Lang, Record<string, string>> = {
     errEmail:"Correo electrónico inválido.", errTooMany:"Demasiados intentos. Inténtalo más tarde.",
     errVerify:"Verifica tu correo antes de iniciar sesión.", errGoogle:"Error de Google. Inténtalo de nuevo.",
     resend:"Reenviar email de verificación", resendOk:"✅ ¡Email enviado!", resendErr:"Error. Inténtalo.",
+    pwaGoogle:"Abrir en Safari para Google",
   },
 };
 
-// ── Firestore helper ───────────────────────────────────
+// ✅ Détecter si on est dans une PWA iOS (standalone)
+function isIOSPWA(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    (window.navigator as any).standalone === true ||
+    window.matchMedia("(display-mode: standalone)").matches
+  );
+}
+
 async function handleUserRedirect(user: any, lang: Lang): Promise<"ok" | "error"> {
   try {
     const ref  = doc(db, "users", user.uid);
     const snap = await getDoc(ref);
-
     if (!snap.exists()) {
       const name = user.displayName || user.email?.split("@")[0] || "User";
-      await setDoc(ref, {
-        name, email: user.email || "",
-        completedSteps: [], lang,
-        onboardingCompleted: false,
-        createdAt: new Date().toISOString(),
-      });
+      await setDoc(ref, { name, email: user.email || "", completedSteps: [], lang, onboardingCompleted: false, createdAt: new Date().toISOString() });
       localStorage.setItem("userName", name);
       localStorage.setItem("lang", lang);
       window.location.href = "/welcome";
       return "ok";
     }
-
     const data = snap.data() as any;
-    const name = (!data.name || data.name === "***")
-      ? (user.displayName || user.email?.split("@")[0] || "User")
-      : data.name;
-
+    const name = (!data.name || data.name === "***") ? (user.displayName || user.email?.split("@")[0] || "User") : data.name;
     localStorage.setItem("userName", name);
     if (data.lang) localStorage.setItem("lang", data.lang);
     window.location.href = data.onboardingCompleted ? "/dashboard" : "/welcome";
     return "ok";
-  } catch {
-    return "error";
-  }
+  } catch { return "error"; }
 }
 
-// ══════════════════════════════════════════════
-// LOGIN PAGE
-// ══════════════════════════════════════════════
 export default function LoginPage() {
   const router = useRouter();
 
@@ -102,45 +98,38 @@ export default function LoginPage() {
   const [info,       setInfo]       = useState("");
   const [checking,   setChecking]   = useState(true);
   const [showVerify, setShowVerify] = useState(false);
+  const [isPWA,      setIsPWA]      = useState(false);
 
   const t = T[lang];
 
-  // ── Init ───────────────────────────────────────────────
   useEffect(() => {
     const saved = (localStorage.getItem("lang") as Lang) || "fr";
     if (["fr","en","es"].includes(saved)) setLang(saved);
 
-    // Forcer persistance locale
+    // ✅ Détecter PWA iOS
+    setIsPWA(isIOSPWA());
+
     setPersistence(auth, browserLocalPersistence).catch(() => {});
-
     const timeout = setTimeout(() => setChecking(false), 3000);
-
     const unsub = onAuthStateChanged(auth, async user => {
       clearTimeout(timeout);
       if (!user) { setChecking(false); return; }
-
-      const isGoogle = user.providerData?.some(p => p.providerId === "google.com");
+      const isGoogle = user.providerData?.some((p: any) => p.providerId === "google.com");
       if (!user.emailVerified && !isGoogle) { setChecking(false); return; }
-
       setGLoading(true);
       await handleUserRedirect(user, saved);
     });
-
     return () => { clearTimeout(timeout); unsub(); };
   }, []);
 
-  // ── Login email ────────────────────────────────────────
   const handleLogin = async () => {
     setError(""); setInfo(""); setShowVerify(false);
     if (!email.trim() || !pass) { setError(t.errEmpty); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError(t.errEmail); return; }
-
     setLoading(true);
     try {
       const cred = await signInWithEmailAndPassword(auth, email.trim(), pass);
-      if (!cred.user.emailVerified) {
-        setShowVerify(true); setError(t.errVerify); setLoading(false); return;
-      }
+      if (!cred.user.emailVerified) { setShowVerify(true); setError(t.errVerify); setLoading(false); return; }
       const res = await handleUserRedirect(cred.user, lang);
       if (res === "error") { setError(t.errInvalid); setLoading(false); }
     } catch (err: any) {
@@ -156,55 +145,45 @@ export default function LoginPage() {
     }
   };
 
-  // ── Renvoyer email ─────────────────────────────────────
   const handleResend = async () => {
     const user = auth.currentUser;
     if (!user) return;
-    try {
-      await sendEmailVerification(user);
-      setInfo(t.resendOk); setError("");
-    } catch (err: any) {
-      setError(err.code === "auth/too-many-requests" ? t.errTooMany : t.resendErr);
-    }
+    try { await sendEmailVerification(user); setInfo(t.resendOk); setError(""); }
+    catch (err: any) { setError(err.code === "auth/too-many-requests" ? t.errTooMany : t.resendErr); }
   };
 
-  // ── Login Google ───────────────────────────────────────
-  // ✅ SOLUTION FINALE : signInWithPopup partout (mobile + desktop)
-  // Sur iOS Safari, le popup marche si déclenché directement par un tap
-  // La clé : ne JAMAIS mettre d'await avant signInWithPopup (pas de setPersistence inline)
   const handleGoogle = async () => {
     if (gLoading || loading) return;
-    setError(""); setInfo(""); setGLoading(true);
+    setError(""); setInfo("");
 
+    // ✅ Si PWA iOS → ouvrir dans Safari (le popup ne marche pas en standalone)
+    if (isPWA) {
+      // Ouvrir kuabo-app.vercel.app/login dans Safari natif
+      window.open("https://kuabo-app.vercel.app/login?google=1", "_blank");
+      return;
+    }
+
+    setGLoading(true);
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
-
     try {
       const cred = await signInWithPopup(auth, provider);
       const res  = await handleUserRedirect(cred.user, lang);
       if (res === "error") { setError(t.errGoogle); setGLoading(false); }
     } catch (err: any) {
       setGLoading(false);
-      // Popup fermé par l'user → pas d'erreur
-      if (
-        err.code === "auth/popup-closed-by-user" ||
-        err.code === "auth/cancelled-popup-request"
-      ) return;
-      // Popup bloqué par le navigateur → message d'aide
+      if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") return;
       if (err.code === "auth/popup-blocked") {
-        setError("Popup bloqué. Autorise les popups pour ce site dans ton navigateur.");
+        setError(lang === "fr" ? "Popup bloqué — utilise le bouton email à la place" : "Popup blocked — use email instead");
         return;
       }
       setError(t.errGoogle);
     }
   };
 
-  // ── Loading ────────────────────────────────────────────
   if (checking || gLoading) return (
     <div style={{ minHeight:"100dvh", background:"#0b0f1a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:16, color:"#f4f1ec" }}>
-      <div style={{ fontSize:28, fontWeight:900 }}>
-        <span style={{ color:"#e8b84b" }}>Ku</span><span style={{ color:"#f4f1ec" }}>abo</span>
-      </div>
+      <div style={{ fontSize:28, fontWeight:900 }}><span style={{ color:"#e8b84b" }}>Ku</span><span style={{ color:"#f4f1ec" }}>abo</span></div>
       <svg width="40" height="40" viewBox="0 0 40 40" style={{ animation:"spin 1s linear infinite" }}>
         <circle cx="20" cy="20" r="15" fill="none" stroke="#1e2a3a" strokeWidth="4"/>
         <circle cx="20" cy="20" r="15" fill="none" stroke="#e8b84b" strokeWidth="4" strokeLinecap="round" strokeDasharray="94" strokeDashoffset="70"/>
@@ -213,21 +192,14 @@ export default function LoginPage() {
     </div>
   );
 
-  // ── Page ───────────────────────────────────────────────
   return (
     <div style={{ minHeight:"100dvh", background:"#0b0f1a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px 16px", color:"#f4f1ec" }}>
 
-      {/* Header */}
       <div style={{ position:"fixed", top:0, left:0, right:0, display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 20px", background:"rgba(11,15,26,0.95)", backdropFilter:"blur(12px)", borderBottom:"1px solid #1e2a3a", zIndex:50 }}>
-        <div style={{ fontWeight:900, fontSize:20 }}>
-          <span style={{ color:"#e8b84b" }}>Ku</span><span style={{ color:"#f4f1ec" }}>abo</span>
-        </div>
-        <button onClick={() => router.push("/home")} style={{ background:"none", border:"none", color:"#aaa", cursor:"pointer", fontSize:13, fontFamily:"inherit" }}>
-          ← {t.back}
-        </button>
+        <div style={{ fontWeight:900, fontSize:20 }}><span style={{ color:"#e8b84b" }}>Ku</span><span style={{ color:"#f4f1ec" }}>abo</span></div>
+        <button onClick={() => router.push("/home")} style={{ background:"none", border:"none", color:"#aaa", cursor:"pointer", fontSize:13, fontFamily:"inherit" }}>← {t.back}</button>
       </div>
 
-      {/* Card */}
       <div style={{ width:"100%", maxWidth:380, background:"#0f1521", border:"1px solid #1e2a3a", borderRadius:20, padding:"32px 24px", marginTop:60 }}>
 
         <div style={{ textAlign:"center", marginBottom:24 }}>
@@ -236,7 +208,7 @@ export default function LoginPage() {
           <p style={{ fontSize:13, color:"#aaa", margin:0 }}>{t.sub}</p>
         </div>
 
-        {/* Google */}
+        {/* ✅ Bouton Google — message différent si PWA iOS */}
         <button onClick={handleGoogle} disabled={loading || gLoading}
           style={{ width:"100%", padding:"13px", background:"#1a2438", border:"1px solid #2a3448", borderRadius:12, color:"#f4f1ec", fontSize:14, fontWeight:500, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:10, marginBottom:16, opacity:gLoading?0.7:1 }}>
           <svg width="18" height="18" viewBox="0 0 48 48">
@@ -245,90 +217,62 @@ export default function LoginPage() {
             <path fill="#FBBC05" d="M10.4 28.4A14.6 14.6 0 0 1 9.5 24c0-1.5.2-3 .6-4.4L2.3 13.5A23.9 23.9 0 0 0 0 24c0 3.8.9 7.4 2.5 10.6l7.9-6.2z"/>
             <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.2 1.5-5 2.3-8.4 2.3-6.3 0-11.7-4.2-13.6-9.9l-7.9 6.1C6.5 42.5 14.6 48 24 48z"/>
           </svg>
-          {t.btnGoogle}
+          {isPWA ? t.pwaGoogle : t.btnGoogle}
         </button>
 
-        {/* Séparateur */}
+        {/* ✅ Message d'aide si PWA */}
+        {isPWA && (
+          <div style={{ background:"rgba(232,184,75,.06)", border:"1px solid rgba(232,184,75,.2)", borderRadius:10, padding:"10px 14px", marginBottom:14, fontSize:12, color:"#e8b84b", lineHeight:1.6, textAlign:"center" as const }}>
+            {lang==="fr"?"💡 Google ne marche pas dans l'app installée. Utilise ton email ci-dessous, ou ouvre Safari pour Google.":lang==="es"?"💡 Google no funciona en la app instalada. Usa tu email abajo, o abre Safari para Google.":"💡 Google doesn't work in the installed app. Use your email below, or open Safari for Google."}
+          </div>
+        )}
+
         <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16 }}>
-          <div style={{ flex:1, height:1, background:"#1e2a3a" }}/>
-          <span style={{ fontSize:11, color:"#555" }}>ou</span>
-          <div style={{ flex:1, height:1, background:"#1e2a3a" }}/>
+          <div style={{ flex:1, height:1, background:"#1e2a3a" }}/><span style={{ fontSize:11, color:"#555" }}>ou</span><div style={{ flex:1, height:1, background:"#1e2a3a" }}/>
         </div>
 
-        {/* Email */}
-        <input type="email" placeholder={t.emailPlaceholder} value={email}
-          onChange={e => setEmail(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && handleLogin()}
-          autoComplete="email"
-          style={{ width:"100%", padding:"13px 14px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#f4f1ec", fontSize:16, fontFamily:"inherit", outline:"none", marginBottom:10, boxSizing:"border-box" as const }}
-        />
+        <input type="email" placeholder={t.emailPlaceholder} value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} autoComplete="email"
+          style={{ width:"100%", padding:"13px 14px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#f4f1ec", fontSize:16, fontFamily:"inherit", outline:"none", marginBottom:10, boxSizing:"border-box" as const }}/>
 
-        {/* Password */}
         <div style={{ position:"relative", marginBottom:6 }}>
-          <input type={showPass?"text":"password"} placeholder={t.passPlaceholder} value={pass}
-            onChange={e => setPass(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handleLogin()}
-            autoComplete="current-password"
-            style={{ width:"100%", padding:"13px 44px 13px 14px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#f4f1ec", fontSize:16, fontFamily:"inherit", outline:"none", boxSizing:"border-box" as const }}
-          />
-          <button onClick={() => setShowPass(!showPass)}
-            style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:"#555", fontSize:16, lineHeight:1 }}>
-            {showPass ? "🙈" : "👁️"}
+          <input type={showPass?"text":"password"} placeholder={t.passPlaceholder} value={pass} onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} autoComplete="current-password"
+            style={{ width:"100%", padding:"13px 44px 13px 14px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#f4f1ec", fontSize:16, fontFamily:"inherit", outline:"none", boxSizing:"border-box" as const }}/>
+          <button onClick={()=>setShowPass(!showPass)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:"#555", fontSize:16, lineHeight:1 }}>
+            {showPass?"🙈":"👁️"}
           </button>
         </div>
 
         <div style={{ textAlign:"right", marginBottom:16 }}>
-          <span onClick={() => router.push("/forgot")} style={{ fontSize:12, color:"#e8b84b", cursor:"pointer", textDecoration:"underline" }}>
-            {t.forgot}
-          </span>
+          <span onClick={()=>router.push("/forgot")} style={{ fontSize:12, color:"#e8b84b", cursor:"pointer", textDecoration:"underline" }}>{t.forgot}</span>
         </div>
 
         {error && (
           <div style={{ background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.25)", borderRadius:10, padding:"12px 14px", marginBottom:12, color:"#ef4444", fontSize:13, lineHeight:1.6 }}>
             ⚠️ {error}
-            {showVerify && (
-              <div style={{ marginTop:8 }}>
-                <button onClick={handleResend} style={{ background:"none", border:"none", color:"#e8b84b", cursor:"pointer", fontSize:13, fontFamily:"inherit", textDecoration:"underline", padding:0 }}>
-                  📩 {t.resend}
-                </button>
-              </div>
-            )}
+            {showVerify && (<div style={{ marginTop:8 }}><button onClick={handleResend} style={{ background:"none", border:"none", color:"#e8b84b", cursor:"pointer", fontSize:13, fontFamily:"inherit", textDecoration:"underline", padding:0 }}>📩 {t.resend}</button></div>)}
           </div>
         )}
+        {info && (<div style={{ background:"rgba(34,197,94,0.08)", border:"1px solid rgba(34,197,94,0.25)", borderRadius:10, padding:"12px 14px", marginBottom:12, color:"#22c55e", fontSize:13 }}>{info}</div>)}
 
-        {info && (
-          <div style={{ background:"rgba(34,197,94,0.08)", border:"1px solid rgba(34,197,94,0.25)", borderRadius:10, padding:"12px 14px", marginBottom:12, color:"#22c55e", fontSize:13 }}>
-            {info}
-          </div>
-        )}
-
-        <button onClick={handleLogin} disabled={loading || gLoading}
+        <button onClick={handleLogin} disabled={loading||gLoading}
           style={{ width:"100%", padding:"14px", background:loading?"#c9952a":"#e8b84b", border:"none", borderRadius:12, color:"#000", fontSize:15, fontWeight:700, cursor:loading?"default":"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:8, opacity:loading?0.8:1 }}>
-          {loading ? <>⏳ {t.btnLoading}</> : t.btnLogin}
+          {loading?<>⏳ {t.btnLoading}</>:t.btnLogin}
         </button>
 
         <div style={{ textAlign:"center", marginTop:20, fontSize:13, color:"#aaa" }}>
-          {t.noAccount}{" "}
-          <span onClick={() => router.push("/signup")} style={{ color:"#e8b84b", cursor:"pointer", textDecoration:"underline" }}>
-            {t.signup}
-          </span>
+          {t.noAccount}{" "}<span onClick={()=>router.push("/signup")} style={{ color:"#e8b84b", cursor:"pointer", textDecoration:"underline" }}>{t.signup}</span>
         </div>
       </div>
 
       <div style={{ display:"flex", gap:12, marginTop:20, fontSize:20 }}>
-        {(["fr","en","es"] as Lang[]).map(l => (
-          <span key={l} onClick={() => { setLang(l); localStorage.setItem("lang", l); }}
-            style={{ cursor:"pointer", opacity:lang===l?1:0.4, transition:"opacity 0.2s" }}>
+        {(["fr","en","es"] as Lang[]).map(l=>(
+          <span key={l} onClick={()=>{ setLang(l); localStorage.setItem("lang", l); }} style={{ cursor:"pointer", opacity:lang===l?1:0.4, transition:"opacity 0.2s" }}>
             {l==="fr"?"🇫🇷":l==="en"?"🇺🇸":"🇪🇸"}
           </span>
         ))}
       </div>
 
-      <style>{`
-        @keyframes spin { to { transform:rotate(360deg) } }
-        input::placeholder { color: #444 }
-        input:focus { border-color: #e8b84b !important; }
-      `}</style>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}} input::placeholder{color:#444} input:focus{border-color:#e8b84b !important;}`}</style>
     </div>
   );
 }
