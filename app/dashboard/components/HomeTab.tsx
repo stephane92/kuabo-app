@@ -133,8 +133,9 @@ function CountdownSection({ arrivalDate, lang, completedSteps, onOpenStep }: {
   const pending = allDeadlines
     .filter(d=>!completedSteps.includes(d.id))
     .map(d=>({ ...d, daysLeft:getDaysLeft(arrivalDate,d.days), dateStr:addDays(arrivalDate,d.days) }))
-    .filter(d=>d.id==="ssn"||d.daysLeft<=45)
-    .sort((a,b)=>{ if(ssnPending&&a.id==="ssn")return -1; if(ssnPending&&b.id==="ssn")return 1; return a.daysLeft-b.daysLeft; });
+    .filter(d=>d.daysLeft>=-30) // ✅ toujours afficher même après 45 jours
+    .sort((a,b)=>{ if(ssnPending&&a.id==="ssn")return -1; if(ssnPending&&b.id==="ssn")return 1; return a.daysLeft-b.daysLeft; })
+    .slice(0,4); // max 4 deadlines
   if (pending.length===0) return null;
   const urgent=pending[0],others=pending.slice(1,4);
   const isOverdue=urgent.daysLeft<0;

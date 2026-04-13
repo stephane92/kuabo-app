@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   signInWithEmailAndPassword,
   signInWithPopup,
@@ -10,6 +10,7 @@ import {
   onAuthStateChanged,
   browserLocalPersistence,
   setPersistence,
+  getRedirectResult,
 } from "firebase/auth";
 import { auth, db } from "../../lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -55,13 +56,9 @@ const T: Record<Lang, Record<string, string>> = {
   },
 };
 
-// ✅ Détecter si on est dans une PWA iOS (standalone)
 function isIOSPWA(): boolean {
   if (typeof window === "undefined") return false;
-  return (
-    (window.navigator as any).standalone === true ||
-    window.matchMedia("(display-mode: standalone)").matches
-  );
+  return (window.navigator as any).standalone === true || window.matchMedia("(display-mode: standalone)").matches;
 }
 
 async function handleUserRedirect(user: any, lang: Lang): Promise<"ok" | "error"> {
@@ -100,44 +97,57 @@ export default function LoginPage() {
   const [showVerify, setShowVerify] = useState(false);
   const [isPWA,      setIsPWA]      = useState(false);
 
+  // ✅ Ref pour éviter double-redirect
+  const redirectHandled = useRef(false);
+
   const t = T[lang];
 
   useEffect(() => {
     const saved = (localStorage.getItem("lang") as Lang) || "fr";
     if (["fr","en","es"].includes(saved)) setLang(saved);
-
     setIsPWA(isIOSPWA());
-
     setPersistence(auth, browserLocalPersistence).catch(() => {});
 
-    // ✅ Capturer le résultat du redirect Google (iOS Safari)
-    const checkRedirect = async () => {
+    let authUnsubscribed = false;
+
+    // ✅ ÉTAPE 1 : Vérifier d'abord si on revient d'un redirect Google
+    const init = async () => {
       try {
-        const { getRedirectResult } = await import("firebase/auth");
         const result = await getRedirectResult(auth);
-        if (result?.user) {
+        if (result?.user && !redirectHandled.current) {
+          redirectHandled.current = true;
           setGLoading(true);
           await handleUserRedirect(result.user, saved);
-          return;
+          return; // ← stop ici, pas besoin de onAuthStateChanged
         }
       } catch (err: any) {
-        if (err.code !== "auth/no-redirect-operation") {
+        // auth/no-redirect-operation = pas de redirect en cours, normal
+        if (err.code !== "auth/no-redirect-operation" && err.code !== "auth/null-user") {
           setError(T[saved as Lang]?.errGoogle || "Google error");
         }
       }
-    };
-    checkRedirect();
 
-    const timeout = setTimeout(() => setChecking(false), 3000);
-    const unsub = onAuthStateChanged(auth, async user => {
-      clearTimeout(timeout);
-      if (!user) { setChecking(false); return; }
-      const isGoogle = user.providerData?.some((p: any) => p.providerId === "google.com");
-      if (!user.emailVerified && !isGoogle) { setChecking(false); return; }
-      setGLoading(true);
-      await handleUserRedirect(user, saved);
-    });
-    return () => { clearTimeout(timeout); unsub(); };
+      // ✅ ÉTAPE 2 : Seulement si pas de redirect, écouter onAuthStateChanged
+      if (authUnsubscribed) return;
+
+      const timeout = setTimeout(() => setChecking(false), 3000);
+      const unsub = onAuthStateChanged(auth, async user => {
+        clearTimeout(timeout);
+        if (redirectHandled.current) return; // ← éviter double traitement
+        if (!user) { setChecking(false); return; }
+        const isGoogle = user.providerData?.some((p: any) => p.providerId === "google.com");
+        if (!user.emailVerified && !isGoogle) { setChecking(false); return; }
+        if (!redirectHandled.current) {
+          redirectHandled.current = true;
+          setGLoading(true);
+          await handleUserRedirect(user, saved);
+        }
+      });
+
+      return () => { authUnsubscribed = true; clearTimeout(timeout); unsub(); };
+    };
+
+    init();
   }, []);
 
   const handleLogin = async () => {
@@ -177,24 +187,23 @@ export default function LoginPage() {
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
 
-    // ✅ Sur iOS Safari → signInWithRedirect (popup bloqué par iOS)
-    // Sur desktop/Android → signInWithPopup
-    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    const isIOS    = /iPhone|iPad|iPod/.test(navigator.userAgent);
     const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
 
     if (isIOS || isSafari) {
-      // Redirect — Firebase gère le retour automatiquement
-      const { signInWithRedirect } = await import("firebase/auth");
+      // ✅ iOS Safari → redirect (popup bloqué par iOS)
       try {
+        const { signInWithRedirect } = await import("firebase/auth");
         await setPersistence(auth, browserLocalPersistence);
         await signInWithRedirect(auth, provider);
-        // La page recharge → onAuthStateChanged capte le résultat
+        // Page recharge → getRedirectResult le capte au prochain chargement
       } catch {
         setError(t.errGoogle);
       }
       return;
     }
 
+    // ✅ Desktop/Android → popup
     setGLoading(true);
     try {
       const cred = await signInWithPopup(auth, provider);
@@ -231,14 +240,12 @@ export default function LoginPage() {
       </div>
 
       <div style={{ width:"100%", maxWidth:380, background:"#0f1521", border:"1px solid #1e2a3a", borderRadius:20, padding:"24px 16px" }}>
-
         <div style={{ textAlign:"center", marginBottom:24 }}>
           <div style={{ fontSize:32, marginBottom:8 }}>🔐</div>
           <h1 style={{ fontSize:22, fontWeight:700, margin:"0 0 6px", color:"#f4f1ec" }}>{t.title}</h1>
           <p style={{ fontSize:13, color:"#aaa", margin:0 }}>{t.sub}</p>
         </div>
 
-        {/* ✅ Bouton Google — message différent si PWA iOS */}
         <button onClick={handleGoogle} disabled={loading || gLoading}
           style={{ width:"100%", padding:"13px", background:"#1a2438", border:"1px solid #2a3448", borderRadius:12, color:"#f4f1ec", fontSize:14, fontWeight:500, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:10, marginBottom:16, opacity:gLoading?0.7:1 }}>
           <svg width="18" height="18" viewBox="0 0 48 48">
@@ -250,10 +257,9 @@ export default function LoginPage() {
           {isPWA ? t.pwaGoogle : t.btnGoogle}
         </button>
 
-        {/* ✅ Message d'aide si PWA */}
         {isPWA && (
           <div style={{ background:"rgba(232,184,75,.06)", border:"1px solid rgba(232,184,75,.2)", borderRadius:10, padding:"10px 14px", marginBottom:14, fontSize:12, color:"#e8b84b", lineHeight:1.6, textAlign:"center" as const }}>
-            {lang==="fr"?"💡 Google ne marche pas dans l'app installée. Utilise ton email ci-dessous, ou ouvre Safari pour Google.":lang==="es"?"💡 Google no funciona en la app instalada. Usa tu email abajo, o abre Safari para Google.":"💡 Google doesn't work in the installed app. Use your email below, or open Safari for Google."}
+            {lang==="fr"?"💡 Google ne marche pas dans l'app installée. Utilise ton email ci-dessous.":"💡 Google doesn't work in the installed app. Use your email below."}
           </div>
         )}
 
