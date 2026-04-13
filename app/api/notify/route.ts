@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     const usersSnap = await adminDb.collection("users").get();
     let sent = 0, failed = 0, invalid = 0;
 
-    const promises = usersSnap.docs.map(async (docSnap) => {
+    const promises = usersSnap.docs.map(async (docSnap: any) => {
       const data = docSnap.data() as any;
       if (data.deleted || !data.fcmToken) return;
 
