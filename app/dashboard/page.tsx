@@ -443,39 +443,39 @@ function WelcomeAnimation({ lang, userName, userStatus, arrival, onDone }: {
 }
 
 // ══════════════════════════════════════════════
-// POPUP LÉGÈRE — NEW USER (lightCheck)
-// Message personnalisé selon la situation
+// POPUP LÉGÈRE — lightCheck
+// ✅ Sauvegarde les items cochés dans completedSteps
 // ══════════════════════════════════════════════
-function LightCheckPopup({ lang, userStatus, arrival, onClose }: {
-  lang: Lang; userStatus: UserStatus; arrival?: string; onClose: () => void;
+function LightCheckPopup({ lang, userStatus, arrival, userId, onClose }: {
+  lang: Lang; userStatus: UserStatus; arrival?: string;
+  userId: string | undefined; onClose: (checkedIds: string[]) => void;
 }) {
   const [checked, setChecked] = useState<string[]>([]);
+  const [saving,  setSaving]  = useState(false);
 
-  // Titre + sous-titre selon la situation
   const headers = {
     not_arrived: {
-      fr:{ title:"Presque prêt 🛫",      sub:"Avant ton départ, vérifions les essentiels." },
-      en:{ title:"Almost ready 🛫",       sub:"Before you leave, let's check the essentials." },
-      es:{ title:"Casi listo 🛫",         sub:"Antes de partir, verifiquemos lo esencial." },
+      fr:{ title:"Presque prêt 🛫",       sub:"Avant ton départ, vérifions les essentiels." },
+      en:{ title:"Almost ready 🛫",        sub:"Before you leave, let's check the essentials." },
+      es:{ title:"Casi listo 🛫",          sub:"Antes de partir, verifiquemos lo esencial." },
     },
     new: {
-      fr:{ title:"Bienvenue aux USA 🇺🇸", sub:"Tu viens d'arriver — vérifions que tu as les essentiels pour ta première semaine." },
-      en:{ title:"Welcome to the USA 🇺🇸",sub:"You just arrived — let's make sure you have the essentials for your first week." },
-      es:{ title:"Bienvenido a EE.UU. 🇺🇸",sub:"Acabas de llegar — asegurémonos de que tienes lo esencial para tu primera semana." },
+      fr:{ title:"Bienvenue aux USA 🇺🇸",  sub:"Tu viens d'arriver — coche ce que tu as déjà." },
+      en:{ title:"Welcome to the USA 🇺🇸", sub:"You just arrived — check what you already have." },
+      es:{ title:"Bienvenido a EE.UU. 🇺🇸",sub:"Acabas de llegar — marca lo que ya tienes." },
     },
     settling: {
-      fr:{ title:"Tu t'installes bien 💪", sub:"Quelques mois déjà — vérifions que tu as tout en place." },
-      en:{ title:"Settling in well 💪",    sub:"A few months in — let's make sure everything is in place." },
-      es:{ title:"Te instalas bien 💪",    sub:"Unos meses ya — asegurémonos de que todo está en su lugar." },
+      fr:{ title:"Tu t'installes bien 💪",  sub:"Quelques mois déjà — coche ce que tu as en place." },
+      en:{ title:"Settling in well 💪",     sub:"A few months in — check what you have in place." },
+      es:{ title:"Te instalas bien 💪",     sub:"Unos meses ya — marca lo que ya tienes." },
     },
     established: {
-      fr:{ title:"Bien établi 🚀",         sub:"Optimisons ta situation — quelques vérifications rapides." },
-      en:{ title:"Well established 🚀",    sub:"Let's optimize your situation — a few quick checks." },
-      es:{ title:"Bien establecido 🚀",    sub:"Optimicemos tu situación — algunas comprobaciones rápidas." },
+      fr:{ title:"Bien établi 🚀",          sub:"Optimisons ta situation — coche ce que tu as." },
+      en:{ title:"Well established 🚀",     sub:"Let's optimize — check what you have." },
+      es:{ title:"Bien establecido 🚀",     sub:"Optimicemos — marca lo que ya tienes." },
     },
   };
 
-  // Choisir la bonne clé
   let hKey: keyof typeof headers = "new";
   if (userStatus === "settling")         hKey = "settling";
   else if (userStatus === "established") hKey = "established";
@@ -485,66 +485,90 @@ function LightCheckPopup({ lang, userStatus, arrival, onClose }: {
 
   const h = headers[hKey][lang];
 
+  // ✅ Ces items sont mappés sur de vrais IDs de completedSteps
   const items = {
     fr:[
-      { id:"address",  emoji:"📍", label:"Adresse actuelle",    desc:"Tu sais où tu dors ce soir ?" },
-      { id:"phone",    emoji:"📱", label:"Numéro actif",         desc:"Une SIM américaine fonctionnelle" },
-      { id:"payment",  emoji:"💳", label:"Moyen de paiement",    desc:"Carte ou cash disponible" },
-      { id:"id",       emoji:"🪪", label:"Pièce d'identité",     desc:"Passeport ou autre doc" },
-      { id:"internet", emoji:"🌐", label:"Accès internet",       desc:"WiFi ou données mobiles" },
+      { id:"phone",   emoji:"📱", label:"Numéro / SIM US actif",    desc:"T-Mobile ou Mint Mobile" },
+      { id:"bank",    emoji:"🏦", label:"Compte bancaire ouvert",    desc:"Chase, BofA ou autre" },
+      { id:"housing", emoji:"🏠", label:"Logement trouvé",           desc:"Hôtel, Airbnb ou appartement" },
+      { id:"ssn",     emoji:"🪪", label:"SSN demandé ou reçu",       desc:"Bureau SSA visité" },
+      { id:"job",     emoji:"💼", label:"Emploi trouvé",             desc:"Premier job aux USA" },
     ],
     en:[
-      { id:"address",  emoji:"📍", label:"Current address",      desc:"Do you know where you're sleeping tonight?" },
-      { id:"phone",    emoji:"📱", label:"Active number",         desc:"A working US SIM card" },
-      { id:"payment",  emoji:"💳", label:"Payment method",        desc:"Card or cash available" },
-      { id:"id",       emoji:"🪪", label:"ID document",           desc:"Passport or other document" },
-      { id:"internet", emoji:"🌐", label:"Internet access",       desc:"WiFi or mobile data" },
+      { id:"phone",   emoji:"📱", label:"Active US SIM / number",    desc:"T-Mobile or Mint Mobile" },
+      { id:"bank",    emoji:"🏦", label:"Bank account opened",       desc:"Chase, BofA or other" },
+      { id:"housing", emoji:"🏠", label:"Housing found",             desc:"Hotel, Airbnb or apartment" },
+      { id:"ssn",     emoji:"🪪", label:"SSN requested or received", desc:"SSA office visited" },
+      { id:"job",     emoji:"💼", label:"Job found",                 desc:"First job in the USA" },
     ],
     es:[
-      { id:"address",  emoji:"📍", label:"Dirección actual",      desc:"¿Sabes dónde dormirás esta noche?" },
-      { id:"phone",    emoji:"📱", label:"Número activo",          desc:"Una SIM americana funcionando" },
-      { id:"payment",  emoji:"💳", label:"Medio de pago",          desc:"Tarjeta o efectivo disponible" },
-      { id:"id",       emoji:"🪪", label:"Documento de identidad", desc:"Pasaporte u otro documento" },
-      { id:"internet", emoji:"🌐", label:"Acceso a internet",      desc:"WiFi o datos móviles" },
+      { id:"phone",   emoji:"📱", label:"SIM / número US activo",    desc:"T-Mobile o Mint Mobile" },
+      { id:"bank",    emoji:"🏦", label:"Cuenta bancaria abierta",   desc:"Chase, BofA u otro" },
+      { id:"housing", emoji:"🏠", label:"Vivienda encontrada",       desc:"Hotel, Airbnb o apartamento" },
+      { id:"ssn",     emoji:"🪪", label:"SSN solicitado o recibido", desc:"Oficina SSA visitada" },
+      { id:"job",     emoji:"💼", label:"Empleo encontrado",         desc:"Primer trabajo en EE.UU." },
     ],
   }[lang];
 
-  const btnLabel = { fr:"Continuer →", en:"Continue →", es:"Continuar →" }[lang];
-  const note     = { fr:"Tu peux compléter ça plus tard dans ton profil.", en:"You can complete this later in your profile.", es:"Puedes completar esto más tarde en tu perfil." }[lang];
-
   const toggle = (id: string) =>
     setChecked(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+
+  const handleContinue = async () => {
+    if (saving) return;
+    setSaving(true);
+    // ✅ Sauvegarder dans Firebase si des items sont cochés
+    if (checked.length > 0 && userId) {
+      try {
+        const snap = await getDoc(doc(db, "users", userId));
+        const existing: string[] = snap.exists()
+          ? (snap.data() as any)?.completedSteps || []
+          : [];
+        const merged = Array.from(new Set([...existing, ...checked]));
+        await updateDoc(doc(db, "users", userId), { completedSteps: merged });
+      } catch {}
+    }
+    setSaving(false);
+    onClose(checked); // ✅ renvoie les ids cochés au parent
+  };
+
+  const btnLabel = { fr:"Continuer →", en:"Continue →", es:"Continuar →" }[lang];
+  const note = {
+    fr:"Coche honnêtement — ça ajuste ton parcours Kuabo.",
+    en:"Check honestly — it adjusts your Kuabo journey.",
+    es:"Marca honestamente — ajusta tu recorrido Kuabo.",
+  }[lang];
 
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(11,15,26,.92)", backdropFilter:"blur(8px)", zIndex:400, display:"flex", alignItems:"flex-end", justifyContent:"center", padding:"0 12px 20px" }}>
       <div style={{ background:"#0f1521", border:"1.5px solid rgba(232,184,75,.25)", borderRadius:22, padding:"24px 18px", width:"100%", maxWidth:480, animation:"slideUp .4s ease" }}>
         <h3 style={{ fontSize:18, fontWeight:800, textAlign:"center" as const, color:"#f4f1ec", marginBottom:6 }}>{h.title}</h3>
-        <p style={{ fontSize:12, color:"#aaa", textAlign:"center" as const, marginBottom:18, lineHeight:1.6 }}>{h.sub}</p>
+        <p style={{ fontSize:12, color:"#aaa", textAlign:"center" as const, marginBottom:6, lineHeight:1.6 }}>{h.sub}</p>
+        <p style={{ fontSize:11, color:"#555", textAlign:"center" as const, marginBottom:16, lineHeight:1.5 }}>{note}</p>
 
         <div style={{ display:"flex", flexDirection:"column" as const, gap:8, marginBottom:18 }}>
           {items.map(item => {
             const done = checked.includes(item.id);
             return (
               <div key={item.id} onClick={()=>toggle(item.id)}
-                style={{ display:"flex", alignItems:"center", gap:10, padding:"11px 12px", background:done?"rgba(34,197,94,.06)":"#141d2e", border:`1px solid ${done?"rgba(34,197,94,.25)":"#1e2a3a"}`, borderRadius:11, cursor:"pointer", transition:"all .2s" }}>
-                <div style={{ width:20, height:20, borderRadius:6, background:done?"#22c55e":"transparent", border:`2px solid ${done?"#22c55e":"#2a3448"}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                  {done && <span style={{ fontSize:10, color:"#000", fontWeight:800 }}>✓</span>}
+                style={{ display:"flex", alignItems:"center", gap:10, padding:"12px", background:done?"rgba(34,197,94,.06)":"#141d2e", border:`1px solid ${done?"rgba(34,197,94,.3)":"#1e2a3a"}`, borderRadius:12, cursor:"pointer", transition:"all .2s" }}>
+                <div style={{ width:22, height:22, borderRadius:6, background:done?"#22c55e":"transparent", border:`2px solid ${done?"#22c55e":"#2a3448"}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .2s" }}>
+                  {done && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                 </div>
-                <span style={{ fontSize:18 }}>{item.emoji}</span>
-                <div>
-                  <div style={{ fontSize:13, fontWeight:500, color:done?"#22c55e":"#f4f1ec" }}>{item.label}</div>
-                  <div style={{ fontSize:10, color:"#555" }}>{item.desc}</div>
+                <span style={{ fontSize:20 }}>{item.emoji}</span>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:13, fontWeight:done?600:400, color:done?"#22c55e":"#f4f1ec" }}>{item.label}</div>
+                  <div style={{ fontSize:10, color:"#555", marginTop:2 }}>{item.desc}</div>
                 </div>
+                {done && <span style={{ fontSize:16 }}>✅</span>}
               </div>
             );
           })}
         </div>
 
-        <button onClick={onClose}
-          style={{ width:"100%", padding:"13px", background:"#e8b84b", border:"none", borderRadius:12, color:"#000", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-          {btnLabel}
+        <button onClick={handleContinue} disabled={saving}
+          style={{ width:"100%", padding:"13px", background:"#e8b84b", border:"none", borderRadius:12, color:"#000", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:saving?.7:1 }}>
+          {saving ? "⏳..." : btnLabel}
         </button>
-        <div style={{ fontSize:11, color:"#555", textAlign:"center" as const, marginTop:10 }}>{note}</div>
       </div>
     </div>
   );
@@ -674,6 +698,13 @@ export default function Dashboard() {
           setTimeout(() => setShowDemo(true), 800);
         }
 
+        // ✅ Détecter si l'user revient après déconnexion pour suppression
+        const pendingDelete = localStorage.getItem("kuabo_pending_delete");
+        if (pendingDelete === "true") {
+          localStorage.removeItem("kuabo_pending_delete");
+          setTimeout(() => setShowDeleteModal(true), 1000);
+        }
+
         // Mettre à jour daysInUSA en background
         if (data?.arrivalDate && data?.arrivalConfirmed) {
           const days = computeDaysInUSA(data.arrivalDate);
@@ -761,44 +792,26 @@ export default function Dashboard() {
       const data = snap.exists() ? snap.data() : {};
       await setDoc(doc(db, "deleted_users", user.uid), {
         ...data,
-        deletedAt: new Date().toISOString(),
-        originalUid: user.uid,
-        originalEmail: user.email,
+        deletedAt:    new Date().toISOString(),
+        originalUid:  user.uid,
+        originalEmail:user.email,
       });
       await updateDoc(doc(db, "users", user.uid), {
-        deleted: true,
-        deletedAt: new Date().toISOString(),
-        name: "***", email: "***",
-        location: null, communityVisible: false,
+        deleted: true, deletedAt: new Date().toISOString(),
+        name: "***", email: "***", location: null, communityVisible: false,
       });
       await deleteUser(user);
       localStorage.clear();
       window.location.href = "/home";
     } catch (err: any) {
       if (err.code === "auth/requires-recent-login") {
-        // ✅ Re-authentification Google automatique
+        // ✅ Déconnecter → rediriger vers login avec flag
+        // À la reconnexion, Firebase aura une session fraîche
         setDeleting(false);
-        setDeleteError(
-          lang === "fr"
-            ? "⏳ Re-connexion requise — clique sur continuer"
-            : "⏳ Re-login required — click continue"
-        );
-        try {
-          const { GoogleAuthProvider, reauthenticateWithPopup } = await import("firebase/auth");
-          const provider = new GoogleAuthProvider();
-          await reauthenticateWithPopup(user, provider);
-          // Réessayer la suppression
-          setDeleting(true);
-          setDeleteError("");
-          await deleteUser(user);
-          localStorage.clear();
-          window.location.href = "/home";
-        } catch (reAuthErr: any) {
-          setDeleteError(
-            lang === "fr" ? "Reconnexion échouée — réessaie" : "Re-login failed — try again"
-          );
-          setDeleting(false);
-        }
+        setShowDeleteModal(false);
+        localStorage.setItem("kuabo_pending_delete", "true");
+        try { await signOut(auth); } catch {}
+        window.location.href = "/login?action=delete";
       } else {
         setDeleteError(lang === "fr" ? "Erreur — réessaie" : "Error — try again");
         setDeleting(false);
@@ -855,7 +868,23 @@ export default function Dashboard() {
           lang={lang}
           userStatus={userStatus}
           arrival={userArrival}
-          onClose={handleLightCheckClose}
+          userId={userId}
+          onClose={async (checkedIds) => {
+            setShowLightCheck(false);
+            // ✅ Mettre à jour completedSteps dans le state local
+            if (checkedIds.length > 0) {
+              setCompletedSteps(prev =>
+                Array.from(new Set([...prev, ...checkedIds]))
+              );
+            }
+            // ✅ Marquer lightCheck comme vu
+            localStorage.setItem("kuabo_lightcheck_seen", "true");
+            if (userId) {
+              try {
+                await updateDoc(doc(db, "users", userId), { lightCheckSeen: true });
+              } catch {}
+            }
+          }}
         />
       )}
 
@@ -883,7 +912,11 @@ export default function Dashboard() {
             {deleteStep===2 && (<>
               <div style={{ fontSize:40, textAlign:"center", marginBottom:14 }}>🗑️</div>
               <div style={{ fontSize:18, fontWeight:700, color:"#ef4444", textAlign:"center", marginBottom:8 }}>{lang==="fr"?"Confirmation finale":"Final confirmation"}</div>
-              <div style={{ fontSize:13, color:"#aaa", textAlign:"center", lineHeight:1.7, marginBottom:18 }}>{lang==="fr"?`Tape "DELETE" pour confirmer.`:`Type "DELETE" to confirm.`}</div>
+              <div style={{ fontSize:13, color:"#aaa", textAlign:"center", lineHeight:1.7, marginBottom:18 }}>
+                {lang==="fr"
+                  ? `Tape "DELETE" pour confirmer. Si tu viens d'arriver, tu seras déconnecté puis redirigé pour te reconnecter — la suppression se fera automatiquement.`
+                  : `Type "DELETE" to confirm. If needed, you'll be logged out and redirected to log back in — deletion will happen automatically.`}
+              </div>
               <input value={deleteInput} onChange={e=>{setDeleteInput(e.target.value);setDeleteError("");}} placeholder="DELETE"
                 style={{ width:"100%", padding:"13px", background:"#141d2e", border:"1px solid "+(deleteInput==="DELETE"?"#ef4444":"#1e2a3a"), borderRadius:12, color:"#f4f1ec", fontSize:16, fontFamily:"inherit", outline:"none", marginBottom:10, boxSizing:"border-box" as const, textAlign:"center" as const, letterSpacing:".1em" }}/>
               {deleteError && <div style={{ fontSize:12, color:"#ef4444", textAlign:"center", marginBottom:10 }}>⚠️ {deleteError}</div>}
