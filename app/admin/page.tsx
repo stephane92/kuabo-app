@@ -30,31 +30,15 @@ async function uploadToCloudinary(file: File): Promise<string> {
   return data.secure_url as string;
 }
 
-// ✅ Traduction automatique via Claude API
+// ✅ Traduction via API Route Next.js (évite CORS)
 async function translateContent(text: string, fromLang: Lang): Promise<{ fr: string; en: string; es: string }> {
-  const langNames: Record<Lang, string> = { fr:"French", en:"English", es:"Spanish" };
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch("/api/translate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      messages: [{
-        role: "user",
-        content: `Translate this ${langNames[fromLang]} text into the other 2 languages.
-Return ONLY a JSON object with keys "fr", "en", "es". No markdown, no explanation.
-Keep the original language value unchanged.
-
-Text: "${text}"
-
-JSON:`
-      }]
-    })
+    body: JSON.stringify({ text, fromLang }),
   });
-  const data = await response.json();
-  const raw = data.content?.[0]?.text || "{}";
-  const clean = raw.replace(/```json|```/g, "").trim();
-  return JSON.parse(clean);
+  if (!res.ok) throw new Error("Traduction échouée");
+  return await res.json();
 }
 
 // ✅ Bouton traduction
