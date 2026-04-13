@@ -132,7 +132,7 @@ function ImageUpload({ value, onChange, accentColor = "#e8b84b" }: {
 // ÉCRAN DE CONNEXION ADMIN
 // ══════════════════════════════════════════════
 function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
-  const [step,       setStep]       = useState<"password"|"setup">("password");
+  const [step,       setStep]       = useState<"password"|"setup"|"verify">("password");
   const [pwd,        setPwd]        = useState("");
   const [newPwd,     setNewPwd]     = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
@@ -148,6 +148,8 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
   const [forgotA1,   setForgotA1]   = useState("");
   const [forgotA2,   setForgotA2]   = useState("");
   const [forgotPwd,  setForgotPwd]  = useState("");
+  const [verifyA1,   setVerifyA1]   = useState(""); // ✅ NOUVEAU
+  const [verifyA2,   setVerifyA2]   = useState(""); // ✅ NOUVEAU
   const [hasConfig,  setHasConfig]  = useState<boolean|null>(null);
   const [configData, setConfigData] = useState<any>(null);
 
@@ -172,15 +174,34 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
     setLoading(true);
     try {
       if (configData?.passwordHash === hashPassword(pwd)) {
-        localStorage.setItem("admin_session", "valid");
-        localStorage.setItem("admin_session_expiry", String(Date.now() + 24*60*60*1000));
-        onSuccess();
+        // ✅ Mot de passe OK → étape questions de sécurité
+        setError("");
+        setStep("verify");
       } else {
         const na = attempts + 1; setAttempts(na);
         if (na >= 3) {
           localStorage.setItem("admin_blocked_until", String(Date.now() + 60*60*1000));
           setBlocked(true); setError("❌ 3 tentatives — bloqué 1 heure");
         } else { setError(`❌ Mot de passe incorrect (${3-na} restantes)`); }
+      }
+    } catch { setError("Erreur — réessaie"); }
+    setLoading(false);
+  };
+
+  // ✅ NOUVEAU — vérification questions de sécurité
+  const handleVerify = async () => {
+    if (!verifyA1 || !verifyA2) { setError("Réponds aux 2 questions"); return; }
+    setLoading(true);
+    try {
+      if (
+        hashPassword(verifyA1.toLowerCase().trim()) === configData?.a1Hash &&
+        hashPassword(verifyA2.toLowerCase().trim()) === configData?.a2Hash
+      ) {
+        localStorage.setItem("admin_session", "valid");
+        localStorage.setItem("admin_session_expiry", String(Date.now() + 24*60*60*1000));
+        onSuccess();
+      } else {
+        setError("❌ Réponses incorrectes — réessaie");
       }
     } catch { setError("Erreur — réessaie"); }
     setLoading(false);
@@ -270,12 +291,39 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
               <input type="password" value={pwd} onChange={e=>{ setPwd(e.target.value); setError(""); }} placeholder="Mot de passe admin" onKeyDown={e=>e.key==="Enter"&&handleLogin()} autoFocus style={inp}/>
               {error&&<div style={{ fontSize:12,color:"#ef4444",marginBottom:10,textAlign:"center" as const }}>{error}</div>}
               <button onClick={handleLogin} disabled={loading} style={{ width:"100%",padding:"14px",background:"#e8b84b",border:"none",borderRadius:12,color:"#000",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:10,opacity:loading?.7:1 }}>
-                {loading?"⏳...":"Entrer →"}
+                {loading?"⏳...":"Continuer →"}
               </button>
               <button onClick={()=>{ setShowForgot(true); setError(""); }} style={{ width:"100%",padding:"10px",background:"transparent",border:"none",color:"#555",fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>
                 Mot de passe oublié ?
               </button>
             </>)}
+          </>)}
+
+          {/* ✅ VERIFY — Questions de sécurité */}
+          {step==="verify"&&configData&&(<>
+            <div style={{ fontSize:16,fontWeight:800,color:"#f4f1ec",marginBottom:4 }}>🛡️ Vérification</div>
+            <div style={{ fontSize:12,color:"#aaa",marginBottom:20,lineHeight:1.6 }}>
+              Réponds à tes questions de sécurité pour confirmer ton identité.
+            </div>
+            <div style={{ background:"rgba(34,197,94,.06)",border:"1px solid rgba(34,197,94,.2)",borderRadius:10,padding:"10px 12px",marginBottom:16 }}>
+              <div style={{ fontSize:11,color:"#22c55e",marginBottom:2 }}>✅ Mot de passe correct</div>
+              <div style={{ fontSize:11,color:"#555" }}>Plus qu'une étape...</div>
+            </div>
+            <div style={{ fontSize:12,color:"#e8b84b",fontWeight:600,marginBottom:6 }}>{configData.q1}</div>
+            <input value={verifyA1} onChange={e=>{ setVerifyA1(e.target.value); setError(""); }} placeholder="Ta réponse" onKeyDown={e=>e.key==="Enter"&&handleVerify()} style={{ ...inp,fontSize:14 as const }}/>
+            <div style={{ fontSize:12,color:"#e8b84b",fontWeight:600,marginBottom:6,marginTop:4 }}>{configData.q2}</div>
+            <input value={verifyA2} onChange={e=>{ setVerifyA2(e.target.value); setError(""); }} placeholder="Ta réponse" onKeyDown={e=>e.key==="Enter"&&handleVerify()} style={{ ...inp,fontSize:14 as const }}/>
+            {error&&<div style={{ fontSize:12,color:"#ef4444",marginBottom:10,textAlign:"center" as const }}>{error}</div>}
+            <div style={{ display:"flex",gap:10 }}>
+              <button onClick={()=>{ setStep("password"); setVerifyA1(""); setVerifyA2(""); setError(""); }}
+                style={{ flex:1,padding:"12px",background:"#141d2e",border:"1px solid #1e2a3a",borderRadius:11,color:"#aaa",fontSize:13,cursor:"pointer",fontFamily:"inherit" }}>
+                ← Retour
+              </button>
+              <button onClick={handleVerify} disabled={loading}
+                style={{ flex:2,padding:"12px",background:"#e8b84b",border:"none",borderRadius:11,color:"#000",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:loading?.7:1 }}>
+                {loading?"⏳...":"🔓 Accéder →"}
+              </button>
+            </div>
           </>)}
 
           {/* FORGOT */}
