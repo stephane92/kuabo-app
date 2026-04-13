@@ -223,14 +223,14 @@ export default function LoginPage() {
   );
 
   return (
-    <div style={{ minHeight:"100dvh", background:"#0b0f1a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px 16px", color:"#f4f1ec" }}>
+    <div style={{ minHeight:"100dvh", background:"#0b0f1a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"80px 16px 24px", color:"#f4f1ec" }}>
 
       <div style={{ position:"fixed", top:0, left:0, right:0, display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 20px", background:"rgba(11,15,26,0.95)", backdropFilter:"blur(12px)", borderBottom:"1px solid #1e2a3a", zIndex:50 }}>
         <div style={{ fontWeight:900, fontSize:20 }}><span style={{ color:"#e8b84b" }}>Ku</span><span style={{ color:"#f4f1ec" }}>abo</span></div>
         <button onClick={() => router.push("/home")} style={{ background:"none", border:"none", color:"#aaa", cursor:"pointer", fontSize:13, fontFamily:"inherit" }}>← {t.back}</button>
       </div>
 
-      <div style={{ width:"100%", maxWidth:380, background:"#0f1521", border:"1px solid #1e2a3a", borderRadius:20, padding:"32px 24px", marginTop:60 }}>
+      <div style={{ width:"100%", maxWidth:380, background:"#0f1521", border:"1px solid #1e2a3a", borderRadius:20, padding:"24px 16px" }}>
 
         <div style={{ textAlign:"center", marginBottom:24 }}>
           <div style={{ fontSize:32, marginBottom:8 }}>🔐</div>
