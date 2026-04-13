@@ -41,11 +41,25 @@ async function translateContent(text: string, fromLang: Lang): Promise<{ fr: str
   return await res.json();
 }
 
+// ✅ Traduction multiple (titre + desc + cta en 1 seul appel)
+async function translateMultiple(
+  fields: Record<string, string>,
+  fromLang: Lang
+): Promise<Record<string, { fr: string; en: string; es: string }>> {
+  const res = await fetch("/api/translate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fields, fromLang }),
+  });
+  if (!res.ok) throw new Error("Traduction échouée");
+  return await res.json();
+}
+
 // ✅ Bouton traduction
 function TranslateButton({ sourceLang, sourceText, onTranslated, disabled }: {
   sourceLang: Lang;
   sourceText: string;
-  onTranslated: (result: { fr: string; en: string; es: string }) => void;
+  onTranslated: () => Promise<void>;
   disabled?: boolean;
 }) {
   const [loading, setLoading] = useState(false);
@@ -53,20 +67,16 @@ function TranslateButton({ sourceLang, sourceText, onTranslated, disabled }: {
   const handle = async () => {
     if (!sourceText.trim()) { alert("Écris d'abord le texte à traduire"); return; }
     setLoading(true);
-    try {
-      const result = await translateContent(sourceText, sourceLang);
-      onTranslated(result);
-    } catch {
-      alert("Erreur traduction — réessaie");
-    }
+    try { await onTranslated(); }
+    catch { alert("Erreur traduction — réessaie"); }
     setLoading(false);
   };
 
   return (
-    <button onClick={handle} disabled={disabled || loading || !sourceText.trim()}
-      style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", background: loading?"#141d2e":"rgba(45,212,191,.1)", border:"1px solid rgba(45,212,191,.3)", borderRadius:10, color: loading?"#555":"#2dd4bf", fontSize:12, fontWeight:600, cursor: (disabled||loading||!sourceText.trim())?"default":"pointer", fontFamily:"inherit", marginBottom:12, transition:"all .2s" }}>
+    <button onClick={handle} disabled={disabled||loading||!sourceText.trim()}
+      style={{ display:"flex",alignItems:"center",gap:6,padding:"8px 14px",background:loading?"#141d2e":"rgba(45,212,191,.1)",border:"1px solid rgba(45,212,191,.3)",borderRadius:10,color:loading?"#555":"#2dd4bf",fontSize:12,fontWeight:600,cursor:(disabled||loading||!sourceText.trim())?"default":"pointer",fontFamily:"inherit",marginBottom:12,transition:"all .2s" }}>
       <span style={{ fontSize:14 }}>{loading?"⏳":"🤖"}</span>
-      {loading ? "Traduction en cours..." : "Traduire automatiquement (FR + EN + ES)"}
+      {loading?"Traduction en cours...":"🌐 Traduire automatiquement (FR + EN + ES)"}
     </button>
   );
 }
@@ -513,14 +523,16 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             <TranslateButton
               sourceLang={msgLang}
               sourceText={msgTitle[msgLang]}
-              onTranslated={result=>{
-                setMsgTitle(result);
-                // Traduire aussi le contenu si rempli
-                if(msgContent[msgLang].trim()){
-                  translateContent(msgContent[msgLang], msgLang)
-                    .then(r=>setMsgContent(r))
-                    .catch(()=>{});
-                }
+              onTranslated={async ()=>{
+                const fields: Record<string,string> = {};
+                if(msgTitle[msgLang].trim())   fields.title   = msgTitle[msgLang];
+                if(msgContent[msgLang].trim())  fields.content = msgContent[msgLang];
+                if(!Object.keys(fields).length){ alert("Écris d'abord le texte à traduire"); return; }
+                try {
+                  const result = await translateMultiple(fields, msgLang);
+                  if(result.title)   setMsgTitle(result.title);
+                  if(result.content) setMsgContent(result.content);
+                } catch { alert("Erreur traduction — réessaie"); }
               }}
             />
             <Sec t="Type"/>
@@ -580,16 +592,18 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             <TranslateButton
               sourceLang={pubLang}
               sourceText={pubTitle[pubLang]}
-              onTranslated={async result=>{
-                setPubTitle(result);
-                if(pubDesc[pubLang].trim()){
-                  const r=await translateContent(pubDesc[pubLang],pubLang).catch(()=>null);
-                  if(r) setPubDesc(r);
-                }
-                if(pubCta[pubLang].trim()){
-                  const r=await translateContent(pubCta[pubLang],pubLang).catch(()=>null);
-                  if(r) setPubCta(r);
-                }
+              onTranslated={async ()=>{
+                const fields: Record<string,string> = {};
+                if(pubTitle[pubLang].trim()) fields.title = pubTitle[pubLang];
+                if(pubDesc[pubLang].trim())  fields.desc  = pubDesc[pubLang];
+                if(pubCta[pubLang].trim())   fields.cta   = pubCta[pubLang];
+                if(!Object.keys(fields).length){ alert("Écris d'abord le texte à traduire"); return; }
+                try {
+                  const result = await translateMultiple(fields, pubLang);
+                  if(result.title) setPubTitle(result.title);
+                  if(result.desc)  setPubDesc(result.desc);
+                  if(result.cta)   setPubCta(result.cta);
+                } catch { alert("Erreur traduction — réessaie"); }
               }}
             />
             <input value={pubUrl} onChange={e=>setPubUrl(e.target.value)} placeholder="URL de redirection (https://...)" style={inp}/>
@@ -671,12 +685,16 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             <TranslateButton
               sourceLang={evtLang}
               sourceText={evtTitle[evtLang]}
-              onTranslated={async result=>{
-                setEvtTitle(result);
-                if(evtDesc[evtLang].trim()){
-                  const r=await translateContent(evtDesc[evtLang],evtLang).catch(()=>null);
-                  if(r) setEvtDesc(r);
-                }
+              onTranslated={async ()=>{
+                const fields: Record<string,string> = {};
+                if(evtTitle[evtLang].trim()) fields.title = evtTitle[evtLang];
+                if(evtDesc[evtLang].trim())  fields.desc  = evtDesc[evtLang];
+                if(!Object.keys(fields).length){ alert("Écris d'abord le texte à traduire"); return; }
+                try {
+                  const result = await translateMultiple(fields, evtLang);
+                  if(result.title) setEvtTitle(result.title);
+                  if(result.desc)  setEvtDesc(result.desc);
+                } catch { alert("Erreur traduction — réessaie"); }
               }}
             />
             <div style={{ display:"flex",gap:8,marginBottom:8 }}>
