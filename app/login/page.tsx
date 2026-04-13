@@ -5,8 +5,6 @@ import { useState, useEffect } from "react";
 import {
   signInWithEmailAndPassword,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   GoogleAuthProvider,
   sendEmailVerification,
   onAuthStateChanged,
@@ -23,34 +21,34 @@ const T: Record<Lang, Record<string, string>> = {
     title:"Bon retour 👋", sub:"Connecte-toi pour continuer ton parcours",
     emailPlaceholder:"Adresse email", passPlaceholder:"Mot de passe",
     btnLogin:"Se connecter", btnGoogle:"Continuer avec Google", btnLoading:"Connexion...",
-    forgot:"Mot de passe oublié ?", noAccount:"Pas encore de compte ?", signup:"Créer un compte", back:"Retour",
+    forgot:"Mot de passe oublié ?", noAccount:"Pas encore de compte ?",
+    signup:"Créer un compte", back:"Retour",
     errEmpty:"Remplis tous les champs.", errInvalid:"Email ou mot de passe incorrect.",
     errEmail:"Email invalide.", errTooMany:"Trop de tentatives. Réessaie plus tard.",
     errVerify:"Vérifie ton email avant de te connecter.", errGoogle:"Erreur Google. Réessaie.",
     resend:"Renvoyer l'email de vérification", resendOk:"✅ Email renvoyé !", resendErr:"Erreur. Réessaie.",
-    googleRedirect:"Redirection vers Google...",
   },
   en: {
     title:"Welcome back 👋", sub:"Sign in to continue your journey",
     emailPlaceholder:"Email address", passPlaceholder:"Password",
     btnLogin:"Sign in", btnGoogle:"Continue with Google", btnLoading:"Signing in...",
-    forgot:"Forgot password?", noAccount:"Don't have an account?", signup:"Create account", back:"Back",
+    forgot:"Forgot password?", noAccount:"Don't have an account?",
+    signup:"Create account", back:"Back",
     errEmpty:"Please fill in all fields.", errInvalid:"Invalid email or password.",
     errEmail:"Invalid email address.", errTooMany:"Too many attempts. Try again later.",
     errVerify:"Please verify your email before signing in.", errGoogle:"Google error. Please try again.",
     resend:"Resend verification email", resendOk:"✅ Email sent!", resendErr:"Error. Try again.",
-    googleRedirect:"Redirecting to Google...",
   },
   es: {
     title:"Bienvenido de vuelta 👋", sub:"Inicia sesión para continuar",
     emailPlaceholder:"Correo electrónico", passPlaceholder:"Contraseña",
     btnLogin:"Iniciar sesión", btnGoogle:"Continuar con Google", btnLoading:"Iniciando...",
-    forgot:"¿Olvidaste tu contraseña?", noAccount:"¿No tienes cuenta?", signup:"Crear cuenta", back:"Atrás",
+    forgot:"¿Olvidaste tu contraseña?", noAccount:"¿No tienes cuenta?",
+    signup:"Crear cuenta", back:"Atrás",
     errEmpty:"Completa todos los campos.", errInvalid:"Correo o contraseña incorrectos.",
     errEmail:"Correo electrónico inválido.", errTooMany:"Demasiados intentos. Inténtalo más tarde.",
     errVerify:"Verifica tu correo antes de iniciar sesión.", errGoogle:"Error de Google. Inténtalo de nuevo.",
     resend:"Reenviar email de verificación", resendOk:"✅ ¡Email enviado!", resendErr:"Error. Inténtalo.",
-    googleRedirect:"Redirigiendo a Google...",
   },
 };
 
@@ -88,90 +86,47 @@ async function handleUserRedirect(user: any, lang: Lang): Promise<"ok" | "error"
   }
 }
 
-function isMobile() {
-  if (typeof navigator === "undefined") return false;
-  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-}
-
 // ══════════════════════════════════════════════
 // LOGIN PAGE
 // ══════════════════════════════════════════════
 export default function LoginPage() {
   const router = useRouter();
 
-  const [lang,        setLang]        = useState<Lang>("fr");
-  const [email,       setEmail]       = useState("");
-  const [pass,        setPass]        = useState("");
-  const [showPass,    setShowPass]    = useState(false);
-  const [loading,     setLoading]     = useState(false);
-  const [gLoading,    setGLoading]    = useState(false);
-  const [error,       setError]       = useState("");
-  const [info,        setInfo]        = useState("");
-  const [checking,    setChecking]    = useState(true);
-  const [showVerify,  setShowVerify]  = useState(false);
-  const [redirecting, setRedirecting] = useState(false);
+  const [lang,       setLang]       = useState<Lang>("fr");
+  const [email,      setEmail]      = useState("");
+  const [pass,       setPass]       = useState("");
+  const [showPass,   setShowPass]   = useState(false);
+  const [loading,    setLoading]    = useState(false);
+  const [gLoading,   setGLoading]   = useState(false);
+  const [error,      setError]      = useState("");
+  const [info,       setInfo]       = useState("");
+  const [checking,   setChecking]   = useState(true);
+  const [showVerify, setShowVerify] = useState(false);
 
   const t = T[lang];
 
-  // ── Init auth ──────────────────────────────────────────
+  // ── Init ───────────────────────────────────────────────
   useEffect(() => {
     const saved = (localStorage.getItem("lang") as Lang) || "fr";
     if (["fr","en","es"].includes(saved)) setLang(saved);
 
-    let handled = false;
+    // Forcer persistance locale
+    setPersistence(auth, browserLocalPersistence).catch(() => {});
 
-    const init = async () => {
-      try {
-        // ✅ Forcer persistance localStorage — clé du fix mobile
-        await setPersistence(auth, browserLocalPersistence);
+    const timeout = setTimeout(() => setChecking(false), 3000);
 
-        // ✅ Vérifier si on revient d'un redirect Google (mobile)
-        const result = await getRedirectResult(auth);
-        if (result?.user && !handled) {
-          handled = true;
-          setGLoading(true);
-          await handleUserRedirect(result.user, saved);
-          return;
-        }
-      } catch (err: any) {
-        // Pas de redirect result — normal
-        // Ne pas logger "auth/null-user" car c'est attendu
-        if (err?.code && err.code !== "auth/null-user" && err.code !== "auth/no-current-user") {
-          console.error("getRedirectResult:", err.code);
-        }
-      }
+    const unsub = onAuthStateChanged(auth, async user => {
+      clearTimeout(timeout);
+      if (!user) { setChecking(false); return; }
 
-      // ✅ Écouter l'état auth
-      // Timeout plus long sur mobile (Firebase prend + de temps à restaurer)
-      const ms = isMobile() ? 5000 : 3000;
-      const timeout = setTimeout(() => {
-        if (!handled) setChecking(false);
-      }, ms);
+      const isGoogle = user.providerData?.some(p => p.providerId === "google.com");
+      if (!user.emailVerified && !isGoogle) { setChecking(false); return; }
 
-      const unsub = onAuthStateChanged(auth, async user => {
-        if (handled) return;
-        clearTimeout(timeout);
+      setGLoading(true);
+      await handleUserRedirect(user, saved);
+    });
 
-        if (!user) {
-          setChecking(false);
-          return;
-        }
-
-        const isGoogle = user.providerData?.some(p => p.providerId === "google.com");
-        if (!user.emailVerified && !isGoogle) {
-          setChecking(false);
-          return;
-        }
-
-        handled = true;
-        setGLoading(true);
-        await handleUserRedirect(user, saved);
-      });
-
-      return () => { clearTimeout(timeout); unsub(); };
-    };
-
-    init();
+    return () => { clearTimeout(timeout); unsub(); };
   }, []);
 
   // ── Login email ────────────────────────────────────────
@@ -184,10 +139,7 @@ export default function LoginPage() {
     try {
       const cred = await signInWithEmailAndPassword(auth, email.trim(), pass);
       if (!cred.user.emailVerified) {
-        setShowVerify(true);
-        setError(t.errVerify);
-        setLoading(false);
-        return;
+        setShowVerify(true); setError(t.errVerify); setLoading(false); return;
       }
       const res = await handleUserRedirect(cred.user, lang);
       if (res === "error") { setError(t.errInvalid); setLoading(false); }
@@ -204,7 +156,7 @@ export default function LoginPage() {
     }
   };
 
-  // ── Renvoyer email vérification ────────────────────────
+  // ── Renvoyer email ─────────────────────────────────────
   const handleResend = async () => {
     const user = auth.currentUser;
     if (!user) return;
@@ -217,42 +169,38 @@ export default function LoginPage() {
   };
 
   // ── Login Google ───────────────────────────────────────
+  // ✅ SOLUTION FINALE : signInWithPopup partout (mobile + desktop)
+  // Sur iOS Safari, le popup marche si déclenché directement par un tap
+  // La clé : ne JAMAIS mettre d'await avant signInWithPopup (pas de setPersistence inline)
   const handleGoogle = async () => {
     if (gLoading || loading) return;
-    setError(""); setInfo("");
+    setError(""); setInfo(""); setGLoading(true);
+
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
 
     try {
-      // ✅ Toujours forcer persistance avant Google
-      await setPersistence(auth, browserLocalPersistence);
-
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: "select_account" });
-
-      if (isMobile()) {
-        // ✅ Mobile → redirect
-        // Afficher "Redirection..." pendant que la page change
-        setRedirecting(true);
-        await signInWithRedirect(auth, provider);
-        // La page recharge → getRedirectResult dans useEffect capte le résultat
-      } else {
-        // ✅ Desktop → popup (plus rapide, meilleure UX)
-        setGLoading(true);
-        const cred = await signInWithPopup(auth, provider);
-        const res  = await handleUserRedirect(cred.user, lang);
-        if (res === "error") { setError(t.errGoogle); setGLoading(false); }
-      }
+      const cred = await signInWithPopup(auth, provider);
+      const res  = await handleUserRedirect(cred.user, lang);
+      if (res === "error") { setError(t.errGoogle); setGLoading(false); }
     } catch (err: any) {
-      setRedirecting(false);
-      if (
-        err.code !== "auth/popup-closed-by-user" &&
-        err.code !== "auth/cancelled-popup-request"
-      ) setError(t.errGoogle);
       setGLoading(false);
+      // Popup fermé par l'user → pas d'erreur
+      if (
+        err.code === "auth/popup-closed-by-user" ||
+        err.code === "auth/cancelled-popup-request"
+      ) return;
+      // Popup bloqué par le navigateur → message d'aide
+      if (err.code === "auth/popup-blocked") {
+        setError("Popup bloqué. Autorise les popups pour ce site dans ton navigateur.");
+        return;
+      }
+      setError(t.errGoogle);
     }
   };
 
-  // ── Loading screen ─────────────────────────────────────
-  if (checking || gLoading || redirecting) return (
+  // ── Loading ────────────────────────────────────────────
+  if (checking || gLoading) return (
     <div style={{ minHeight:"100dvh", background:"#0b0f1a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:16, color:"#f4f1ec" }}>
       <div style={{ fontSize:28, fontWeight:900 }}>
         <span style={{ color:"#e8b84b" }}>Ku</span><span style={{ color:"#f4f1ec" }}>abo</span>
@@ -261,12 +209,11 @@ export default function LoginPage() {
         <circle cx="20" cy="20" r="15" fill="none" stroke="#1e2a3a" strokeWidth="4"/>
         <circle cx="20" cy="20" r="15" fill="none" stroke="#e8b84b" strokeWidth="4" strokeLinecap="round" strokeDasharray="94" strokeDashoffset="70"/>
       </svg>
-      {redirecting && <div style={{ fontSize:13, color:"#aaa" }}>{t.googleRedirect}</div>}
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 
-  // ── Page login ─────────────────────────────────────────
+  // ── Page ───────────────────────────────────────────────
   return (
     <div style={{ minHeight:"100dvh", background:"#0b0f1a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px 16px", color:"#f4f1ec" }}>
 
@@ -283,7 +230,6 @@ export default function LoginPage() {
       {/* Card */}
       <div style={{ width:"100%", maxWidth:380, background:"#0f1521", border:"1px solid #1e2a3a", borderRadius:20, padding:"32px 24px", marginTop:60 }}>
 
-        {/* Titre */}
         <div style={{ textAlign:"center", marginBottom:24 }}>
           <div style={{ fontSize:32, marginBottom:8 }}>🔐</div>
           <h1 style={{ fontSize:22, fontWeight:700, margin:"0 0 6px", color:"#f4f1ec" }}>{t.title}</h1>
@@ -331,14 +277,12 @@ export default function LoginPage() {
           </button>
         </div>
 
-        {/* Mot de passe oublié */}
         <div style={{ textAlign:"right", marginBottom:16 }}>
           <span onClick={() => router.push("/forgot")} style={{ fontSize:12, color:"#e8b84b", cursor:"pointer", textDecoration:"underline" }}>
             {t.forgot}
           </span>
         </div>
 
-        {/* Erreur */}
         {error && (
           <div style={{ background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.25)", borderRadius:10, padding:"12px 14px", marginBottom:12, color:"#ef4444", fontSize:13, lineHeight:1.6 }}>
             ⚠️ {error}
@@ -352,20 +296,17 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Info */}
         {info && (
           <div style={{ background:"rgba(34,197,94,0.08)", border:"1px solid rgba(34,197,94,0.25)", borderRadius:10, padding:"12px 14px", marginBottom:12, color:"#22c55e", fontSize:13 }}>
             {info}
           </div>
         )}
 
-        {/* Se connecter */}
         <button onClick={handleLogin} disabled={loading || gLoading}
           style={{ width:"100%", padding:"14px", background:loading?"#c9952a":"#e8b84b", border:"none", borderRadius:12, color:"#000", fontSize:15, fontWeight:700, cursor:loading?"default":"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:8, opacity:loading?0.8:1 }}>
           {loading ? <>⏳ {t.btnLoading}</> : t.btnLogin}
         </button>
 
-        {/* Signup */}
         <div style={{ textAlign:"center", marginTop:20, fontSize:13, color:"#aaa" }}>
           {t.noAccount}{" "}
           <span onClick={() => router.push("/signup")} style={{ color:"#e8b84b", cursor:"pointer", textDecoration:"underline" }}>
@@ -374,7 +315,6 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Langue */}
       <div style={{ display:"flex", gap:12, marginTop:20, fontSize:20 }}>
         {(["fr","en","es"] as Lang[]).map(l => (
           <span key={l} onClick={() => { setLang(l); localStorage.setItem("lang", l); }}
