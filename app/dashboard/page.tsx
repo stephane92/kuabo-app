@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, setDoc, getDocs, collection } from "firebase/firestore";
 import { onAuthStateChanged, signOut, deleteUser } from "firebase/auth";
 import { ChevronRight, Globe, LogOut, Search } from "lucide-react";
 
