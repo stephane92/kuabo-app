@@ -30,9 +30,62 @@ async function uploadToCloudinary(file: File): Promise<string> {
   return data.secure_url as string;
 }
 
-// ══════════════════════════════════════════════
-// COMPOSANT UPLOAD IMAGE
-// ══════════════════════════════════════════════
+// ✅ Traduction automatique via Claude API
+async function translateContent(text: string, fromLang: Lang): Promise<{ fr: string; en: string; es: string }> {
+  const langNames: Record<Lang, string> = { fr:"French", en:"English", es:"Spanish" };
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      messages: [{
+        role: "user",
+        content: `Translate this ${langNames[fromLang]} text into the other 2 languages.
+Return ONLY a JSON object with keys "fr", "en", "es". No markdown, no explanation.
+Keep the original language value unchanged.
+
+Text: "${text}"
+
+JSON:`
+      }]
+    })
+  });
+  const data = await response.json();
+  const raw = data.content?.[0]?.text || "{}";
+  const clean = raw.replace(/```json|```/g, "").trim();
+  return JSON.parse(clean);
+}
+
+// ✅ Bouton traduction
+function TranslateButton({ sourceLang, sourceText, onTranslated, disabled }: {
+  sourceLang: Lang;
+  sourceText: string;
+  onTranslated: (result: { fr: string; en: string; es: string }) => void;
+  disabled?: boolean;
+}) {
+  const [loading, setLoading] = useState(false);
+
+  const handle = async () => {
+    if (!sourceText.trim()) { alert("Écris d'abord le texte à traduire"); return; }
+    setLoading(true);
+    try {
+      const result = await translateContent(sourceText, sourceLang);
+      onTranslated(result);
+    } catch {
+      alert("Erreur traduction — réessaie");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <button onClick={handle} disabled={disabled || loading || !sourceText.trim()}
+      style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", background: loading?"#141d2e":"rgba(45,212,191,.1)", border:"1px solid rgba(45,212,191,.3)", borderRadius:10, color: loading?"#555":"#2dd4bf", fontSize:12, fontWeight:600, cursor: (disabled||loading||!sourceText.trim())?"default":"pointer", fontFamily:"inherit", marginBottom:12, transition:"all .2s" }}>
+      <span style={{ fontSize:14 }}>{loading?"⏳":"🤖"}</span>
+      {loading ? "Traduction en cours..." : "Traduire automatiquement (FR + EN + ES)"}
+    </button>
+  );
+}
 function ImageUpload({ value, onChange, accentColor = "#e8b84b" }: {
   value: string; onChange: (url: string) => void; accentColor?: string;
 }) {
@@ -471,6 +524,21 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             <LangTabs lang={msgLang} setLang={setMsgLang}/>
             <input value={msgTitle[msgLang]} onChange={e=>setMsgTitle(p=>({...p,[msgLang]:e.target.value}))} placeholder={`Titre (${msgLang})`} style={inp}/>
             <textarea value={msgContent[msgLang]} onChange={e=>setMsgContent(p=>({...p,[msgLang]:e.target.value}))} placeholder={`Contenu (${msgLang})`} style={ta}/>
+
+            {/* ✅ Bouton traduction message */}
+            <TranslateButton
+              sourceLang={msgLang}
+              sourceText={msgTitle[msgLang]}
+              onTranslated={result=>{
+                setMsgTitle(result);
+                // Traduire aussi le contenu si rempli
+                if(msgContent[msgLang].trim()){
+                  translateContent(msgContent[msgLang], msgLang)
+                    .then(r=>setMsgContent(r))
+                    .catch(()=>{});
+                }
+              }}
+            />
             <Sec t="Type"/>
             <div style={{ display:"flex",gap:8,marginBottom:12 }}>
               {([["info","💡 Info","#e8b84b"],["urgent","⚠️ Urgent","#ef4444"]] as const).map(([val,lbl,color])=>(
@@ -523,6 +591,23 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             <input value={pubTitle[pubLang]} onChange={e=>setPubTitle(p=>({...p,[pubLang]:e.target.value}))} placeholder={`Titre partenaire (${pubLang})`} style={inp}/>
             <input value={pubDesc[pubLang]} onChange={e=>setPubDesc(p=>({...p,[pubLang]:e.target.value}))} placeholder={`Description (${pubLang})`} style={inp}/>
             <input value={pubCta[pubLang]} onChange={e=>setPubCta(p=>({...p,[pubLang]:e.target.value}))} placeholder={`CTA ex: "Ouvrir un compte" (${pubLang})`} style={inp}/>
+
+            {/* ✅ Bouton traduction pub */}
+            <TranslateButton
+              sourceLang={pubLang}
+              sourceText={pubTitle[pubLang]}
+              onTranslated={async result=>{
+                setPubTitle(result);
+                if(pubDesc[pubLang].trim()){
+                  const r=await translateContent(pubDesc[pubLang],pubLang).catch(()=>null);
+                  if(r) setPubDesc(r);
+                }
+                if(pubCta[pubLang].trim()){
+                  const r=await translateContent(pubCta[pubLang],pubLang).catch(()=>null);
+                  if(r) setPubCta(r);
+                }
+              }}
+            />
             <input value={pubUrl} onChange={e=>setPubUrl(e.target.value)} placeholder="URL de redirection (https://...)" style={inp}/>
 
             {/* ✅ UPLOAD IMAGE PUB */}
@@ -597,6 +682,19 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             <LangTabs lang={evtLang} setLang={setEvtLang}/>
             <input value={evtTitle[evtLang]} onChange={e=>setEvtTitle(p=>({...p,[evtLang]:e.target.value}))} placeholder={`Titre (${evtLang})`} style={inp}/>
             <textarea value={evtDesc[evtLang]} onChange={e=>setEvtDesc(p=>({...p,[evtLang]:e.target.value}))} placeholder={`Description (${evtLang})`} style={ta}/>
+
+            {/* ✅ Bouton traduction event */}
+            <TranslateButton
+              sourceLang={evtLang}
+              sourceText={evtTitle[evtLang]}
+              onTranslated={async result=>{
+                setEvtTitle(result);
+                if(evtDesc[evtLang].trim()){
+                  const r=await translateContent(evtDesc[evtLang],evtLang).catch(()=>null);
+                  if(r) setEvtDesc(r);
+                }
+              }}
+            />
             <div style={{ display:"flex",gap:8,marginBottom:8 }}>
               <input type="date" value={evtDate} onChange={e=>setEvtDate(e.target.value)} style={{ ...inp,flex:1,marginBottom:0 }}/>
               <input type="time" value={evtTime} onChange={e=>setEvtTime(e.target.value)} style={{ ...inp,flex:1,marginBottom:0 }}/>
