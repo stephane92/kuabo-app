@@ -115,16 +115,20 @@ function ArrivalBanner({ lang, userName, arrivalDate, userId, onConfirmed }: {
     },
   }[lang];
 
-  // Calcul des jours depuis la date choisie
+  // Calcul des jours depuis la date choisie — ✅ fix timezone
   const daysAgo = pickedDate
-    ? Math.max(0, Math.floor((Date.now() - new Date(pickedDate).getTime()) / 86400000))
+    ? Math.max(0, Math.floor(
+        (Date.now() - new Date(pickedDate + "T12:00:00").getTime()) / 86400000
+      ))
     : 0;
 
   const handleConfirm = async () => {
     if (!userId || saving) return;
     setSaving(true);
     try {
-      const days = Math.max(0, Math.floor((Date.now() - new Date(pickedDate).getTime()) / 86400000));
+      const days = Math.max(0, Math.floor(
+        (Date.now() - new Date(pickedDate + "T12:00:00").getTime()) / 86400000
+      ));
       const status = days < 30 ? "new" : days < 365 ? "settling" : "established";
 
       // ✅ Fusionner les étapes déjà faites avec les completedSteps existantes
@@ -928,8 +932,7 @@ export default function Dashboard() {
           arrival={userArrival}
           onDone={() => {
             setShowWelcome(false);
-            // ✅ Toujours montrer lightCheck après animation bienvenue
-            // (même si déjà vu — car c'est la première vraie confirmation)
+            // ✅ Toujours montrer lightCheck après animation
             setShowLightCheck(true);
           }}
         />
@@ -1062,16 +1065,17 @@ export default function Dashboard() {
                         const days = data?.daysInUSA || 0;
                         const newStatus = days < 30 ? "new" : days < 365 ? "settling" : "established";
                         setUserStatus(newStatus as UserStatus);
-                        // ✅ Mettre à jour arrival si était "abroad"
                         const newArrival = data?.arrival === "abroad" ? "new" : (data?.arrival || "new");
                         setUserArrival(newArrival);
-                        // Sauvegarder aussi dans Firebase si était abroad
                         if (data?.arrival === "abroad") {
                           updateDoc(doc(db, "users", userId), { arrival: "new" }).catch(()=>{});
                         }
                       }
                     } catch {}
-                    // ✅ Déclencher animation + lightCheck
+                    // ✅ Toujours déclencher animation + lightCheck
+                    // (reset lightCheckSeen pour forcer l'affichage)
+                    setLightCheckSeen(false);
+                    localStorage.removeItem("kuabo_lightcheck_seen");
                     setTimeout(() => setShowWelcome(true), 500);
                   }}
                 />
