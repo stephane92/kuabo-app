@@ -987,8 +987,15 @@ export default function Dashboard() {
                         setCompletedSteps(data?.completedSteps || []);
                         setArrivalDate(data?.arrivalDate || null);
                         const days = data?.daysInUSA || 0;
-                        const status = days < 30 ? "new" : days < 365 ? "settling" : "established";
-                        setUserStatus(status as UserStatus);
+                        const newStatus = days < 30 ? "new" : days < 365 ? "settling" : "established";
+                        setUserStatus(newStatus as UserStatus);
+                        // ✅ Mettre à jour arrival si était "abroad"
+                        const newArrival = data?.arrival === "abroad" ? "new" : (data?.arrival || "new");
+                        setUserArrival(newArrival);
+                        // Sauvegarder aussi dans Firebase si était abroad
+                        if (data?.arrival === "abroad") {
+                          updateDoc(doc(db, "users", userId), { arrival: "new" }).catch(()=>{});
+                        }
                       }
                     } catch {}
                     // ✅ Déclencher animation + lightCheck
