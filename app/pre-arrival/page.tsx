@@ -275,7 +275,10 @@ export default function PreArrivalPage() {
         </div>
         <div style={{ display:"flex", gap:10, fontSize:18, cursor:"pointer" }}>
           {(["fr","en","es"] as Lang[]).map(l => (
-            <span key={l} onClick={()=>setLang(l)} style={{ opacity:lang===l?1:.4 }}>
+            <span key={l} onClick={()=>{
+              setLang(l);
+              localStorage.setItem("lang", l);
+            }} style={{ opacity:lang===l?1:.4 }}>
               {l==="fr"?"🇫🇷":l==="en"?"🇺🇸":"🇪🇸"}
             </span>
           ))}
@@ -363,7 +366,17 @@ export default function PreArrivalPage() {
           transition:"all .5s cubic-bezier(.34,1.56,.64,1)",
           marginBottom: allDone ? 12 : 0,
         }}>
-          <button onClick={()=>window.location.href="/dashboard"}
+          <button onClick={async () => {
+            // ✅ Sauvegarder preArrivalCompleted dans Firebase avant de rediriger
+            if (userId) {
+              try {
+                await updateDoc(doc(db, "users", userId), {
+                  preArrivalCompleted: true,
+                });
+              } catch {}
+            }
+            window.location.href = "/dashboard";
+          }}
             style={{ width:"100%", padding:"15px", background:"#22c55e", border:"none", borderRadius:13, color:"#000", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
             {t.btnContinue}
           </button>
