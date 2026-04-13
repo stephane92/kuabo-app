@@ -106,10 +106,28 @@ export default function LoginPage() {
     const saved = (localStorage.getItem("lang") as Lang) || "fr";
     if (["fr","en","es"].includes(saved)) setLang(saved);
 
-    // ✅ Détecter PWA iOS
     setIsPWA(isIOSPWA());
 
     setPersistence(auth, browserLocalPersistence).catch(() => {});
+
+    // ✅ Capturer le résultat du redirect Google (iOS Safari)
+    const checkRedirect = async () => {
+      try {
+        const { getRedirectResult } = await import("firebase/auth");
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+          setGLoading(true);
+          await handleUserRedirect(result.user, saved);
+          return;
+        }
+      } catch (err: any) {
+        if (err.code !== "auth/no-redirect-operation") {
+          setError(T[saved as Lang]?.errGoogle || "Google error");
+        }
+      }
+    };
+    checkRedirect();
+
     const timeout = setTimeout(() => setChecking(false), 3000);
     const unsub = onAuthStateChanged(auth, async user => {
       clearTimeout(timeout);
@@ -156,16 +174,28 @@ export default function LoginPage() {
     if (gLoading || loading) return;
     setError(""); setInfo("");
 
-    // ✅ Si PWA iOS → ouvrir dans Safari (le popup ne marche pas en standalone)
-    if (isPWA) {
-      // Ouvrir kuabo-app.vercel.app/login dans Safari natif
-      window.open("https://kuabo-app.vercel.app/login?google=1", "_blank");
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+
+    // ✅ Sur iOS Safari → signInWithRedirect (popup bloqué par iOS)
+    // Sur desktop/Android → signInWithPopup
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+
+    if (isIOS || isSafari) {
+      // Redirect — Firebase gère le retour automatiquement
+      const { signInWithRedirect } = await import("firebase/auth");
+      try {
+        await setPersistence(auth, browserLocalPersistence);
+        await signInWithRedirect(auth, provider);
+        // La page recharge → onAuthStateChanged capte le résultat
+      } catch {
+        setError(t.errGoogle);
+      }
       return;
     }
 
     setGLoading(true);
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: "select_account" });
     try {
       const cred = await signInWithPopup(auth, provider);
       const res  = await handleUserRedirect(cred.user, lang);
@@ -174,7 +204,7 @@ export default function LoginPage() {
       setGLoading(false);
       if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") return;
       if (err.code === "auth/popup-blocked") {
-        setError(lang === "fr" ? "Popup bloqué — utilise le bouton email à la place" : "Popup blocked — use email instead");
+        setError(lang === "fr" ? "Popup bloqué — utilise le bouton email" : "Popup blocked — use email instead");
         return;
       }
       setError(t.errGoogle);
