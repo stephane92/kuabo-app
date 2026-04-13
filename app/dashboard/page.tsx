@@ -1011,7 +1011,24 @@ export default function Dashboard() {
           {activeTab==="jobs"     && <JobsTab lang={lang} userId={userId}/>}
           {activeTab==="profile"  && (
             <div style={{ marginTop:4 }}>
-              <ProfileTab userName={userName} userEmail={userEmail} userCountry={userCountry} userState={userState} userCity={userCity} lang={lang} completedSteps={completedSteps} armyStatus={armyStatus} onArmyChange={setArmyStatus} changeLang={changeLang} onLogout={handleLogout} onDeleteAccount={()=>setShowDeleteModal(true)}/>
+              <ProfileTab
+                userName={userName} userEmail={userEmail} userCountry={userCountry}
+                userState={userState} userCity={userCity} lang={lang}
+                completedSteps={completedSteps} armyStatus={armyStatus}
+                userArrival={userArrival}
+                onArmyChange={setArmyStatus} changeLang={changeLang}
+                onLogout={handleLogout} onDeleteAccount={()=>setShowDeleteModal(true)}
+                onStatusChanged={(newArrival, newStatus) => {
+                  setUserArrival(newArrival);
+                  setUserStatus(newStatus as UserStatus);
+                  // Si retour à "abroad" → reset bannière
+                  if (newArrival === "abroad") {
+                    setArrivalConfirmed(false);
+                    setPreArrivalDone(false);
+                    window.location.href = "/pre-arrival";
+                  }
+                }}
+              />
             </div>
           )}
         </div>
