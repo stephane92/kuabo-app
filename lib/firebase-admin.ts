@@ -1,6 +1,7 @@
 import * as admin from "firebase-admin";
 
-if (!admin.apps.length) {
+// ✅ Ne pas initialiser au build si les variables manquent
+if (!admin.apps.length && process.env.FIREBASE_PROJECT_ID) {
   admin.initializeApp({
     credential: admin.credential.cert({
       projectId:   process.env.FIREBASE_PROJECT_ID,
@@ -10,6 +11,6 @@ if (!admin.apps.length) {
   });
 }
 
-export const adminDb  = admin.firestore();
-export const adminMsg = admin.messaging();
+export const adminDb  = admin.apps.length ? admin.firestore()  : null as any;
+export const adminMsg = admin.apps.length ? admin.messaging()  : null as any;
 export default admin;
