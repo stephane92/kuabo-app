@@ -10,6 +10,7 @@ import ExplorerTab   from "../components/ExplorerTab";
 import ProfileTab    from "./components/ProfileTab";
 import HomeTab, { BottomNav } from "./components/HomeTab";
 import JobsTab       from "./components/JobsTab";
+import FCMSetup      from "../components/FCMSetup"; // ✅ NOUVEAU
 import { SearchModal, StepModal, ArmyGuideModal, PhaseUnlockOverlay } from "./components/Modals";
 import DemoGuide     from "./components/DemoGuide";
 import { PHASE_STEPS } from "./components/data";
@@ -19,7 +20,6 @@ import type { Lang, PhaseId } from "./components/data";
 
 // ══════════════════════════════════════════════
 // BANNIÈRE "JE SUIS ARRIVÉ"
-// Visible quand preArrivalCompleted=true mais arrivalConfirmed=false
 // ══════════════════════════════════════════════
 function ArrivalBanner({ lang, userName, arrivalDate, userId, onConfirmed }: {
   lang: Lang; userName: string; arrivalDate: string | null;
@@ -32,119 +32,28 @@ function ArrivalBanner({ lang, userName, arrivalDate, userId, onConfirmed }: {
   const [showConfetti,   setShowConfetti]   = useState(false);
   const [newDate,        setNewDate]        = useState("");
   const [pickedDate,     setPickedDate]     = useState(new Date().toISOString().split("T")[0]);
-  const [alreadyDone,    setAlreadyDone]    = useState<string[]>([]); // ✅ étapes déjà faites
+  const [alreadyDone,    setAlreadyDone]    = useState<string[]>([]);
   const [saving,         setSaving]         = useState(false);
   const [dismissed,      setDismissed]      = useState(false);
 
   const T = {
-    fr: {
-      banner:    "Tu es arrivé aux USA ?",
-      bannerSub: "Confirme ton arrivée pour débloquer toutes les fonctionnalités",
-      btnArrive: "Je suis arrivé ! 🛬",
-      btnDate:   "Changer ma date",
-      c1Title:   "Tu es arrivé aux USA ? 🛬",
-      c1Sub:     "Cette action va mettre à jour ton statut et débloquer toutes les fonctionnalités.",
-      c1Yes:     "Oui, je suis aux USA ! ✅",
-      c1No:      "Pas encore ⏳",
-      // ← NOUVEAU : étape date
-      dpTitle:   "Depuis quand es-tu aux USA ? 📅",
-      dpSub:     "Tu es peut-être là depuis un moment — entre la vraie date pour que Kuabo calcule exactement où tu en es.",
-      dpLabel:   "Date de ton arrivée",
-      dpToday:   "Aujourd'hui",
-      dpNext:    "Continuer →",
-      dpBack:    "← Retour",
-      c2Title:   "Tu confirmes ? 🇺🇸",
-      c2Sub:     "Tu es bien physiquement aux États-Unis en ce moment ?",
-      c2Warn:    "⚠️ Cette action est irréversible",
-      c2Yes:     "✅ Oui, je confirme !",
-      c2No:      "← Non, erreur",
-      dateTitle: "Changer ma date d'arrivée",
-      dateSub:   "Quelle est ta nouvelle date d'arrivée prévue ?",
-      dateBtn:   "Mettre à jour",
-      dateCancel:"Annuler",
-    },
-    en: {
-      banner:    "Have you arrived in the USA?",
-      bannerSub: "Confirm your arrival to unlock all features",
-      btnArrive: "I've arrived! 🛬",
-      btnDate:   "Change my date",
-      c1Title:   "Have you arrived in the USA? 🛬",
-      c1Sub:     "This action will update your status and unlock all features.",
-      c1Yes:     "Yes, I'm in the USA! ✅",
-      c1No:      "Not yet ⏳",
-      dpTitle:   "When did you arrive? 📅",
-      dpSub:     "You might have been here for a while — enter your actual arrival date so Kuabo can calculate exactly where you are.",
-      dpLabel:   "Your arrival date",
-      dpToday:   "Today",
-      dpNext:    "Continue →",
-      dpBack:    "← Back",
-      c2Title:   "Can you confirm? 🇺🇸",
-      c2Sub:     "Are you physically in the United States right now?",
-      c2Warn:    "⚠️ This action is irreversible",
-      c2Yes:     "✅ Yes, I confirm!",
-      c2No:      "← No, mistake",
-      dateTitle: "Change my arrival date",
-      dateSub:   "What is your new expected arrival date?",
-      dateBtn:   "Update",
-      dateCancel:"Cancel",
-    },
-    es: {
-      banner:    "¿Has llegado a EE.UU.?",
-      bannerSub: "Confirma tu llegada para desbloquear todas las funciones",
-      btnArrive: "¡He llegado! 🛬",
-      btnDate:   "Cambiar mi fecha",
-      c1Title:   "¿Has llegado a EE.UU.? 🛬",
-      c1Sub:     "Esta acción actualizará tu estado y desbloqueará todas las funciones.",
-      c1Yes:     "¡Sí, estoy en EE.UU.! ✅",
-      c1No:      "Todavía no ⏳",
-      dpTitle:   "¿Desde cuándo estás en EE.UU.? 📅",
-      dpSub:     "Puede que lleves un tiempo aquí — ingresa tu fecha real de llegada para que Kuabo calcule exactamente dónde estás.",
-      dpLabel:   "Tu fecha de llegada",
-      dpToday:   "Hoy",
-      dpNext:    "Continuar →",
-      dpBack:    "← Atrás",
-      c2Title:   "¿Puedes confirmarlo? 🇺🇸",
-      c2Sub:     "¿Estás físicamente en los Estados Unidos ahora mismo?",
-      c2Warn:    "⚠️ Esta acción es irreversible",
-      c2Yes:     "✅ ¡Sí, confirmo!",
-      c2No:      "← No, error",
-      dateTitle: "Cambiar mi fecha de llegada",
-      dateSub:   "¿Cuál es tu nueva fecha de llegada prevista?",
-      dateBtn:   "Actualizar",
-      dateCancel:"Cancelar",
-    },
+    fr: { banner:"Tu es arrivé aux USA ?", bannerSub:"Confirme ton arrivée pour débloquer toutes les fonctionnalités", btnArrive:"Je suis arrivé ! 🛬", btnDate:"Changer ma date", c1Title:"Tu es arrivé aux USA ? 🛬", c1Sub:"Cette action va mettre à jour ton statut et débloquer toutes les fonctionnalités.", c1Yes:"Oui, je suis aux USA ! ✅", c1No:"Pas encore ⏳", dpTitle:"Depuis quand es-tu aux USA ? 📅", dpSub:"Tu es peut-être là depuis un moment — entre la vraie date pour que Kuabo calcule exactement où tu en es.", dpLabel:"Date de ton arrivée", dpToday:"Aujourd'hui", dpNext:"Continuer →", dpBack:"← Retour", c2Title:"Tu confirmes ? 🇺🇸", c2Sub:"Tu es bien physiquement aux États-Unis en ce moment ?", c2Warn:"⚠️ Cette action est irréversible", c2Yes:"✅ Oui, je confirme !", c2No:"← Non, erreur", dateTitle:"Changer ma date d'arrivée", dateSub:"Quelle est ta nouvelle date d'arrivée prévue ?", dateBtn:"Mettre à jour", dateCancel:"Annuler" },
+    en: { banner:"Have you arrived in the USA?", bannerSub:"Confirm your arrival to unlock all features", btnArrive:"I've arrived! 🛬", btnDate:"Change my date", c1Title:"Have you arrived in the USA? 🛬", c1Sub:"This action will update your status and unlock all features.", c1Yes:"Yes, I'm in the USA! ✅", c1No:"Not yet ⏳", dpTitle:"When did you arrive? 📅", dpSub:"You might have been here for a while — enter your actual arrival date so Kuabo can calculate exactly where you are.", dpLabel:"Your arrival date", dpToday:"Today", dpNext:"Continue →", dpBack:"← Back", c2Title:"Can you confirm? 🇺🇸", c2Sub:"Are you physically in the United States right now?", c2Warn:"⚠️ This action is irreversible", c2Yes:"✅ Yes, I confirm!", c2No:"← No, mistake", dateTitle:"Change my arrival date", dateSub:"What is your new expected arrival date?", dateBtn:"Update", dateCancel:"Cancel" },
+    es: { banner:"¿Has llegado a EE.UU.?", bannerSub:"Confirma tu llegada para desbloquear todas las funciones", btnArrive:"¡He llegado! 🛬", btnDate:"Cambiar mi fecha", c1Title:"¿Has llegado a EE.UU.? 🛬", c1Sub:"Esta acción actualizará tu estado y desbloqueará todas las funciones.", c1Yes:"¡Sí, estoy en EE.UU.! ✅", c1No:"Todavía no ⏳", dpTitle:"¿Desde cuándo estás en EE.UU.? 📅", dpSub:"Puede que lleves un tiempo aquí — ingresa tu fecha real de llegada para que Kuabo calcule exactamente dónde estás.", dpLabel:"Tu fecha de llegada", dpToday:"Hoy", dpNext:"Continuar →", dpBack:"← Atrás", c2Title:"¿Puedes confirmarlo? 🇺🇸", c2Sub:"¿Estás físicamente en los Estados Unidos ahora mismo?", c2Warn:"⚠️ Esta acción es irreversible", c2Yes:"✅ ¡Sí, confirmo!", c2No:"← No, error", dateTitle:"Cambiar mi fecha de llegada", dateSub:"¿Cuál es tu nueva fecha de llegada prevista?", dateBtn:"Actualizar", dateCancel:"Cancelar" },
   }[lang];
 
-  // Calcul des jours depuis la date choisie — ✅ fix timezone
-  const daysAgo = pickedDate
-    ? Math.max(0, Math.floor(
-        (Date.now() - new Date(pickedDate + "T12:00:00").getTime()) / 86400000
-      ))
-    : 0;
+  const daysAgo = pickedDate ? Math.max(0, Math.floor((Date.now() - new Date(pickedDate + "T12:00:00").getTime()) / 86400000)) : 0;
 
   const handleConfirm = async () => {
     if (!userId || saving) return;
     setSaving(true);
     try {
-      const days = Math.max(0, Math.floor(
-        (Date.now() - new Date(pickedDate + "T12:00:00").getTime()) / 86400000
-      ));
+      const days = Math.max(0, Math.floor((Date.now() - new Date(pickedDate + "T12:00:00").getTime()) / 86400000));
       const status = days < 30 ? "new" : days < 365 ? "settling" : "established";
-
-      // ✅ Fusionner les étapes déjà faites avec les completedSteps existantes
       const existingSnap = await getDoc(doc(db, "users", userId));
-      const existingSteps: string[] = existingSnap.exists()
-        ? (existingSnap.data() as any)?.completedSteps || []
-        : [];
+      const existingSteps: string[] = existingSnap.exists() ? (existingSnap.data() as any)?.completedSteps || [] : [];
       const mergedSteps = Array.from(new Set([...existingSteps, ...alreadyDone]));
-
-      await updateDoc(doc(db, "users", userId), {
-        arrivalConfirmed: true,
-        arrivalDate:      pickedDate,
-        status,
-        daysInUSA:        days,
-        completedSteps:   mergedSteps, // ✅ étapes cochées sauvegardées
-      });
+      await updateDoc(doc(db, "users", userId), { arrivalConfirmed: true, arrivalDate: pickedDate, status, daysInUSA: days, completedSteps: mergedSteps });
       setShowConfirm2(false);
       setShowConfetti(true);
       setTimeout(() => { setShowConfetti(false); onConfirmed(); }, 2000);
@@ -155,132 +64,84 @@ function ArrivalBanner({ lang, userName, arrivalDate, userId, onConfirmed }: {
   const handleUpdateDate = async () => {
     if (!userId || !newDate) return;
     setSaving(true);
-    try {
-      await updateDoc(doc(db, "users", userId), { arrivalDate: newDate });
-      setShowDateUpdate(false);
-      setNewDate("");
-    } catch {}
+    try { await updateDoc(doc(db, "users", userId), { arrivalDate: newDate }); setShowDateUpdate(false); setNewDate(""); } catch {}
     setSaving(false);
   };
 
   if (dismissed) return null;
-
   const confettiColors = ["#e8b84b","#22c55e","#2dd4bf","#f97316","#a78bfa"];
   const pieces = Array.from({length:25},(_,i)=>({ id:i, x:Math.random()*100, delay:Math.random()*.5, dur:1.3+Math.random()*.8, color:confettiColors[i%5], size:5+Math.random()*8 }));
 
   return (
     <>
-      {/* Confetti */}
       {showConfetti && pieces.map(p=>(
         <div key={p.id} style={{ position:"fixed", left:p.x+"%", top:-20, width:p.size, height:p.size, borderRadius:"50%", background:p.color, zIndex:9999, pointerEvents:"none", animation:`confettiFall ${p.dur}s ${p.delay}s ease-in forwards` }}/>
       ))}
-
-      {/* Bannière */}
       <div style={{ background:"linear-gradient(135deg,rgba(232,184,75,.1),rgba(232,184,75,.05))", border:"1px solid rgba(232,184,75,.25)", borderRadius:14, padding:"14px 16px", marginBottom:14, position:"relative" }}>
         <button onClick={()=>setDismissed(true)} style={{ position:"absolute", top:8, right:10, background:"none", border:"none", color:"#555", cursor:"pointer", fontSize:16, lineHeight:1 }}>×</button>
-        <div style={{ fontSize:11, color:"#e8b84b", fontWeight:700, letterSpacing:".08em", textTransform:"uppercase" as const, marginBottom:4 }}>
-          🛬 {T.banner}
-        </div>
+        <div style={{ fontSize:11, color:"#e8b84b", fontWeight:700, letterSpacing:".08em", textTransform:"uppercase" as const, marginBottom:4 }}>🛬 {T.banner}</div>
         <div style={{ fontSize:12, color:"#aaa", marginBottom:12, lineHeight:1.5 }}>{T.bannerSub}</div>
         <div style={{ display:"flex", gap:8 }}>
-          <button onClick={()=>setShowConfirm1(true)}
-            style={{ flex:2, padding:"11px", background:"#e8b84b", border:"none", borderRadius:10, color:"#000", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-            {T.btnArrive}
-          </button>
-          <button onClick={()=>setShowDateUpdate(true)}
-            style={{ flex:1, padding:"11px", background:"transparent", border:"1px solid #1e2a3a", borderRadius:10, color:"#aaa", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
-            📅 {T.btnDate}
-          </button>
+          <button onClick={()=>setShowConfirm1(true)} style={{ flex:2, padding:"11px", background:"#e8b84b", border:"none", borderRadius:10, color:"#000", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>{T.btnArrive}</button>
+          <button onClick={()=>setShowDateUpdate(true)} style={{ flex:1, padding:"11px", background:"transparent", border:"1px solid #1e2a3a", borderRadius:10, color:"#aaa", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>📅 {T.btnDate}</button>
         </div>
       </div>
 
-      {/* Modal Confirm 1 */}
       {showConfirm1 && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(11,15,26,.93)", backdropFilter:"blur(8px)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}
-          onClick={()=>setShowConfirm1(false)}>
-          <div style={{ background:"#0f1521", border:"1.5px solid rgba(232,184,75,.3)", borderRadius:22, padding:"28px 22px", maxWidth:380, width:"100%", animation:"alertPop .4s cubic-bezier(.34,1.56,.64,1)" }}
-            onClick={e=>e.stopPropagation()}>
+        <div style={{ position:"fixed", inset:0, background:"rgba(11,15,26,.93)", backdropFilter:"blur(8px)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }} onClick={()=>setShowConfirm1(false)}>
+          <div style={{ background:"#0f1521", border:"1.5px solid rgba(232,184,75,.3)", borderRadius:22, padding:"28px 22px", maxWidth:380, width:"100%", animation:"alertPop .4s cubic-bezier(.34,1.56,.64,1)" }} onClick={e=>e.stopPropagation()}>
             <div style={{ fontSize:52, textAlign:"center" as const, marginBottom:14 }}>🛬</div>
             <h3 style={{ fontSize:20, fontWeight:800, textAlign:"center" as const, marginBottom:8, color:"#f4f1ec" }}>{T.c1Title}</h3>
             <p style={{ fontSize:13, color:"#aaa", textAlign:"center" as const, lineHeight:1.65, marginBottom:22 }}>{T.c1Sub}</p>
             <div style={{ display:"flex", flexDirection:"column" as const, gap:10 }}>
-              <button onClick={()=>{ setShowConfirm1(false); setTimeout(()=>setShowDatePick(true),200); }}
-                style={{ width:"100%", padding:"13px", background:"#e8b84b", border:"none", borderRadius:12, color:"#000", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-                {T.c1Yes}
-              </button>
-              <button onClick={()=>setShowConfirm1(false)}
-                style={{ width:"100%", padding:"13px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#aaa", fontSize:14, cursor:"pointer", fontFamily:"inherit" }}>
-                {T.c1No}
-              </button>
+              <button onClick={()=>{ setShowConfirm1(false); setTimeout(()=>setShowDatePick(true),200); }} style={{ width:"100%", padding:"13px", background:"#e8b84b", border:"none", borderRadius:12, color:"#000", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>{T.c1Yes}</button>
+              <button onClick={()=>setShowConfirm1(false)} style={{ width:"100%", padding:"13px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#aaa", fontSize:14, cursor:"pointer", fontFamily:"inherit" }}>{T.c1No}</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ← Modal "Depuis quand ?" + checklist étapes déjà faites */}
       {showDatePick && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(11,15,26,.93)", backdropFilter:"blur(8px)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}
-          onClick={()=>setShowDatePick(false)}>
-          <div style={{ background:"#0f1521", border:"1.5px solid rgba(45,212,191,.3)", borderRadius:22, padding:"24px 20px", maxWidth:380, width:"100%", maxHeight:"90vh", overflowY:"auto", animation:"alertPop .4s cubic-bezier(.34,1.56,.64,1)" }}
-            onClick={e=>e.stopPropagation()}>
+        <div style={{ position:"fixed", inset:0, background:"rgba(11,15,26,.93)", backdropFilter:"blur(8px)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }} onClick={()=>setShowDatePick(false)}>
+          <div style={{ background:"#0f1521", border:"1.5px solid rgba(45,212,191,.3)", borderRadius:22, padding:"24px 20px", maxWidth:380, width:"100%", maxHeight:"90vh", overflowY:"auto", animation:"alertPop .4s cubic-bezier(.34,1.56,.64,1)" }} onClick={e=>e.stopPropagation()}>
             <div style={{ fontSize:44, textAlign:"center" as const, marginBottom:10 }}>📅</div>
             <h3 style={{ fontSize:17, fontWeight:800, textAlign:"center" as const, marginBottom:6, color:"#f4f1ec" }}>{T.dpTitle}</h3>
             <p style={{ fontSize:12, color:"#aaa", textAlign:"center" as const, lineHeight:1.6, marginBottom:16 }}>{T.dpSub}</p>
-
-            {/* Sélecteur de date */}
             <div style={{ marginBottom:10 }}>
               <div style={{ fontSize:11, color:"#aaa", marginBottom:6 }}>{T.dpLabel}</div>
-              <input type="date"
-                value={pickedDate}
-                onChange={e=>setPickedDate(e.target.value)}
-                max={new Date().toISOString().split("T")[0]}
-                style={{ width:"100%", padding:"13px", background:"#141d2e", border:"1px solid #2dd4bf", borderRadius:11, color:"#f4f1ec", fontSize:16, fontFamily:"inherit", outline:"none", boxSizing:"border-box" as const }}
-              />
+              <input type="date" value={pickedDate} onChange={e=>setPickedDate(e.target.value)} max={new Date().toISOString().split("T")[0]}
+                style={{ width:"100%", padding:"13px", background:"#141d2e", border:"1px solid #2dd4bf", borderRadius:11, color:"#f4f1ec", fontSize:16, fontFamily:"inherit", outline:"none", boxSizing:"border-box" as const }}/>
               {pickedDate && (
                 <div style={{ marginTop:8, padding:"9px 14px", background:"rgba(45,212,191,.08)", border:"1px solid rgba(45,212,191,.2)", borderRadius:10, textAlign:"center" as const }}>
                   <span style={{ fontSize:13, color:"#2dd4bf", fontWeight:600 }}>
-                    {daysAgo === 0
-                      ? (lang==="fr"?"Tu arrives aujourd'hui 🛬":lang==="es"?"Llegas hoy 🛬":"You're arriving today 🛬")
-                      : lang==="fr"?`Tu es aux USA depuis ${daysAgo} jour${daysAgo>1?"s":""}`:lang==="es"?`Llevas ${daysAgo} día${daysAgo>1?"s":""} en EE.UU.`:`You've been in the USA for ${daysAgo} day${daysAgo>1?"s":""}`
-                    }
+                    {daysAgo === 0 ? (lang==="fr"?"Tu arrives aujourd'hui 🛬":lang==="es"?"Llegas hoy 🛬":"You're arriving today 🛬") : lang==="fr"?`Tu es aux USA depuis ${daysAgo} jour${daysAgo>1?"s":""}`:lang==="es"?`Llevas ${daysAgo} día${daysAgo>1?"s":""} en EE.UU.`:`You've been in the USA for ${daysAgo} day${daysAgo>1?"s":""}`}
                   </span>
                 </div>
               )}
             </div>
+            <button onClick={()=>setPickedDate(new Date().toISOString().split("T")[0])} style={{ width:"100%", padding:"8px", background:"transparent", border:"1px dashed #2a3448", borderRadius:10, color:"#555", fontSize:12, cursor:"pointer", fontFamily:"inherit", marginBottom:16 }}>📅 {T.dpToday}</button>
 
-            {/* Bouton Aujourd'hui */}
-            <button onClick={()=>setPickedDate(new Date().toISOString().split("T")[0])}
-              style={{ width:"100%", padding:"8px", background:"transparent", border:"1px dashed #2a3448", borderRadius:10, color:"#555", fontSize:12, cursor:"pointer", fontFamily:"inherit", marginBottom:16 }}>
-              📅 {T.dpToday}
-            </button>
-
-            {/* ✅ Checklist étapes déjà faites — si daysAgo >= 10 */}
             {daysAgo >= 10 && (() => {
               const allSteps = [
-                { id:"ssn",        emoji:"🪪", minDays:10,  label:{ fr:"Numéro SSN obtenu",         en:"SSN obtained",            es:"SSN obtenido"          } },
-                { id:"phone",      emoji:"📱", minDays:1,   label:{ fr:"Carte SIM / Téléphone US",   en:"US SIM card",             es:"SIM card de EE.UU."    } },
-                { id:"bank",       emoji:"🏦", minDays:14,  label:{ fr:"Compte bancaire ouvert",     en:"Bank account opened",     es:"Cuenta bancaria abierta"} },
-                { id:"greencard",  emoji:"💳", minDays:21,  label:{ fr:"Green Card reçue",           en:"Green Card received",     es:"Green Card recibida"   } },
-                { id:"housing",    emoji:"🏠", minDays:30,  label:{ fr:"Logement permanent",         en:"Permanent housing",       es:"Vivienda permanente"   } },
-                { id:"license",    emoji:"🚗", minDays:45,  label:{ fr:"Permis de conduire",         en:"Driver's license",        es:"Licencia de conducir"  } },
-                { id:"job",        emoji:"💼", minDays:60,  label:{ fr:"Premier emploi trouvé",      en:"First job found",         es:"Primer empleo encontrado"} },
-                { id:"credit_score",emoji:"📈",minDays:60,  label:{ fr:"Credit score en cours",      en:"Credit score started",    es:"Credit score iniciado" } },
+                { id:"ssn", emoji:"🪪", minDays:10, label:{ fr:"Numéro SSN obtenu", en:"SSN obtained", es:"SSN obtenido" } },
+                { id:"phone", emoji:"📱", minDays:1, label:{ fr:"Carte SIM / Téléphone US", en:"US SIM card", es:"SIM card de EE.UU." } },
+                { id:"bank", emoji:"🏦", minDays:14, label:{ fr:"Compte bancaire ouvert", en:"Bank account opened", es:"Cuenta bancaria abierta" } },
+                { id:"greencard", emoji:"💳", minDays:21, label:{ fr:"Green Card reçue", en:"Green Card received", es:"Green Card recibida" } },
+                { id:"housing", emoji:"🏠", minDays:30, label:{ fr:"Logement permanent", en:"Permanent housing", es:"Vivienda permanente" } },
+                { id:"license", emoji:"🚗", minDays:45, label:{ fr:"Permis de conduire", en:"Driver's license", es:"Licencia de conducir" } },
+                { id:"job", emoji:"💼", minDays:60, label:{ fr:"Premier emploi trouvé", en:"First job found", es:"Primer empleo encontrado" } },
               ].filter(s => daysAgo >= s.minDays);
-
               return (
                 <div style={{ marginBottom:16 }}>
                   <div style={{ fontSize:11, color:"#e8b84b", fontWeight:700, letterSpacing:".08em", textTransform:"uppercase" as const, marginBottom:10 }}>
                     ✅ {lang==="fr"?"Qu'est-ce que tu as déjà fait ?":lang==="es"?"¿Qué ya has hecho?":"What have you already done?"}
-                  </div>
-                  <div style={{ fontSize:11, color:"#555", marginBottom:10 }}>
-                    {lang==="fr"?"Ces étapes seront marquées comme complétées dans ton parcours.":lang==="es"?"Estos pasos se marcarán como completados en tu recorrido.":"These steps will be marked as completed in your journey."}
                   </div>
                   <div style={{ display:"flex", flexDirection:"column" as const, gap:7 }}>
                     {allSteps.map(step => {
                       const checked = alreadyDone.includes(step.id);
                       return (
                         <div key={step.id} onClick={()=>setAlreadyDone(prev=>prev.includes(step.id)?prev.filter(x=>x!==step.id):[...prev,step.id])}
-                          style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", background:checked?"rgba(34,197,94,.06)":"#141d2e", border:`1px solid ${checked?"rgba(34,197,94,.25)":"#1e2a3a"}`, borderRadius:11, cursor:"pointer", transition:"all .15s" }}>
+                          style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", background:checked?"rgba(34,197,94,.06)":"#141d2e", border:`1px solid ${checked?"rgba(34,197,94,.25)":"#1e2a3a"}`, borderRadius:11, cursor:"pointer" }}>
                           <div style={{ width:20, height:20, borderRadius:6, background:checked?"#22c55e":"transparent", border:`2px solid ${checked?"#22c55e":"#2a3448"}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                             {checked&&<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                           </div>
@@ -295,64 +156,39 @@ function ArrivalBanner({ lang, userName, arrivalDate, userId, onConfirmed }: {
             })()}
 
             <div style={{ display:"flex", gap:10 }}>
-              <button onClick={()=>{ setShowDatePick(false); setShowConfirm1(true); }}
-                style={{ flex:1, padding:"13px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#aaa", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
-                {T.dpBack}
-              </button>
-              <button onClick={()=>{ setShowDatePick(false); setTimeout(()=>setShowConfirm2(true),200); }} disabled={!pickedDate}
-                style={{ flex:2, padding:"13px", background:pickedDate?"#2dd4bf":"#1e2a3a", border:"none", borderRadius:12, color:pickedDate?"#000":"#555", fontSize:14, fontWeight:700, cursor:pickedDate?"pointer":"default", fontFamily:"inherit" }}>
-                {T.dpNext}
-              </button>
+              <button onClick={()=>{ setShowDatePick(false); setShowConfirm1(true); }} style={{ flex:1, padding:"13px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#aaa", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>{T.dpBack}</button>
+              <button onClick={()=>{ setShowDatePick(false); setTimeout(()=>setShowConfirm2(true),200); }} disabled={!pickedDate} style={{ flex:2, padding:"13px", background:pickedDate?"#2dd4bf":"#1e2a3a", border:"none", borderRadius:12, color:pickedDate?"#000":"#555", fontSize:14, fontWeight:700, cursor:pickedDate?"pointer":"default", fontFamily:"inherit" }}>{T.dpNext}</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal Confirm 2 */}
       {showConfirm2 && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(11,15,26,.93)", backdropFilter:"blur(8px)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}
-          onClick={()=>setShowConfirm2(false)}>
-          <div style={{ background:"#0f1521", border:"1.5px solid rgba(239,68,68,.35)", borderRadius:22, padding:"28px 22px", maxWidth:380, width:"100%", animation:"alertPop .4s cubic-bezier(.34,1.56,.64,1)" }}
-            onClick={e=>e.stopPropagation()}>
+        <div style={{ position:"fixed", inset:0, background:"rgba(11,15,26,.93)", backdropFilter:"blur(8px)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }} onClick={()=>setShowConfirm2(false)}>
+          <div style={{ background:"#0f1521", border:"1.5px solid rgba(239,68,68,.35)", borderRadius:22, padding:"28px 22px", maxWidth:380, width:"100%", animation:"alertPop .4s cubic-bezier(.34,1.56,.64,1)" }} onClick={e=>e.stopPropagation()}>
             <div style={{ fontSize:52, textAlign:"center" as const, marginBottom:14 }}>🇺🇸</div>
             <h3 style={{ fontSize:20, fontWeight:800, textAlign:"center" as const, marginBottom:8, color:"#f4f1ec" }}>{T.c2Title}</h3>
             <p style={{ fontSize:13, color:"#aaa", textAlign:"center" as const, lineHeight:1.65, marginBottom:8 }}>{T.c2Sub}</p>
             <div style={{ fontSize:12, color:"#ef4444", textAlign:"center" as const, marginBottom:22, fontWeight:600 }}>{T.c2Warn}</div>
             <div style={{ display:"flex", gap:10 }}>
-              <button onClick={()=>setShowConfirm2(false)}
-                style={{ flex:1, padding:"13px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#aaa", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
-                {T.c2No}
-              </button>
-              <button onClick={handleConfirm} disabled={saving}
-                style={{ flex:2, padding:"13px", background:saving?"#555":"#22c55e", border:"none", borderRadius:12, color:"#000", fontSize:14, fontWeight:700, cursor:saving?"default":"pointer", fontFamily:"inherit", opacity:saving?.7:1 }}>
-                {saving?"⏳...":T.c2Yes}
-              </button>
+              <button onClick={()=>setShowConfirm2(false)} style={{ flex:1, padding:"13px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#aaa", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>{T.c2No}</button>
+              <button onClick={handleConfirm} disabled={saving} style={{ flex:2, padding:"13px", background:saving?"#555":"#22c55e", border:"none", borderRadius:12, color:"#000", fontSize:14, fontWeight:700, cursor:saving?"default":"pointer", fontFamily:"inherit", opacity:saving?.7:1 }}>{saving?"⏳...":T.c2Yes}</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal Changer Date */}
       {showDateUpdate && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(11,15,26,.93)", backdropFilter:"blur(8px)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}
-          onClick={()=>setShowDateUpdate(false)}>
-          <div style={{ background:"#0f1521", border:"1px solid #1e2a3a", borderRadius:22, padding:"28px 22px", maxWidth:380, width:"100%", animation:"alertPop .4s cubic-bezier(.34,1.56,.64,1)" }}
-            onClick={e=>e.stopPropagation()}>
+        <div style={{ position:"fixed", inset:0, background:"rgba(11,15,26,.93)", backdropFilter:"blur(8px)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }} onClick={()=>setShowDateUpdate(false)}>
+          <div style={{ background:"#0f1521", border:"1px solid #1e2a3a", borderRadius:22, padding:"28px 22px", maxWidth:380, width:"100%", animation:"alertPop .4s cubic-bezier(.34,1.56,.64,1)" }} onClick={e=>e.stopPropagation()}>
             <div style={{ fontSize:36, textAlign:"center" as const, marginBottom:14 }}>📅</div>
             <h3 style={{ fontSize:18, fontWeight:700, textAlign:"center" as const, marginBottom:8, color:"#f4f1ec" }}>{T.dateTitle}</h3>
             <p style={{ fontSize:13, color:"#aaa", textAlign:"center" as const, marginBottom:18, lineHeight:1.6 }}>{T.dateSub}</p>
-            <input type="date" value={newDate} onChange={e=>setNewDate(e.target.value)}
-              min={new Date().toISOString().split("T")[0]}
+            <input type="date" value={newDate} onChange={e=>setNewDate(e.target.value)} min={new Date().toISOString().split("T")[0]}
               style={{ width:"100%", padding:"13px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:11, color:"#f4f1ec", fontSize:16, fontFamily:"inherit", outline:"none", boxSizing:"border-box" as const, marginBottom:14 }}/>
             <div style={{ display:"flex", gap:10 }}>
-              <button onClick={()=>setShowDateUpdate(false)}
-                style={{ flex:1, padding:"12px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:11, color:"#aaa", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
-                {T.dateCancel}
-              </button>
-              <button onClick={handleUpdateDate} disabled={!newDate||saving}
-                style={{ flex:2, padding:"12px", background:newDate?"#e8b84b":"#1e2a3a", border:"none", borderRadius:11, color:newDate?"#000":"#555", fontSize:13, fontWeight:700, cursor:newDate?"pointer":"default", fontFamily:"inherit" }}>
-                {saving?"⏳...":T.dateBtn}
-              </button>
+              <button onClick={()=>setShowDateUpdate(false)} style={{ flex:1, padding:"12px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:11, color:"#aaa", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>{T.dateCancel}</button>
+              <button onClick={handleUpdateDate} disabled={!newDate||saving} style={{ flex:2, padding:"12px", background:newDate?"#e8b84b":"#1e2a3a", border:"none", borderRadius:11, color:newDate?"#000":"#555", fontSize:13, fontWeight:700, cursor:newDate?"pointer":"default", fontFamily:"inherit" }}>{saving?"⏳...":T.dateBtn}</button>
             </div>
           </div>
         </div>
@@ -360,86 +196,50 @@ function ArrivalBanner({ lang, userName, arrivalDate, userId, onConfirmed }: {
     </>
   );
 }
+
+// ══════════════════════════════════════════════
+// WELCOME ANIMATION
 // ══════════════════════════════════════════════
 function WelcomeAnimation({ lang, userName, userStatus, arrival, onDone }: {
-  lang: Lang; userName: string; userStatus: UserStatus;
-  arrival?: string; onDone: () => void;
+  lang: Lang; userName: string; userStatus: UserStatus; arrival?: string; onDone: () => void;
 }) {
   const [step, setStep] = useState(0);
-
-  // Contenu selon la situation
   const content = {
-    // Pas encore arrivé mais a complété la checklist
-    not_arrived: {
-      fr: { emoji:"🛫", title:`${userName}, tu es presque prêt !`, msg:"Ta checklist est complète. Kuabo va t'accompagner jusqu'à ton arrivée et après.", color:"#e8b84b" },
-      en: { emoji:"🛫", title:`${userName}, you're almost ready!`, msg:"Your checklist is complete. Kuabo will guide you until your arrival and beyond.", color:"#e8b84b" },
-      es: { emoji:"🛫", title:`${userName}, ¡ya casi estás listo!`, msg:"Tu lista está completa. Kuabo te acompañará hasta tu llegada y más allá.", color:"#e8b84b" },
-    },
-    // Vient d'arriver
-    new: {
-      fr: { emoji:"🇺🇸", title:`Bienvenue aux USA, ${userName} !`, msg:"Tu viens d'arriver. Kuabo va t'aider à poser les bases essentielles dès maintenant.", color:"#22c55e" },
-      en: { emoji:"🇺🇸", title:`Welcome to the USA, ${userName}!`, msg:"You just arrived. Kuabo will help you set up the essentials right now.", color:"#22c55e" },
-      es: { emoji:"🇺🇸", title:`¡Bienvenido a EE.UU., ${userName}!`, msg:"Acabas de llegar. Kuabo te ayudará a establecer lo esencial ahora mismo.", color:"#22c55e" },
-    },
-    // Depuis quelques mois
-    settling: {
-      fr: { emoji:"💪", title:`Tu avances bien, ${userName} !`, msg:"Tu es en train de t'installer. Kuabo va t'aider à ne rien oublier d'important.", color:"#2dd4bf" },
-      en: { emoji:"💪", title:`You're making progress, ${userName}!`, msg:"You're settling in. Kuabo will help you make sure nothing important is missed.", color:"#2dd4bf" },
-      es: { emoji:"💪", title:`¡Estás progresando, ${userName}!`, msg:"Te estás instalando. Kuabo te ayudará a no olvidar nada importante.", color:"#2dd4bf" },
-    },
-    // Bien installé
-    established: {
-      fr: { emoji:"🚀", title:`Impressionnant, ${userName} !`, msg:"Tu es bien installé. Kuabo va t'aider à passer au niveau supérieur.", color:"#a78bfa" },
-      en: { emoji:"🚀", title:`Impressive, ${userName}!`, msg:"You're well established. Kuabo will help you level up.", color:"#a78bfa" },
-      es: { emoji:"🚀", title:`¡Impresionante, ${userName}!`, msg:"Estás bien establecido. Kuabo te ayudará a subir de nivel.", color:"#a78bfa" },
-    },
+    not_arrived: { fr:{ emoji:"🛫", title:`${userName}, tu es presque prêt !`, msg:"Ta checklist est complète. Kuabo va t'accompagner jusqu'à ton arrivée et après.", color:"#e8b84b" }, en:{ emoji:"🛫", title:`${userName}, you're almost ready!`, msg:"Your checklist is complete. Kuabo will guide you until your arrival and beyond.", color:"#e8b84b" }, es:{ emoji:"🛫", title:`${userName}, ¡ya casi estás listo!`, msg:"Tu lista está completa. Kuabo te acompañará hasta tu llegada y más allá.", color:"#e8b84b" } },
+    new:         { fr:{ emoji:"🇺🇸", title:`Bienvenue aux USA, ${userName} !`, msg:"Tu viens d'arriver. Kuabo va t'aider à poser les bases essentielles dès maintenant.", color:"#22c55e" }, en:{ emoji:"🇺🇸", title:`Welcome to the USA, ${userName}!`, msg:"You just arrived. Kuabo will help you set up the essentials right now.", color:"#22c55e" }, es:{ emoji:"🇺🇸", title:`¡Bienvenido a EE.UU., ${userName}!`, msg:"Acabas de llegar. Kuabo te ayudará a establecer lo esencial ahora mismo.", color:"#22c55e" } },
+    settling:    { fr:{ emoji:"💪", title:`Tu avances bien, ${userName} !`, msg:"Tu es en train de t'installer. Kuabo va t'aider à ne rien oublier d'important.", color:"#2dd4bf" }, en:{ emoji:"💪", title:`You're making progress, ${userName}!`, msg:"You're settling in. Kuabo will help you make sure nothing important is missed.", color:"#2dd4bf" }, es:{ emoji:"💪", title:`¡Estás progresando, ${userName}!`, msg:"Te estás instalando. Kuabo te ayudará a no olvidar nada importante.", color:"#2dd4bf" } },
+    established: { fr:{ emoji:"🚀", title:`Impressionnant, ${userName} !`, msg:"Tu es bien installé. Kuabo va t'aider à passer au niveau supérieur.", color:"#a78bfa" }, en:{ emoji:"🚀", title:`Impressive, ${userName}!`, msg:"You're well established. Kuabo will help you level up.", color:"#a78bfa" }, es:{ emoji:"🚀", title:`¡Impresionante, ${userName}!`, msg:"Estás bien establecido. Kuabo te ayudará a subir de nivel.", color:"#a78bfa" } },
   };
-
-  // Choisir selon arrival (ancien champ) ou userStatus
   let key: keyof typeof content = "new";
-  if (userStatus === "settling")    key = "settling";
+  if (userStatus === "settling") key = "settling";
   else if (userStatus === "established") key = "established";
-  else if (arrival === "abroad")    key = "not_arrived";
-  else if (arrival === "months")    key = "settling";
-  else if (arrival === "settled")   key = "established";
-
+  else if (arrival === "abroad") key = "not_arrived";
+  else if (arrival === "months") key = "settling";
+  else if (arrival === "settled") key = "established";
   const c = content[key][lang];
-  const particles = Array.from({length:20},(_,i)=>({
-    id:i, x:Math.random()*100, delay:Math.random()*.5,
-    dur:1.2+Math.random()*.8, color:["#e8b84b","#22c55e","#2dd4bf","#f97316","#a78bfa"][i%5],
-    size:5+Math.random()*8,
-  }));
-
+  const particles = Array.from({length:20},(_,i)=>({ id:i, x:Math.random()*100, delay:Math.random()*.5, dur:1.2+Math.random()*.8, color:["#e8b84b","#22c55e","#2dd4bf","#f97316","#a78bfa"][i%5], size:5+Math.random()*8 }));
   useEffect(() => {
-    const t1 = setTimeout(()=>setStep(1), 100);
-    const t2 = setTimeout(()=>setStep(2), 600);
-    const t3 = setTimeout(()=>setStep(3), 1300);
-    const t4 = setTimeout(onDone, 3000);
-    return ()=>{ clearTimeout(t1);clearTimeout(t2);clearTimeout(t3);clearTimeout(t4); };
+    const t1=setTimeout(()=>setStep(1),100);
+    const t2=setTimeout(()=>setStep(2),600);
+    const t3=setTimeout(()=>setStep(3),1300);
+    const t4=setTimeout(onDone,3000);
+    return()=>{ clearTimeout(t1);clearTimeout(t2);clearTimeout(t3);clearTimeout(t4); };
   }, [onDone]);
-
   return (
     <>
-      {/* Confetti */}
       {step>=1 && particles.map(p=>(
         <div key={p.id} style={{ position:"fixed", left:p.x+"%", top:-20, width:p.size, height:p.size, borderRadius:"50%", background:p.color, zIndex:9999, pointerEvents:"none", animation:`confettiFall ${p.dur}s ${p.delay}s ease-in forwards` }}/>
       ))}
-
-      {/* Overlay */}
       <div onClick={onDone} style={{ position:"fixed", inset:0, background:"rgba(11,15,26,.93)", backdropFilter:"blur(8px)", zIndex:998, animation:"fadeIn .3s ease" }}/>
-
-      {/* Card centrale */}
       <div style={{ position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)", zIndex:999, width:300, animation:"popIn .5s cubic-bezier(.34,1.56,.64,1)", pointerEvents:"none" }}>
-        <div style={{ background:"linear-gradient(135deg,#0f1521,#1a2438)", border:`1.5px solid ${c.color}50`, borderRadius:24, padding:"36px 24px", textAlign:"center", boxShadow:`0 24px 64px rgba(0,0,0,.7), 0 0 40px ${c.color}15` }}>
+        <div style={{ background:"linear-gradient(135deg,#0f1521,#1a2438)", border:`1.5px solid ${c.color}50`, borderRadius:24, padding:"36px 24px", textAlign:"center", boxShadow:`0 24px 64px rgba(0,0,0,.7),0 0 40px ${c.color}15` }}>
           {step>=1 && <div style={{ fontSize:64, marginBottom:16, display:"inline-block", animation:"emojiPop .4s cubic-bezier(.34,1.56,.64,1)" }}>{c.emoji}</div>}
           {step>=2 && <div style={{ fontSize:19, fontWeight:800, color:c.color, marginBottom:10, animation:"slideUp .4s ease" }}>{c.title}</div>}
           {step>=3 && <div style={{ fontSize:13, color:"rgba(244,241,236,.7)", lineHeight:1.65, marginBottom:20, animation:"slideUp .4s ease" }}>{c.msg}</div>}
           <div style={{ height:3, background:"#1e2a3a", borderRadius:3, overflow:"hidden" }}>
             <div style={{ height:"100%", background:`linear-gradient(to right,${c.color},#2dd4bf)`, borderRadius:3, animation:"barFill 3s linear forwards" }}/>
           </div>
-          <div style={{ fontSize:10, color:"#333", marginTop:8 }}>
-            {lang==="fr"?"Tape pour continuer":lang==="es"?"Toca para continuar":"Tap to continue"}
-          </div>
+          <div style={{ fontSize:10, color:"#333", marginTop:8 }}>{lang==="fr"?"Tape pour continuer":lang==="es"?"Toca para continuar":"Tap to continue"}</div>
         </div>
       </div>
     </>
@@ -447,115 +247,59 @@ function WelcomeAnimation({ lang, userName, userStatus, arrival, onDone }: {
 }
 
 // ══════════════════════════════════════════════
-// POPUP LÉGÈRE — lightCheck
-// ✅ Sauvegarde les items cochés dans completedSteps
+// LIGHT CHECK POPUP
 // ══════════════════════════════════════════════
 function LightCheckPopup({ lang, userStatus, arrival, userId, onClose }: {
-  lang: Lang; userStatus: UserStatus; arrival?: string;
-  userId: string | undefined; onClose: (checkedIds: string[]) => void;
+  lang: Lang; userStatus: UserStatus; arrival?: string; userId: string | undefined; onClose: (checkedIds: string[]) => void;
 }) {
   const [checked, setChecked] = useState<string[]>([]);
   const [saving,  setSaving]  = useState(false);
-
   const headers = {
-    not_arrived: {
-      fr:{ title:"Presque prêt 🛫",       sub:"Avant ton départ, vérifions les essentiels." },
-      en:{ title:"Almost ready 🛫",        sub:"Before you leave, let's check the essentials." },
-      es:{ title:"Casi listo 🛫",          sub:"Antes de partir, verifiquemos lo esencial." },
-    },
-    new: {
-      fr:{ title:"Bienvenue aux USA 🇺🇸",  sub:"Tu viens d'arriver — coche ce que tu as déjà." },
-      en:{ title:"Welcome to the USA 🇺🇸", sub:"You just arrived — check what you already have." },
-      es:{ title:"Bienvenido a EE.UU. 🇺🇸",sub:"Acabas de llegar — marca lo que ya tienes." },
-    },
-    settling: {
-      fr:{ title:"Tu t'installes bien 💪",  sub:"Quelques mois déjà — coche ce que tu as en place." },
-      en:{ title:"Settling in well 💪",     sub:"A few months in — check what you have in place." },
-      es:{ title:"Te instalas bien 💪",     sub:"Unos meses ya — marca lo que ya tienes." },
-    },
-    established: {
-      fr:{ title:"Bien établi 🚀",          sub:"Optimisons ta situation — coche ce que tu as." },
-      en:{ title:"Well established 🚀",     sub:"Let's optimize — check what you have." },
-      es:{ title:"Bien establecido 🚀",     sub:"Optimicemos — marca lo que ya tienes." },
-    },
+    not_arrived: { fr:{ title:"Presque prêt 🛫", sub:"Avant ton départ, vérifions les essentiels." }, en:{ title:"Almost ready 🛫", sub:"Before you leave, let's check the essentials." }, es:{ title:"Casi listo 🛫", sub:"Antes de partir, verifiquemos lo esencial." } },
+    new:         { fr:{ title:"Bienvenue aux USA 🇺🇸", sub:"Tu viens d'arriver — coche ce que tu as déjà." }, en:{ title:"Welcome to the USA 🇺🇸", sub:"You just arrived — check what you already have." }, es:{ title:"Bienvenido a EE.UU. 🇺🇸", sub:"Acabas de llegar — marca lo que ya tienes." } },
+    settling:    { fr:{ title:"Tu t'installes bien 💪", sub:"Quelques mois déjà — coche ce que tu as en place." }, en:{ title:"Settling in well 💪", sub:"A few months in — check what you have in place." }, es:{ title:"Te instalas bien 💪", sub:"Unos meses ya — marca lo que ya tienes." } },
+    established: { fr:{ title:"Bien établi 🚀", sub:"Optimisons ta situation — coche ce que tu as." }, en:{ title:"Well established 🚀", sub:"Let's optimize — check what you have." }, es:{ title:"Bien establecido 🚀", sub:"Optimicemos — marca lo que ya tienes." } },
   };
-
   let hKey: keyof typeof headers = "new";
-  if (userStatus === "settling")         hKey = "settling";
+  if (userStatus === "settling") hKey = "settling";
   else if (userStatus === "established") hKey = "established";
-  else if (arrival === "abroad")         hKey = "not_arrived";
-  else if (arrival === "months")         hKey = "settling";
-  else if (arrival === "settled")        hKey = "established";
-
+  else if (arrival === "abroad") hKey = "not_arrived";
+  else if (arrival === "months") hKey = "settling";
+  else if (arrival === "settled") hKey = "established";
   const h = headers[hKey][lang];
-
-  // ✅ Ces items sont mappés sur de vrais IDs de completedSteps
   const items = {
-    fr:[
-      { id:"phone",   emoji:"📱", label:"Numéro / SIM US actif",    desc:"T-Mobile ou Mint Mobile" },
-      { id:"bank",    emoji:"🏦", label:"Compte bancaire ouvert",    desc:"Chase, BofA ou autre" },
-      { id:"housing", emoji:"🏠", label:"Logement trouvé",           desc:"Hôtel, Airbnb ou appartement" },
-      { id:"ssn",     emoji:"🪪", label:"SSN demandé ou reçu",       desc:"Bureau SSA visité" },
-      { id:"job",     emoji:"💼", label:"Emploi trouvé",             desc:"Premier job aux USA" },
-    ],
-    en:[
-      { id:"phone",   emoji:"📱", label:"Active US SIM / number",    desc:"T-Mobile or Mint Mobile" },
-      { id:"bank",    emoji:"🏦", label:"Bank account opened",       desc:"Chase, BofA or other" },
-      { id:"housing", emoji:"🏠", label:"Housing found",             desc:"Hotel, Airbnb or apartment" },
-      { id:"ssn",     emoji:"🪪", label:"SSN requested or received", desc:"SSA office visited" },
-      { id:"job",     emoji:"💼", label:"Job found",                 desc:"First job in the USA" },
-    ],
-    es:[
-      { id:"phone",   emoji:"📱", label:"SIM / número US activo",    desc:"T-Mobile o Mint Mobile" },
-      { id:"bank",    emoji:"🏦", label:"Cuenta bancaria abierta",   desc:"Chase, BofA u otro" },
-      { id:"housing", emoji:"🏠", label:"Vivienda encontrada",       desc:"Hotel, Airbnb o apartamento" },
-      { id:"ssn",     emoji:"🪪", label:"SSN solicitado o recibido", desc:"Oficina SSA visitada" },
-      { id:"job",     emoji:"💼", label:"Empleo encontrado",         desc:"Primer trabajo en EE.UU." },
-    ],
+    fr:[ { id:"phone", emoji:"📱", label:"Numéro / SIM US actif", desc:"T-Mobile ou Mint Mobile" }, { id:"bank", emoji:"🏦", label:"Compte bancaire ouvert", desc:"Chase, BofA ou autre" }, { id:"housing", emoji:"🏠", label:"Logement trouvé", desc:"Hôtel, Airbnb ou appartement" }, { id:"ssn", emoji:"🪪", label:"SSN demandé ou reçu", desc:"Bureau SSA visité" }, { id:"job", emoji:"💼", label:"Emploi trouvé", desc:"Premier job aux USA" } ],
+    en:[ { id:"phone", emoji:"📱", label:"Active US SIM / number", desc:"T-Mobile or Mint Mobile" }, { id:"bank", emoji:"🏦", label:"Bank account opened", desc:"Chase, BofA or other" }, { id:"housing", emoji:"🏠", label:"Housing found", desc:"Hotel, Airbnb or apartment" }, { id:"ssn", emoji:"🪪", label:"SSN requested or received", desc:"SSA office visited" }, { id:"job", emoji:"💼", label:"Job found", desc:"First job in the USA" } ],
+    es:[ { id:"phone", emoji:"📱", label:"SIM / número US activo", desc:"T-Mobile o Mint Mobile" }, { id:"bank", emoji:"🏦", label:"Cuenta bancaria abierta", desc:"Chase, BofA u otro" }, { id:"housing", emoji:"🏠", label:"Vivienda encontrada", desc:"Hotel, Airbnb o apartamento" }, { id:"ssn", emoji:"🪪", label:"SSN solicitado o recibido", desc:"Oficina SSA visitada" }, { id:"job", emoji:"💼", label:"Empleo encontrado", desc:"Primer trabajo en EE.UU." } ],
   }[lang];
-
-  const toggle = (id: string) =>
-    setChecked(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
-
+  const toggle = (id: string) => setChecked(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
   const handleContinue = async () => {
     if (saving) return;
     setSaving(true);
-    // ✅ Sauvegarder dans Firebase si des items sont cochés
     if (checked.length > 0 && userId) {
       try {
         const snap = await getDoc(doc(db, "users", userId));
-        const existing: string[] = snap.exists()
-          ? (snap.data() as any)?.completedSteps || []
-          : [];
-        const merged = Array.from(new Set([...existing, ...checked]));
-        await updateDoc(doc(db, "users", userId), { completedSteps: merged });
+        const existing: string[] = snap.exists() ? (snap.data() as any)?.completedSteps || [] : [];
+        await updateDoc(doc(db, "users", userId), { completedSteps: Array.from(new Set([...existing, ...checked])) });
       } catch {}
     }
     setSaving(false);
-    onClose(checked); // ✅ renvoie les ids cochés au parent
+    onClose(checked);
   };
-
   const btnLabel = { fr:"Continuer →", en:"Continue →", es:"Continuar →" }[lang];
-  const note = {
-    fr:"Coche honnêtement — ça ajuste ton parcours Kuabo.",
-    en:"Check honestly — it adjusts your Kuabo journey.",
-    es:"Marca honestamente — ajusta tu recorrido Kuabo.",
-  }[lang];
-
+  const note = { fr:"Coche honnêtement — ça ajuste ton parcours Kuabo.", en:"Check honestly — it adjusts your Kuabo journey.", es:"Marca honestamente — ajusta tu recorrido Kuabo." }[lang];
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(11,15,26,.92)", backdropFilter:"blur(8px)", zIndex:400, display:"flex", alignItems:"flex-end", justifyContent:"center", padding:"0 12px 20px" }}>
       <div style={{ background:"#0f1521", border:"1.5px solid rgba(232,184,75,.25)", borderRadius:22, padding:"24px 18px", width:"100%", maxWidth:480, animation:"slideUp .4s ease" }}>
         <h3 style={{ fontSize:18, fontWeight:800, textAlign:"center" as const, color:"#f4f1ec", marginBottom:6 }}>{h.title}</h3>
         <p style={{ fontSize:12, color:"#aaa", textAlign:"center" as const, marginBottom:6, lineHeight:1.6 }}>{h.sub}</p>
         <p style={{ fontSize:11, color:"#555", textAlign:"center" as const, marginBottom:16, lineHeight:1.5 }}>{note}</p>
-
         <div style={{ display:"flex", flexDirection:"column" as const, gap:8, marginBottom:18 }}>
           {items.map(item => {
             const done = checked.includes(item.id);
             return (
-              <div key={item.id} onClick={()=>toggle(item.id)}
-                style={{ display:"flex", alignItems:"center", gap:10, padding:"12px", background:done?"rgba(34,197,94,.06)":"#141d2e", border:`1px solid ${done?"rgba(34,197,94,.3)":"#1e2a3a"}`, borderRadius:12, cursor:"pointer", transition:"all .2s" }}>
-                <div style={{ width:22, height:22, borderRadius:6, background:done?"#22c55e":"transparent", border:`2px solid ${done?"#22c55e":"#2a3448"}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .2s" }}>
+              <div key={item.id} onClick={()=>toggle(item.id)} style={{ display:"flex", alignItems:"center", gap:10, padding:"12px", background:done?"rgba(34,197,94,.06)":"#141d2e", border:`1px solid ${done?"rgba(34,197,94,.3)":"#1e2a3a"}`, borderRadius:12, cursor:"pointer", transition:"all .2s" }}>
+                <div style={{ width:22, height:22, borderRadius:6, background:done?"#22c55e":"transparent", border:`2px solid ${done?"#22c55e":"#2a3448"}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                   {done && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                 </div>
                 <span style={{ fontSize:20 }}>{item.emoji}</span>
@@ -568,9 +312,7 @@ function LightCheckPopup({ lang, userStatus, arrival, userId, onClose }: {
             );
           })}
         </div>
-
-        <button onClick={handleContinue} disabled={saving}
-          style={{ width:"100%", padding:"13px", background:"#e8b84b", border:"none", borderRadius:12, color:"#000", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:saving?.7:1 }}>
+        <button onClick={handleContinue} disabled={saving} style={{ width:"100%", padding:"13px", background:"#e8b84b", border:"none", borderRadius:12, color:"#000", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", opacity:saving?.7:1 }}>
           {saving ? "⏳..." : btnLabel}
         </button>
       </div>
@@ -585,7 +327,6 @@ export default function Dashboard() {
   const pageRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
-  // ── State utilisateur ──────────────────────────────────
   const [ready,            setReady]            = useState(false);
   const [lang,             setLang]             = useState<Lang>("fr");
   const [activeTab,        setActiveTab]        = useState<string>("home");
@@ -599,8 +340,6 @@ export default function Dashboard() {
   const [arrivalDate,      setArrivalDate]      = useState<string | null>(null);
   const [armyStatus,       setArmyStatus]       = useState("");
   const [menuOpen,         setMenuOpen]         = useState(false);
-
-  // ── Status system ──────────────────────────────────────
   const [userStatus,       setUserStatus]       = useState<UserStatus>("not_arrived");
   const [lightCheckSeen,   setLightCheckSeen]   = useState(false);
   const [showWelcome,      setShowWelcome]      = useState(false);
@@ -608,15 +347,9 @@ export default function Dashboard() {
   const [userArrival,      setUserArrival]      = useState<string>("");
   const [arrivalConfirmed, setArrivalConfirmed] = useState(false);
   const [preArrivalDone,   setPreArrivalDone]   = useState(false);
-
-  // ── State démo ─────────────────────────────────────────
   const [showDemo,         setShowDemo]         = useState(false);
-  const [demoHighlight,    setDemoHighlight]    = useState<string | null>(null);
   const [toast,            setToast]            = useState<string | null>(null);
   const [lastAction,       setLastAction]       = useState<string | null>(null);
-  const [preChecklist,     setPreChecklist]     = useState<Record<string, boolean>>({});
-
-  // ── State modals ───────────────────────────────────────
   const [showSearch,       setShowSearch]       = useState(false);
   const [activeStepModal,  setActiveStepModal]  = useState<string | null>(null);
   const [showArmyGuide,    setShowArmyGuide]    = useState(false);
@@ -626,38 +359,27 @@ export default function Dashboard() {
   const [deleteInput,      setDeleteInput]      = useState("");
   const [deleting,         setDeleting]         = useState(false);
   const [deleteError,      setDeleteError]      = useState("");
-  const [adminPopupMsg,    setAdminPopupMsg]    = useState<any>(null); // ✅ popup message admin
+  const [adminPopupMsg,    setAdminPopupMsg]    = useState<any>(null);
 
   const streak                        = useStreak(userId);
   const { currentPhase, phaseProgress } = getPhaseStats(completedSteps);
 
   useEffect(() => { pageRef.current?.scrollTo({ top: 0, behavior: "auto" }); }, [activeTab]);
 
-  // ── Auth + Firebase ────────────────────────────────────
   useEffect(() => {
-    const saved = localStorage.getItem("preChecklist");
-    if (saved) try { setPreChecklist(JSON.parse(saved)); } catch {}
-
     const timeout = setTimeout(() => setReady(true), 5000);
     const unsub   = onAuthStateChanged(auth, async user => {
       clearTimeout(timeout);
       if (!user) { window.location.href = "/login"; return; }
       setUserId(user.uid);
       setUserEmail(user.email || "");
-
       try {
         const snap = await getDoc(doc(db, "users", user.uid));
         const data = snap.exists() ? (snap.data() as any) : {};
         const savedLang = localStorage.getItem("lang") as Lang;
-
         const rawName = data?.name;
-        const name = (!rawName || rawName === "***" || rawName === "")
-          ? (user.displayName || user.email?.split("@")[0] || "User")
-          : rawName;
-        if (rawName === "***" || rawName === "") {
-          try { await updateDoc(doc(db, "users", user.uid), { name, deleted: false }); } catch {}
-        }
-
+        const name = (!rawName || rawName === "***" || rawName === "") ? (user.displayName || user.email?.split("@")[0] || "User") : rawName;
+        if (rawName === "***" || rawName === "") { try { await updateDoc(doc(db, "users", user.uid), { name, deleted: false }); } catch {} }
         const userLang = (data?.lang as Lang) || savedLang || "fr";
         setUserName(name);
         setLang(userLang);
@@ -673,83 +395,53 @@ export default function Dashboard() {
         localStorage.setItem("userName", name);
         localStorage.setItem("lang", userLang);
 
-        // ✅ STATUS SYSTEM
-        const status = computeStatus({
-          arrivalConfirmed:    data?.arrivalConfirmed,
-          arrivalDate:         data?.arrivalDate,
-          arrival:             data?.arrival,
-          preArrivalCompleted: data?.preArrivalCompleted, // ✅ manquait !
-        });
+        const status = computeStatus({ arrivalConfirmed: data?.arrivalConfirmed, arrivalDate: data?.arrivalDate, arrival: data?.arrival, preArrivalCompleted: data?.preArrivalCompleted });
         setUserStatus(status);
 
-        // ✅ Rediriger si not_arrived
-        if (status === "not_arrived") {
-          window.location.href = "/pre-arrival";
-          return;
-        }
+        if (status === "not_arrived") { window.location.href = "/pre-arrival"; return; }
 
-        // ✅ Popup légère pour new — une seule fois
-        // Animation bienvenue D'ABORD, puis popup après
         const lcs = data?.lightCheckSeen || localStorage.getItem("kuabo_lightcheck_seen") === "true";
         setLightCheckSeen(lcs);
-        if (!lcs) {
-          // Animation bienvenue → puis popup après 3.2s
-          setTimeout(() => setShowWelcome(true), 800);
-        }
+        if (!lcs) { setTimeout(() => setShowWelcome(true), 800); }
 
-        // ✅ Démo — afficher si jamais vue
         const demoSeenLocal = localStorage.getItem("kuabo_demo_seen");
-        if (!data?.demoSeen && !demoSeenLocal) {
-          setTimeout(() => setShowDemo(true), 800);
-        }
+        if (!data?.demoSeen && !demoSeenLocal) { setTimeout(() => setShowDemo(true), 800); }
 
-        // ✅ Détecter si l'user revient après déconnexion pour suppression
         const pendingDelete = localStorage.getItem("kuabo_pending_delete");
-        if (pendingDelete === "true") {
-          localStorage.removeItem("kuabo_pending_delete");
-          setTimeout(() => setShowDeleteModal(true), 1000);
-        }
+        if (pendingDelete === "true") { localStorage.removeItem("kuabo_pending_delete"); setTimeout(() => setShowDeleteModal(true), 1000); }
 
-        // ✅ Charger message admin urgent non vu
+        // ✅ Mettre à jour lastSeen pour les notifications inactif
+        updateDoc(doc(db, "users", user.uid), { lastSeen: new Date().toISOString() }).catch(() => {});
+
         try {
           const msgSnap = await getDocs(collection(db, "admin_messages"));
           for (const d of msgSnap.docs) {
             const mdata = d.data() as any;
             if (!mdata.active || (mdata.type !== "urgent" && mdata.type !== "info")) continue;
             if (mdata.target !== "all" && mdata.target !== `state:${data?.state}` && mdata.target !== data?.reason) continue;
-            // Vérifier si déjà vu
             const seenSnap = await getDoc(doc(db, "users", user.uid, "messages", d.id)).catch(() => null);
-            if (!seenSnap?.exists() || !seenSnap.data()?.seen) {
-              setTimeout(() => setAdminPopupMsg({ id: d.id, ...mdata }), 1500);
-              break;
-            }
+            if (!seenSnap?.exists() || !seenSnap.data()?.seen) { setTimeout(() => setAdminPopupMsg({ id: d.id, ...mdata }), 1500); break; }
           }
         } catch {}
 
-        // Mettre à jour daysInUSA en background
         if (data?.arrivalDate && data?.arrivalConfirmed) {
           const days = computeDaysInUSA(data.arrivalDate);
           updateDoc(doc(db, "users", user.uid), { daysInUSA: days, status }).catch(() => {});
         }
-
       } catch {}
       setReady(true);
     });
     return () => { clearTimeout(timeout); unsub(); };
   }, []);
 
-  // ── Fermer lightCheck ──────────────────────────────────
   const handleLightCheckClose = useCallback(async () => {
     setShowLightCheck(false);
     setLightCheckSeen(true);
     localStorage.setItem("kuabo_lightcheck_seen", "true");
     const user = auth.currentUser;
-    if (user) {
-      try { await updateDoc(doc(db, "users", user.uid), { lightCheckSeen: true }); } catch {}
-    }
+    if (user) { try { await updateDoc(doc(db, "users", user.uid), { lightCheckSeen: true }); } catch {} }
   }, []);
 
-  // ── Actions ────────────────────────────────────────────
   const changeLang = useCallback(async (l: Lang) => {
     setLang(l); localStorage.setItem("lang", l); setMenuOpen(false);
     const user = auth.currentUser;
@@ -759,17 +451,14 @@ export default function Dashboard() {
   const toggleStep = useCallback(async (stepId: string) => {
     const user = auth.currentUser;
     if (!user) return;
-    const msgs = {
-      removed: { fr:"❌ Étape retirée",    en:"❌ Step removed",    es:"❌ Paso eliminado" },
-      done:    { fr:"✅ Étape complétée !", en:"✅ Step completed!", es:"✅ ¡Paso completado!" },
-    };
+    const msgs = { removed:{ fr:"❌ Étape retirée", en:"❌ Step removed", es:"❌ Paso eliminado" }, done:{ fr:"✅ Étape complétée !", en:"✅ Step completed!", es:"✅ ¡Paso completado!" } };
     setCompletedSteps(prev => {
-      const isDone  = prev.includes(stepId);
+      const isDone = prev.includes(stepId);
       const updated = isDone ? prev.filter(s => s !== stepId) : [...prev, stepId];
       if (!isDone) {
         const phaseIds: PhaseId[] = [1, 2, 3, 4, 5];
         for (const pid of phaseIds) {
-          const ids        = PHASE_STEPS[pid].map(s => s.id);
+          const ids = PHASE_STEPS[pid].map(s => s.id);
           const wasComplete = ids.every(id => prev.includes(id));
           const nowComplete = ids.every(id => updated.includes(id));
           if (!wasComplete && nowComplete) { setTimeout(() => setPhaseUnlockAnim(pid), 500); break; }
@@ -787,11 +476,7 @@ export default function Dashboard() {
     if (!lastAction) return;
     const user = auth.currentUser;
     if (!user) return;
-    setCompletedSteps(prev => {
-      const updated = prev.filter(s => s !== lastAction);
-      updateDoc(doc(db, "users", user.uid), { completedSteps: updated }).catch(() => {});
-      return updated;
-    });
+    setCompletedSteps(prev => { const updated = prev.filter(s => s !== lastAction); updateDoc(doc(db, "users", user.uid), { completedSteps: updated }).catch(() => {}); return updated; });
     setToast(null); setLastAction(null);
   }, [lastAction]);
 
@@ -803,40 +488,23 @@ export default function Dashboard() {
   const handleDeleteAccount = async () => {
     const user = auth.currentUser;
     if (!user) return;
-    if (deleteInput !== "DELETE") {
-      setDeleteError(lang === "fr" ? "Tape DELETE pour confirmer" : "Type DELETE to confirm");
-      return;
-    }
+    if (deleteInput !== "DELETE") { setDeleteError(lang === "fr" ? "Tape DELETE pour confirmer" : "Type DELETE to confirm"); return; }
     setDeleting(true);
     try {
       const snap = await getDoc(doc(db, "users", user.uid));
       const data = snap.exists() ? snap.data() : {};
-      await setDoc(doc(db, "deleted_users", user.uid), {
-        ...data,
-        deletedAt:    new Date().toISOString(),
-        originalUid:  user.uid,
-        originalEmail:user.email,
-      });
-      await updateDoc(doc(db, "users", user.uid), {
-        deleted: true, deletedAt: new Date().toISOString(),
-        name: "***", email: "***", location: null, communityVisible: false,
-      });
+      await setDoc(doc(db, "deleted_users", user.uid), { ...data, deletedAt: new Date().toISOString(), originalUid: user.uid, originalEmail: user.email });
+      await updateDoc(doc(db, "users", user.uid), { deleted: true, deletedAt: new Date().toISOString(), name: "***", email: "***", location: null, communityVisible: false });
       await deleteUser(user);
       localStorage.clear();
       window.location.href = "/home";
     } catch (err: any) {
       if (err.code === "auth/requires-recent-login") {
-        // ✅ Déconnecter → rediriger vers login avec flag
-        // À la reconnexion, Firebase aura une session fraîche
-        setDeleting(false);
-        setShowDeleteModal(false);
+        setDeleting(false); setShowDeleteModal(false);
         localStorage.setItem("kuabo_pending_delete", "true");
         try { await signOut(auth); } catch {}
         window.location.href = "/login?action=delete";
-      } else {
-        setDeleteError(lang === "fr" ? "Erreur — réessaie" : "Error — try again");
-        setDeleting(false);
-      }
+      } else { setDeleteError(lang === "fr" ? "Erreur — réessaie" : "Error — try again"); setDeleting(false); }
     }
   };
 
@@ -845,12 +513,9 @@ export default function Dashboard() {
     else setActiveTab("home");
   }, [activeTab]);
 
-  // ── Loading ────────────────────────────────────────────
   if (!ready) return (
     <div style={{ minHeight:"100dvh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"#0b0f1a", gap:14 }}>
-      <div style={{ fontSize:28, fontWeight:900, fontFamily:"serif" }}>
-        <span style={{ color:"#e8b84b" }}>Ku</span><span style={{ color:"#f4f1ec" }}>abo</span>
-      </div>
+      <div style={{ fontSize:28, fontWeight:900, fontFamily:"serif" }}><span style={{ color:"#e8b84b" }}>Ku</span><span style={{ color:"#f4f1ec" }}>abo</span></div>
       <svg width="36" height="36" viewBox="0 0 34 34" style={{ animation:"spin 1s linear infinite" }}>
         <circle cx="17" cy="17" r="13" fill="none" stroke="#1e2a3a" strokeWidth="4"/>
         <circle cx="17" cy="17" r="13" fill="none" stroke="#e8b84b" strokeWidth="4" strokeLinecap="round" strokeDasharray="82" strokeDashoffset="62"/>
@@ -862,144 +527,57 @@ export default function Dashboard() {
   return (
     <div style={{ background:"#0b0f1a", height:"100dvh", overflow:"hidden", color:"#f4f1ec" }}>
 
-      {/* Démo */}
-      {showDemo && ready && (
-        <DemoGuide lang={lang} userName={userName} onTabChange={tab=>setActiveTab(tab)} onHighlight={target=>setDemoHighlight(target)}/>
-      )}
+      {/* ✅ FCM SETUP — demande permission notifications */}
+      {userId && <FCMSetup userId={userId} lang={lang} />}
 
-      {/* ✅ POPUP ANIMÉE MESSAGE ADMIN URGENT */}
+      {showDemo && ready && <DemoGuide lang={lang} userName={userName} onTabChange={tab=>setActiveTab(tab)} onHighlight={()=>{}}/>}
+
+      {/* Popup message admin */}
       {adminPopupMsg && (
-        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,.88)",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(8px)",padding:"0 20px" }}
-          onClick={()=>setAdminPopupMsg(null)}>
-          <div style={{ background:"#0f1521",border:`1.5px solid ${adminPopupMsg.type==="urgent"?"rgba(239,68,68,.4)":"rgba(232,184,75,.3)"}`,borderRadius:22,padding:"28px 22px",width:"100%",maxWidth:380,animation:"alertPop .5s cubic-bezier(.34,1.56,.64,1)" }}
-            onClick={e=>e.stopPropagation()}>
-            {/* Icône animée */}
-            <div style={{ textAlign:"center",marginBottom:16 }}>
-              <div style={{ fontSize:52,animation:"emojiPop .4s cubic-bezier(.34,1.56,.64,1)" }}>
-                {adminPopupMsg.type==="urgent"?"⚠️":"📢"}
-              </div>
-            </div>
-            <div style={{ fontSize:10,color:adminPopupMsg.type==="urgent"?"#ef4444":"#e8b84b",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase" as const,textAlign:"center",marginBottom:8 }}>
-              {adminPopupMsg.type==="urgent"
-                ? (lang==="fr"?"Message urgent Kuabo":lang==="es"?"Mensaje urgente Kuabo":"Urgent Kuabo message")
-                : (lang==="fr"?"Information Kuabo":lang==="es"?"Información Kuabo":"Kuabo Information")}
-            </div>
-            <div style={{ fontSize:17,fontWeight:800,color:"#f4f1ec",textAlign:"center",marginBottom:10,lineHeight:1.4 }}>
-              {adminPopupMsg[`title_${lang}`]||adminPopupMsg.title_fr||adminPopupMsg.title||""}
-            </div>
-            {(adminPopupMsg[`content_${lang}`]||adminPopupMsg.content_fr||adminPopupMsg.content)&&(
-              <div style={{ fontSize:13,color:"#aaa",textAlign:"center",lineHeight:1.7,marginBottom:20 }}>
-                {adminPopupMsg[`content_${lang}`]||adminPopupMsg.content_fr||adminPopupMsg.content}
-              </div>
-            )}
+        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,.88)",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(8px)",padding:"0 20px" }} onClick={()=>setAdminPopupMsg(null)}>
+          <div style={{ background:"#0f1521",border:`1.5px solid ${adminPopupMsg.type==="urgent"?"rgba(239,68,68,.4)":"rgba(232,184,75,.3)"}`,borderRadius:22,padding:"28px 22px",width:"100%",maxWidth:380,animation:"alertPop .5s cubic-bezier(.34,1.56,.64,1)" }} onClick={e=>e.stopPropagation()}>
+            <div style={{ textAlign:"center",marginBottom:16 }}><div style={{ fontSize:52,animation:"emojiPop .4s cubic-bezier(.34,1.56,.64,1)" }}>{adminPopupMsg.type==="urgent"?"⚠️":"📢"}</div></div>
+            <div style={{ fontSize:10,color:adminPopupMsg.type==="urgent"?"#ef4444":"#e8b84b",fontWeight:700,letterSpacing:".1em",textTransform:"uppercase" as const,textAlign:"center",marginBottom:8 }}>{adminPopupMsg.type==="urgent"?(lang==="fr"?"Message urgent Kuabo":lang==="es"?"Mensaje urgente Kuabo":"Urgent Kuabo message"):(lang==="fr"?"Information Kuabo":lang==="es"?"Información Kuabo":"Kuabo Information")}</div>
+            <div style={{ fontSize:17,fontWeight:800,color:"#f4f1ec",textAlign:"center",marginBottom:10,lineHeight:1.4 }}>{adminPopupMsg[`title_${lang}`]||adminPopupMsg.title_fr||""}</div>
+            {(adminPopupMsg[`content_${lang}`]||adminPopupMsg.content_fr)&&(<div style={{ fontSize:13,color:"#aaa",textAlign:"center",lineHeight:1.7,marginBottom:20 }}>{adminPopupMsg[`content_${lang}`]||adminPopupMsg.content_fr}</div>)}
             <div style={{ display:"flex",gap:10 }}>
-              <button onClick={async()=>{
-                // Sauvegarder dans messages user
-                if (userId) {
-                  try {
-                    const { setDoc, doc: fDoc } = await import("firebase/firestore");
-                    await setDoc(fDoc(db,"users",userId,"messages",adminPopupMsg.id),{
-                      seen:true, seenAt:new Date().toISOString(), savedInDocs:true
-                    });
-                  } catch {}
-                }
-                setAdminPopupMsg(null);
-              }} style={{ flex:1,padding:"13px",background:"#141d2e",border:"1px solid #1e2a3a",borderRadius:12,color:"#aaa",fontSize:13,cursor:"pointer",fontFamily:"inherit" }}>
-                {lang==="fr"?"Garder dans Messages":lang==="es"?"Guardar":"Save in Messages"}
-              </button>
-              <button onClick={async()=>{
-                if (userId) {
-                  try {
-                    const { setDoc, doc: fDoc } = await import("firebase/firestore");
-                    await setDoc(fDoc(db,"users",userId,"messages",adminPopupMsg.id),{
-                      seen:true, seenAt:new Date().toISOString(), savedInDocs:false
-                    });
-                  } catch {}
-                }
-                setAdminPopupMsg(null);
-              }} style={{ flex:1,padding:"13px",background:adminPopupMsg.type==="urgent"?"#ef4444":"#e8b84b",border:"none",borderRadius:12,color:"#000",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit" }}>
-                {lang==="fr"?"✓ Lu":lang==="es"?"✓ Leído":"✓ Got it"}
-              </button>
+              <button onClick={async()=>{ if(userId){try{await setDoc(doc(db,"users",userId,"messages",adminPopupMsg.id),{seen:true,seenAt:new Date().toISOString(),savedInDocs:true});}catch{}} setAdminPopupMsg(null); }} style={{ flex:1,padding:"13px",background:"#141d2e",border:"1px solid #1e2a3a",borderRadius:12,color:"#aaa",fontSize:13,cursor:"pointer",fontFamily:"inherit" }}>{lang==="fr"?"Garder dans Messages":lang==="es"?"Guardar":"Save"}</button>
+              <button onClick={async()=>{ if(userId){try{await setDoc(doc(db,"users",userId,"messages",adminPopupMsg.id),{seen:true,seenAt:new Date().toISOString(),savedInDocs:false});}catch{}} setAdminPopupMsg(null); }} style={{ flex:1,padding:"13px",background:adminPopupMsg.type==="urgent"?"#ef4444":"#e8b84b",border:"none",borderRadius:12,color:"#000",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit" }}>{lang==="fr"?"✓ Lu":lang==="es"?"✓ Leído":"✓ Got it"}</button>
             </div>
           </div>
         </div>
       )}
-      {showWelcome && (
-        <WelcomeAnimation
-          lang={lang}
-          userName={userName}
-          userStatus={userStatus}
-          arrival={userArrival}
-          onDone={() => {
-            setShowWelcome(false);
-            // ✅ Toujours montrer lightCheck après animation
-            setShowLightCheck(true);
-          }}
-        />
-      )}
 
-      {/* LightCheck popup — personnalisée selon situation */}
-      {showLightCheck && (
-        <LightCheckPopup
-          lang={lang}
-          userStatus={userStatus}
-          arrival={userArrival}
-          userId={userId}
-          onClose={async (checkedIds) => {
-            setShowLightCheck(false);
-            // ✅ Mettre à jour completedSteps dans le state local
-            if (checkedIds.length > 0) {
-              setCompletedSteps(prev =>
-                Array.from(new Set([...prev, ...checkedIds]))
-              );
-            }
-            // ✅ Marquer lightCheck comme vu
-            localStorage.setItem("kuabo_lightcheck_seen", "true");
-            if (userId) {
-              try {
-                await updateDoc(doc(db, "users", userId), { lightCheckSeen: true });
-              } catch {}
-            }
-          }}
-        />
-      )}
+      {showWelcome && <WelcomeAnimation lang={lang} userName={userName} userStatus={userStatus} arrival={userArrival} onDone={()=>{ setShowWelcome(false); setShowLightCheck(true); }}/>}
+      {showLightCheck && <LightCheckPopup lang={lang} userStatus={userStatus} arrival={userArrival} userId={userId} onClose={async(checkedIds)=>{ setShowLightCheck(false); if(checkedIds.length>0){setCompletedSteps(prev=>Array.from(new Set([...prev,...checkedIds])));} localStorage.setItem("kuabo_lightcheck_seen","true"); if(userId){try{await updateDoc(doc(db,"users",userId),{lightCheckSeen:true});}catch{}} }}/>}
 
-      {/* Modals globaux */}
       {showSearch && <SearchModal lang={lang} onClose={()=>setShowSearch(false)}/>}
       <PhaseUnlockOverlay phaseId={phaseUnlockAnim} lang={lang} onDone={()=>setPhaseUnlockAnim(null)}/>
       <ArmyGuideModal armyStatus={showArmyGuide?armyStatus:null} lang={lang} onClose={()=>setShowArmyGuide(false)}/>
       <StepModal stepId={activeStepModal} lang={lang} completedSteps={completedSteps} onToggle={toggleStep} onClose={()=>setActiveStepModal(null)}/>
 
-      {/* Modal suppression */}
       {showDeleteModal && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.85)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(4px)", padding:"0 16px" }}
-          onClick={()=>{ setShowDeleteModal(false); setDeleteStep(1); setDeleteInput(""); setDeleteError(""); }}>
-          <div style={{ background:"#0f1521", border:"1px solid #1e2a3a", borderRadius:20, padding:"24px 18px", width:"100%", maxWidth:480, animation:"alertPop .3s cubic-bezier(.34,1.56,.64,1)" }}
-            onClick={e=>e.stopPropagation()}>
-            {deleteStep===1 && (<>
-              <div style={{ fontSize:40, textAlign:"center", marginBottom:14 }}>⚠️</div>
-              <div style={{ fontSize:18, fontWeight:700, color:"#ef4444", textAlign:"center", marginBottom:10 }}>{lang==="fr"?"Supprimer ton compte ?":"Delete your account?"}</div>
-              <div style={{ fontSize:13, color:"#aaa", textAlign:"center", lineHeight:1.7, marginBottom:22 }}>{lang==="fr"?"Cette action est irréversible.":"This action is irreversible."}</div>
-              <div style={{ display:"flex", gap:10 }}>
-                <button onClick={()=>{setShowDeleteModal(false);setDeleteStep(1);}} style={{ flex:1, padding:"13px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#f4f1ec", fontSize:14, cursor:"pointer", fontFamily:"inherit" }}>{lang==="fr"?"Annuler":"Cancel"}</button>
-                <button onClick={()=>setDeleteStep(2)} style={{ flex:1, padding:"13px", background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.3)", borderRadius:12, color:"#ef4444", fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>{lang==="fr"?"Continuer":"Continue"}</button>
+        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,.85)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)",padding:"0 16px" }} onClick={()=>{setShowDeleteModal(false);setDeleteStep(1);setDeleteInput("");setDeleteError("");}}>
+          <div style={{ background:"#0f1521",border:"1px solid #1e2a3a",borderRadius:20,padding:"24px 18px",width:"100%",maxWidth:480,animation:"alertPop .3s cubic-bezier(.34,1.56,.64,1)" }} onClick={e=>e.stopPropagation()}>
+            {deleteStep===1&&(<>
+              <div style={{ fontSize:40,textAlign:"center",marginBottom:14 }}>⚠️</div>
+              <div style={{ fontSize:18,fontWeight:700,color:"#ef4444",textAlign:"center",marginBottom:10 }}>{lang==="fr"?"Supprimer ton compte ?":"Delete your account?"}</div>
+              <div style={{ fontSize:13,color:"#aaa",textAlign:"center",lineHeight:1.7,marginBottom:22 }}>{lang==="fr"?"Cette action est irréversible.":"This action is irreversible."}</div>
+              <div style={{ display:"flex",gap:10 }}>
+                <button onClick={()=>{setShowDeleteModal(false);setDeleteStep(1);}} style={{ flex:1,padding:"13px",background:"#141d2e",border:"1px solid #1e2a3a",borderRadius:12,color:"#f4f1ec",fontSize:14,cursor:"pointer",fontFamily:"inherit" }}>{lang==="fr"?"Annuler":"Cancel"}</button>
+                <button onClick={()=>setDeleteStep(2)} style={{ flex:1,padding:"13px",background:"rgba(239,68,68,.1)",border:"1px solid rgba(239,68,68,.3)",borderRadius:12,color:"#ef4444",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit" }}>{lang==="fr"?"Continuer":"Continue"}</button>
               </div>
             </>)}
-            {deleteStep===2 && (<>
-              <div style={{ fontSize:40, textAlign:"center", marginBottom:14 }}>🗑️</div>
-              <div style={{ fontSize:18, fontWeight:700, color:"#ef4444", textAlign:"center", marginBottom:8 }}>{lang==="fr"?"Confirmation finale":"Final confirmation"}</div>
-              <div style={{ fontSize:13, color:"#aaa", textAlign:"center", lineHeight:1.7, marginBottom:18 }}>
-                {lang==="fr"
-                  ? `Tape "DELETE" pour confirmer. Si tu viens d'arriver, tu seras déconnecté puis redirigé pour te reconnecter — la suppression se fera automatiquement.`
-                  : `Type "DELETE" to confirm. If needed, you'll be logged out and redirected to log back in — deletion will happen automatically.`}
-              </div>
+            {deleteStep===2&&(<>
+              <div style={{ fontSize:40,textAlign:"center",marginBottom:14 }}>🗑️</div>
+              <div style={{ fontSize:18,fontWeight:700,color:"#ef4444",textAlign:"center",marginBottom:8 }}>{lang==="fr"?"Confirmation finale":"Final confirmation"}</div>
+              <div style={{ fontSize:13,color:"#aaa",textAlign:"center",lineHeight:1.7,marginBottom:18 }}>{lang==="fr"?`Tape "DELETE" pour confirmer.`:`Type "DELETE" to confirm.`}</div>
               <input value={deleteInput} onChange={e=>{setDeleteInput(e.target.value);setDeleteError("");}} placeholder="DELETE"
-                style={{ width:"100%", padding:"13px", background:"#141d2e", border:"1px solid "+(deleteInput==="DELETE"?"#ef4444":"#1e2a3a"), borderRadius:12, color:"#f4f1ec", fontSize:16, fontFamily:"inherit", outline:"none", marginBottom:10, boxSizing:"border-box" as const, textAlign:"center" as const, letterSpacing:".1em" }}/>
-              {deleteError && <div style={{ fontSize:12, color:"#ef4444", textAlign:"center", marginBottom:10 }}>⚠️ {deleteError}</div>}
-              <div style={{ display:"flex", gap:10 }}>
-                <button onClick={()=>{setDeleteStep(1);setDeleteInput("");setDeleteError("");}} style={{ flex:1, padding:"13px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#f4f1ec", fontSize:14, cursor:"pointer", fontFamily:"inherit" }}>{lang==="fr"?"Retour":"Back"}</button>
-                <button onClick={handleDeleteAccount} disabled={deleting||deleteInput!=="DELETE"}
-                  style={{ flex:1, padding:"13px", background:deleteInput==="DELETE"?"#ef4444":"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.3)", borderRadius:12, color:deleteInput==="DELETE"?"#fff":"#ef4444", fontSize:14, fontWeight:600, cursor:deleteInput==="DELETE"?"pointer":"default", fontFamily:"inherit", opacity:deleting?.7:1 }}>
+                style={{ width:"100%",padding:"13px",background:"#141d2e",border:`1px solid ${deleteInput==="DELETE"?"#ef4444":"#1e2a3a"}`,borderRadius:12,color:"#f4f1ec",fontSize:16,fontFamily:"inherit",outline:"none",marginBottom:10,boxSizing:"border-box" as const,textAlign:"center" as const,letterSpacing:".1em" }}/>
+              {deleteError&&<div style={{ fontSize:12,color:"#ef4444",textAlign:"center",marginBottom:10 }}>⚠️ {deleteError}</div>}
+              <div style={{ display:"flex",gap:10 }}>
+                <button onClick={()=>{setDeleteStep(1);setDeleteInput("");setDeleteError("");}} style={{ flex:1,padding:"13px",background:"#141d2e",border:"1px solid #1e2a3a",borderRadius:12,color:"#f4f1ec",fontSize:14,cursor:"pointer",fontFamily:"inherit" }}>{lang==="fr"?"Retour":"Back"}</button>
+                <button onClick={handleDeleteAccount} disabled={deleting||deleteInput!=="DELETE"} style={{ flex:1,padding:"13px",background:deleteInput==="DELETE"?"#ef4444":"rgba(239,68,68,.1)",border:"1px solid rgba(239,68,68,.3)",borderRadius:12,color:deleteInput==="DELETE"?"#fff":"#ef4444",fontSize:14,fontWeight:600,cursor:deleteInput==="DELETE"?"pointer":"default",fontFamily:"inherit",opacity:deleting?.7:1 }}>
                   {deleting?(lang==="fr"?"Suppression...":"Deleting..."):(lang==="fr"?"Supprimer définitivement":"Delete permanently")}
                 </button>
               </div>
@@ -1008,15 +586,12 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Zone scrollable */}
       <div ref={pageRef} style={{ height:"calc(100dvh - 68px)", overflowY:"auto", WebkitOverflowScrolling:"touch" as any }}>
         <div style={{ padding:"16px 16px 20px", maxWidth:480, margin:"0 auto" }}>
 
           {/* Header */}
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
-            <div style={{ fontWeight:"bold", fontSize:22, letterSpacing:"-.02em" }}>
-              <span style={{ color:"#e8b84b" }}>Ku</span><span style={{ color:"#f4f1ec" }}>abo</span>
-            </div>
+            <div style={{ fontWeight:"bold", fontSize:22, letterSpacing:"-.02em" }}><span style={{ color:"#e8b84b" }}>Ku</span><span style={{ color:"#f4f1ec" }}>abo</span></div>
             <div ref={menuRef} style={{ position:"relative" }}>
               <div style={{ background:"#1a2438", padding:"7px 12px", borderRadius:10, cursor:"pointer", fontSize:13, display:"flex", alignItems:"center", gap:6, color:"#aaa" }} onClick={()=>setMenuOpen(!menuOpen)}>
                 <Globe size={13} color="#aaa"/>
@@ -1037,96 +612,60 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Barre de recherche */}
+          {/* Search */}
           <button onClick={()=>setShowSearch(true)} style={{ width:"100%", display:"flex", alignItems:"center", gap:10, background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, padding:"12px 14px", marginBottom:16, cursor:"pointer", fontFamily:"inherit", textAlign:"left" as const }}>
             <Search size={16} color="#555"/>
             <span style={{ fontSize:14, color:"#555", flex:1 }}>{{ fr:"🔍 Chercher un guide...", en:"🔍 Search a guide...", es:"🔍 Buscar una guía..." }[lang]}</span>
           </button>
 
-          {/* ── Onglets ── */}
           {activeTab==="home" && (
             <>
-              {/* Bannière "Je suis arrivé" si checklist faite mais pas encore confirmé */}
               {preArrivalDone && !arrivalConfirmed && userId && (
-                <ArrivalBanner
-                  lang={lang}
-                  userName={userName}
-                  arrivalDate={arrivalDate}
-                  userId={userId}
-                  onConfirmed={async () => {
-                    setArrivalConfirmed(true);
-                    // ✅ Recharger completedSteps depuis Firebase
-                    try {
-                      const snap = await getDoc(doc(db, "users", userId));
-                      if (snap.exists()) {
-                        const data = snap.data() as any;
-                        setCompletedSteps(data?.completedSteps || []);
-                        setArrivalDate(data?.arrivalDate || null);
-                        const days = data?.daysInUSA || 0;
-                        const newStatus = days < 30 ? "new" : days < 365 ? "settling" : "established";
-                        setUserStatus(newStatus as UserStatus);
-                        const newArrival = data?.arrival === "abroad" ? "new" : (data?.arrival || "new");
-                        setUserArrival(newArrival);
-                        if (data?.arrival === "abroad") {
-                          updateDoc(doc(db, "users", userId), { arrival: "new" }).catch(()=>{});
-                        }
-                      }
-                    } catch {}
-                    // ✅ Toujours déclencher animation + lightCheck
-                    // (reset lightCheckSeen pour forcer l'affichage)
-                    setLightCheckSeen(false);
-                    localStorage.removeItem("kuabo_lightcheck_seen");
-                    setTimeout(() => setShowWelcome(true), 500);
-                  }}
-                />
+                <ArrivalBanner lang={lang} userName={userName} arrivalDate={arrivalDate} userId={userId} onConfirmed={async()=>{
+                  setArrivalConfirmed(true);
+                  try {
+                    const snap = await getDoc(doc(db, "users", userId));
+                    if (snap.exists()) {
+                      const data = snap.data() as any;
+                      setCompletedSteps(data?.completedSteps || []);
+                      setArrivalDate(data?.arrivalDate || null);
+                      const days = data?.daysInUSA || 0;
+                      setUserStatus(days < 30 ? "new" : days < 365 ? "settling" : "established");
+                      const newArrival = data?.arrival === "abroad" ? "new" : (data?.arrival || "new");
+                      setUserArrival(newArrival);
+                      if (data?.arrival === "abroad") { updateDoc(doc(db, "users", userId), { arrival: "new" }).catch(()=>{}); }
+                    }
+                  } catch {}
+                  setLightCheckSeen(false);
+                  localStorage.removeItem("kuabo_lightcheck_seen");
+                  setTimeout(() => setShowWelcome(true), 500);
+                }}/>
               )}
-              <HomeTab
-                lang={lang} userId={userId} completedSteps={completedSteps}
-                currentPhase={currentPhase} phaseProgress={phaseProgress}
-                arrivalDate={arrivalDate} armyStatus={armyStatus}
-                userState={userState} userCity={userCity} userCountry={userCountry}
-                streak={streak} userStatus={userStatus}
-                onOpenStep={setActiveStepModal}
-                onViewArmyGuide={()=>setShowArmyGuide(true)}
-              />
+              <HomeTab lang={lang} userId={userId} completedSteps={completedSteps} currentPhase={currentPhase} phaseProgress={phaseProgress} arrivalDate={arrivalDate} armyStatus={armyStatus} userState={userState} userCity={userCity} userCountry={userCountry} streak={streak} userStatus={userStatus} onOpenStep={setActiveStepModal} onViewArmyGuide={()=>setShowArmyGuide(true)}/>
             </>
           )}
           {activeTab==="explorer" && <ExplorerTab lang={lang} completedSteps={completedSteps} userId={userId} userArrival={userArrival} userState={userState}/>}
           {activeTab==="jobs"     && <JobsTab lang={lang} userId={userId}/>}
           {activeTab==="profile"  && (
             <div style={{ marginTop:4 }}>
-              <ProfileTab
-                userName={userName} userEmail={userEmail} userCountry={userCountry}
-                userState={userState} userCity={userCity} lang={lang}
-                completedSteps={completedSteps} armyStatus={armyStatus}
-                userArrival={userArrival}
-                onArmyChange={setArmyStatus} changeLang={changeLang}
-                onLogout={handleLogout} onDeleteAccount={()=>setShowDeleteModal(true)}
+              <ProfileTab userName={userName} userEmail={userEmail} userCountry={userCountry} userState={userState} userCity={userCity} lang={lang} completedSteps={completedSteps} armyStatus={armyStatus} userArrival={userArrival} onArmyChange={setArmyStatus} changeLang={changeLang} onLogout={handleLogout} onDeleteAccount={()=>setShowDeleteModal(true)}
                 onStatusChanged={(newArrival, newStatus) => {
                   setUserArrival(newArrival);
                   setUserStatus(newStatus as UserStatus);
-                  // Si retour à "abroad" → reset bannière
-                  if (newArrival === "abroad") {
-                    setArrivalConfirmed(false);
-                    setPreArrivalDone(false);
-                    window.location.href = "/pre-arrival";
-                  }
-                }}
-              />
+                  if (newArrival === "abroad") { setArrivalConfirmed(false); setPreArrivalDone(false); window.location.href = "/pre-arrival"; }
+                }}/>
             </div>
           )}
         </div>
       </div>
 
-      {/* Toast */}
       {toast && (
         <div style={{ position:"fixed", bottom:80, left:"50%", transform:"translateX(-50%)", background:"#1a2438", padding:"10px 18px", borderRadius:12, border:"1px solid rgba(255,255,255,.07)", boxShadow:"0 8px 24px rgba(0,0,0,.4)", zIndex:999, display:"flex", alignItems:"center" }}>
           <span style={{ fontSize:13 }}>{toast}</span>
-          {lastAction && <span onClick={undo} style={{ marginLeft:10, cursor:"pointer", color:"#e8b84b", fontSize:13, display:"inline-flex", alignItems:"center", gap:4 }}>↩ {lang==="fr"?"Annuler":lang==="es"?"Deshacer":"Undo"}</span>}
+          {lastAction && <span onClick={undo} style={{ marginLeft:10, cursor:"pointer", color:"#e8b84b", fontSize:13 }}>↩ {lang==="fr"?"Annuler":lang==="es"?"Deshacer":"Undo"}</span>}
         </div>
       )}
 
-      {/* Bottom Nav — 4 onglets */}
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} lang={lang} onHomePress={handleHomePress}/>
 
       <style>{`

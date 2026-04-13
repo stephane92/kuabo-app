@@ -1,96 +1,77 @@
-// Kuabo Service Worker — PWA
-const CACHE_NAME = 'kuabo-v1';
+// Kuabo Service Worker — PWA + FCM
+importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js");
 
-// Fichiers à mettre en cache pour le mode offline
-const STATIC_ASSETS = [
-  '/',
-  '/dashboard',
-  '/manifest.json',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-];
+firebase.initializeApp({
+  apiKey:            "AIzaSyAfyqpqdUBixIz1_TmXzZsuoiatXfGLStQ",
+  authDomain:        "kuabo-42d9c.firebaseapp.com",
+  projectId:         "kuabo-42d9c",
+  storageBucket:     "kuabo-42d9c.firebasestorage.app",
+  messagingSenderId: "774805697",
+  appId:             "1:774805697:web:1fa1a94076fd8e7c8f5c40",
+});
 
-// Installation — mise en cache des assets statiques
-self.addEventListener('install', (event) => {
+const messaging = firebase.messaging();
+
+// Notifications en arrière-plan (app fermée)
+messaging.onBackgroundMessage((payload) => {
+  const { title = "Kuabo", body = "" } = payload.notification || {};
+  self.registration.showNotification(title, {
+    body,
+    icon:    "/icons/icon-192.png",
+    badge:   "/icons/icon-96.png",
+    vibrate: [200, 100, 200],
+    data:    { url: payload.data?.url || "/dashboard" },
+  });
+});
+
+// Clic sur notification → ouvrir l'app
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/dashboard";
+  event.waitUntil(clients.openWindow(url));
+});
+
+// Cache statique
+const CACHE_NAME = "kuabo-v2";
+const STATIC_ASSETS = ["/", "/dashboard", "/manifest.json", "/icons/icon-192.png"];
+
+self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch(() => {
-        // Ignore les erreurs de cache
-      });
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS).catch(() => {}))
   );
   self.skipWaiting();
 });
 
-// Activation — nettoyage des anciens caches
-self.addEventListener('activate', (event) => {
+self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
-      )
+      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
     )
   );
   self.clients.claim();
 });
 
-// Fetch — stratégie Network First avec fallback cache
-self.addEventListener('fetch', (event) => {
-  // Ignorer les requêtes non-GET et Firebase
+self.addEventListener("fetch", (event) => {
   if (
-    event.request.method !== 'GET' ||
-    event.request.url.includes('firestore') ||
-    event.request.url.includes('firebase') ||
-    event.request.url.includes('googleapis') ||
-    event.request.url.includes('anthropic')
-  ) {
-    return;
-  }
+    event.request.method !== "GET" ||
+    event.request.url.includes("firestore") ||
+    event.request.url.includes("firebase") ||
+    event.request.url.includes("googleapis") ||
+    event.request.url.includes("anthropic")
+  ) return;
 
   event.respondWith(
     fetch(event.request)
-      .then((response) => {
-        // Mettre en cache la réponse fraîche
-        if (response.ok) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, clone);
-          });
+      .then((res) => {
+        if (res.ok) {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((c) => c.put(event.request, clone));
         }
-        return response;
+        return res;
       })
-      .catch(() => {
-        // Fallback sur le cache si offline
-        return caches.match(event.request).then((cached) => {
-          if (cached) return cached;
-          // Page offline par défaut
-          return caches.match('/dashboard');
-        });
-      })
-  );
-});
-
-// Notifications push (pour FCM plus tard)
-self.addEventListener('push', (event) => {
-  if (!event.data) return;
-  const data = event.data.json();
-  event.waitUntil(
-    self.registration.showNotification(data.title || 'Kuabo', {
-      body: data.body || '',
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-96.png',
-      data: data.url || '/dashboard',
-      vibrate: [200, 100, 200],
-    })
-  );
-});
-
-// Clic sur notification → ouvrir l'app
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  event.waitUntil(
-    clients.openWindow(event.notification.data || '/dashboard')
+      .catch(() =>
+        caches.match(event.request).then((c) => c || caches.match("/dashboard"))
+      )
   );
 });
