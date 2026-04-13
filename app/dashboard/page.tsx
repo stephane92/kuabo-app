@@ -26,83 +26,111 @@ function ArrivalBanner({ lang, userName, arrivalDate, userId, onConfirmed }: {
   userId: string; onConfirmed: () => void;
 }) {
   const [showConfirm1,   setShowConfirm1]   = useState(false);
+  const [showDatePick,   setShowDatePick]   = useState(false); // ← NOUVEAU
   const [showConfirm2,   setShowConfirm2]   = useState(false);
   const [showDateUpdate, setShowDateUpdate] = useState(false);
   const [showConfetti,   setShowConfetti]   = useState(false);
   const [newDate,        setNewDate]        = useState("");
+  const [pickedDate,     setPickedDate]     = useState(new Date().toISOString().split("T")[0]); // date arrivée réelle
   const [saving,         setSaving]         = useState(false);
   const [dismissed,      setDismissed]      = useState(false);
 
   const T = {
     fr: {
-      banner:   "Tu es arrivé aux USA ?",
-      bannerSub:"Confirme ton arrivée pour débloquer toutes les fonctionnalités",
-      btnArrive:"Je suis arrivé ! 🛬",
-      btnDate:  "Changer ma date",
-      c1Title:  "Tu es arrivé aux USA ? 🛬",
-      c1Sub:    "Cette action va mettre à jour ton statut et débloquer toutes les fonctionnalités.",
-      c1Yes:    "Oui, je suis aux USA ! ✅",
-      c1No:     "Pas encore ⏳",
-      c2Title:  "Tu confirmes ? 🇺🇸",
-      c2Sub:    "Tu es bien physiquement aux États-Unis en ce moment ?",
-      c2Warn:   "⚠️ Cette action est irréversible",
-      c2Yes:    "✅ Oui, je confirme !",
-      c2No:     "← Non, erreur",
-      dateTitle:"Changer ma date d'arrivée",
-      dateSub:  "Quelle est ta nouvelle date d'arrivée prévue ?",
-      dateBtn:  "Mettre à jour",
+      banner:    "Tu es arrivé aux USA ?",
+      bannerSub: "Confirme ton arrivée pour débloquer toutes les fonctionnalités",
+      btnArrive: "Je suis arrivé ! 🛬",
+      btnDate:   "Changer ma date",
+      c1Title:   "Tu es arrivé aux USA ? 🛬",
+      c1Sub:     "Cette action va mettre à jour ton statut et débloquer toutes les fonctionnalités.",
+      c1Yes:     "Oui, je suis aux USA ! ✅",
+      c1No:      "Pas encore ⏳",
+      // ← NOUVEAU : étape date
+      dpTitle:   "Depuis quand es-tu aux USA ? 📅",
+      dpSub:     "Tu es peut-être là depuis un moment — entre la vraie date pour que Kuabo calcule exactement où tu en es.",
+      dpLabel:   "Date de ton arrivée",
+      dpToday:   "Aujourd'hui",
+      dpNext:    "Continuer →",
+      dpBack:    "← Retour",
+      c2Title:   "Tu confirmes ? 🇺🇸",
+      c2Sub:     "Tu es bien physiquement aux États-Unis en ce moment ?",
+      c2Warn:    "⚠️ Cette action est irréversible",
+      c2Yes:     "✅ Oui, je confirme !",
+      c2No:      "← Non, erreur",
+      dateTitle: "Changer ma date d'arrivée",
+      dateSub:   "Quelle est ta nouvelle date d'arrivée prévue ?",
+      dateBtn:   "Mettre à jour",
       dateCancel:"Annuler",
     },
     en: {
-      banner:   "Have you arrived in the USA?",
-      bannerSub:"Confirm your arrival to unlock all features",
-      btnArrive:"I've arrived! 🛬",
-      btnDate:  "Change my date",
-      c1Title:  "Have you arrived in the USA? 🛬",
-      c1Sub:    "This action will update your status and unlock all features.",
-      c1Yes:    "Yes, I'm in the USA! ✅",
-      c1No:     "Not yet ⏳",
-      c2Title:  "Can you confirm? 🇺🇸",
-      c2Sub:    "Are you physically in the United States right now?",
-      c2Warn:   "⚠️ This action is irreversible",
-      c2Yes:    "✅ Yes, I confirm!",
-      c2No:     "← No, mistake",
-      dateTitle:"Change my arrival date",
-      dateSub:  "What is your new expected arrival date?",
-      dateBtn:  "Update",
+      banner:    "Have you arrived in the USA?",
+      bannerSub: "Confirm your arrival to unlock all features",
+      btnArrive: "I've arrived! 🛬",
+      btnDate:   "Change my date",
+      c1Title:   "Have you arrived in the USA? 🛬",
+      c1Sub:     "This action will update your status and unlock all features.",
+      c1Yes:     "Yes, I'm in the USA! ✅",
+      c1No:      "Not yet ⏳",
+      dpTitle:   "When did you arrive? 📅",
+      dpSub:     "You might have been here for a while — enter your actual arrival date so Kuabo can calculate exactly where you are.",
+      dpLabel:   "Your arrival date",
+      dpToday:   "Today",
+      dpNext:    "Continue →",
+      dpBack:    "← Back",
+      c2Title:   "Can you confirm? 🇺🇸",
+      c2Sub:     "Are you physically in the United States right now?",
+      c2Warn:    "⚠️ This action is irreversible",
+      c2Yes:     "✅ Yes, I confirm!",
+      c2No:      "← No, mistake",
+      dateTitle: "Change my arrival date",
+      dateSub:   "What is your new expected arrival date?",
+      dateBtn:   "Update",
       dateCancel:"Cancel",
     },
     es: {
-      banner:   "¿Has llegado a EE.UU.?",
-      bannerSub:"Confirma tu llegada para desbloquear todas las funciones",
-      btnArrive:"¡He llegado! 🛬",
-      btnDate:  "Cambiar mi fecha",
-      c1Title:  "¿Has llegado a EE.UU.? 🛬",
-      c1Sub:    "Esta acción actualizará tu estado y desbloqueará todas las funciones.",
-      c1Yes:    "¡Sí, estoy en EE.UU.! ✅",
-      c1No:     "Todavía no ⏳",
-      c2Title:  "¿Puedes confirmarlo? 🇺🇸",
-      c2Sub:    "¿Estás físicamente en los Estados Unidos ahora mismo?",
-      c2Warn:   "⚠️ Esta acción es irreversible",
-      c2Yes:    "✅ ¡Sí, confirmo!",
-      c2No:     "← No, error",
-      dateTitle:"Cambiar mi fecha de llegada",
-      dateSub:  "¿Cuál es tu nueva fecha de llegada prevista?",
-      dateBtn:  "Actualizar",
+      banner:    "¿Has llegado a EE.UU.?",
+      bannerSub: "Confirma tu llegada para desbloquear todas las funciones",
+      btnArrive: "¡He llegado! 🛬",
+      btnDate:   "Cambiar mi fecha",
+      c1Title:   "¿Has llegado a EE.UU.? 🛬",
+      c1Sub:     "Esta acción actualizará tu estado y desbloqueará todas las funciones.",
+      c1Yes:     "¡Sí, estoy en EE.UU.! ✅",
+      c1No:      "Todavía no ⏳",
+      dpTitle:   "¿Desde cuándo estás en EE.UU.? 📅",
+      dpSub:     "Puede que lleves un tiempo aquí — ingresa tu fecha real de llegada para que Kuabo calcule exactamente dónde estás.",
+      dpLabel:   "Tu fecha de llegada",
+      dpToday:   "Hoy",
+      dpNext:    "Continuar →",
+      dpBack:    "← Atrás",
+      c2Title:   "¿Puedes confirmarlo? 🇺🇸",
+      c2Sub:     "¿Estás físicamente en los Estados Unidos ahora mismo?",
+      c2Warn:    "⚠️ Esta acción es irreversible",
+      c2Yes:     "✅ ¡Sí, confirmo!",
+      c2No:      "← No, error",
+      dateTitle: "Cambiar mi fecha de llegada",
+      dateSub:   "¿Cuál es tu nueva fecha de llegada prevista?",
+      dateBtn:   "Actualizar",
       dateCancel:"Cancelar",
     },
   }[lang];
+
+  // Calcul des jours depuis la date choisie
+  const daysAgo = pickedDate
+    ? Math.max(0, Math.floor((Date.now() - new Date(pickedDate).getTime()) / 86400000))
+    : 0;
 
   const handleConfirm = async () => {
     if (!userId || saving) return;
     setSaving(true);
     try {
-      const today = new Date().toISOString().split("T")[0];
+      // ✅ Utilise la date choisie par l'user (pas forcément aujourd'hui)
+      const days = Math.max(0, Math.floor((Date.now() - new Date(pickedDate).getTime()) / 86400000));
+      const status = days < 30 ? "new" : days < 365 ? "settling" : "established";
       await updateDoc(doc(db, "users", userId), {
         arrivalConfirmed: true,
-        arrivalDate:      today,
-        status:           "new",
-        daysInUSA:        0,
+        arrivalDate:      pickedDate,
+        status,
+        daysInUSA:        days,
       });
       setShowConfirm2(false);
       setShowConfetti(true);
@@ -163,13 +191,64 @@ function ArrivalBanner({ lang, userName, arrivalDate, userId, onConfirmed }: {
             <h3 style={{ fontSize:20, fontWeight:800, textAlign:"center" as const, marginBottom:8, color:"#f4f1ec" }}>{T.c1Title}</h3>
             <p style={{ fontSize:13, color:"#aaa", textAlign:"center" as const, lineHeight:1.65, marginBottom:22 }}>{T.c1Sub}</p>
             <div style={{ display:"flex", flexDirection:"column" as const, gap:10 }}>
-              <button onClick={()=>{ setShowConfirm1(false); setTimeout(()=>setShowConfirm2(true),200); }}
+              <button onClick={()=>{ setShowConfirm1(false); setTimeout(()=>setShowDatePick(true),200); }}
                 style={{ width:"100%", padding:"13px", background:"#e8b84b", border:"none", borderRadius:12, color:"#000", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
                 {T.c1Yes}
               </button>
               <button onClick={()=>setShowConfirm1(false)}
                 style={{ width:"100%", padding:"13px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#aaa", fontSize:14, cursor:"pointer", fontFamily:"inherit" }}>
                 {T.c1No}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ← NOUVEAU : Modal "Depuis quand ?" */}
+      {showDatePick && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(11,15,26,.93)", backdropFilter:"blur(8px)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}
+          onClick={()=>setShowDatePick(false)}>
+          <div style={{ background:"#0f1521", border:"1.5px solid rgba(45,212,191,.3)", borderRadius:22, padding:"28px 22px", maxWidth:380, width:"100%", animation:"alertPop .4s cubic-bezier(.34,1.56,.64,1)" }}
+            onClick={e=>e.stopPropagation()}>
+            <div style={{ fontSize:52, textAlign:"center" as const, marginBottom:14 }}>📅</div>
+            <h3 style={{ fontSize:18, fontWeight:800, textAlign:"center" as const, marginBottom:8, color:"#f4f1ec" }}>{T.dpTitle}</h3>
+            <p style={{ fontSize:12, color:"#aaa", textAlign:"center" as const, lineHeight:1.65, marginBottom:18 }}>{T.dpSub}</p>
+
+            <div style={{ marginBottom:16 }}>
+              <div style={{ fontSize:11, color:"#aaa", marginBottom:6 }}>{T.dpLabel}</div>
+              <input type="date"
+                value={pickedDate}
+                onChange={e=>setPickedDate(e.target.value)}
+                max={new Date().toISOString().split("T")[0]}
+                style={{ width:"100%", padding:"13px", background:"#141d2e", border:"1px solid #2dd4bf", borderRadius:11, color:"#f4f1ec", fontSize:16, fontFamily:"inherit", outline:"none", boxSizing:"border-box" as const }}
+              />
+              {/* Aperçu du nombre de jours */}
+              {pickedDate && (
+                <div style={{ marginTop:10, padding:"10px 14px", background:"rgba(45,212,191,.08)", border:"1px solid rgba(45,212,191,.2)", borderRadius:10, textAlign:"center" as const }}>
+                  <span style={{ fontSize:13, color:"#2dd4bf", fontWeight:600 }}>
+                    {daysAgo === 0
+                      ? (lang==="fr"?"Tu arrives aujourd'hui 🛬":lang==="es"?"Llegas hoy 🛬":"You're arriving today 🛬")
+                      : lang==="fr"?`Tu es aux USA depuis ${daysAgo} jour${daysAgo>1?"s":""}`:lang==="es"?`Llevas ${daysAgo} día${daysAgo>1?"s":""} en EE.UU.`:`You've been in the USA for ${daysAgo} day${daysAgo>1?"s":""}`
+                    }
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Bouton "Aujourd'hui" rapide */}
+            <button onClick={()=>setPickedDate(new Date().toISOString().split("T")[0])}
+              style={{ width:"100%", padding:"9px", background:"transparent", border:"1px dashed #2a3448", borderRadius:10, color:"#555", fontSize:12, cursor:"pointer", fontFamily:"inherit", marginBottom:12 }}>
+              📅 {T.dpToday}
+            </button>
+
+            <div style={{ display:"flex", gap:10 }}>
+              <button onClick={()=>{ setShowDatePick(false); setShowConfirm1(true); }}
+                style={{ flex:1, padding:"13px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#aaa", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
+                {T.dpBack}
+              </button>
+              <button onClick={()=>{ setShowDatePick(false); setTimeout(()=>setShowConfirm2(true),200); }} disabled={!pickedDate}
+                style={{ flex:2, padding:"13px", background:pickedDate?"#2dd4bf":"#1e2a3a", border:"none", borderRadius:12, color:pickedDate?"#000":"#555", fontSize:14, fontWeight:700, cursor:pickedDate?"pointer":"default", fontFamily:"inherit" }}>
+                {T.dpNext}
               </button>
             </div>
           </div>

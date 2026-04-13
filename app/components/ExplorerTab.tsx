@@ -307,7 +307,7 @@ export default function ExplorerTab({ lang, completedSteps, userId }: {
   const [userState,      setUserState]      = useState("");
   const [userSituation,  setUserSituation]  = useState("default");
   const [locating,       setLocating]       = useState(false);
-  const [locError,       setLocError]       = useState(false);
+  const [locError,       setLocError]       = useState<string|false>(false);
   const [activeFilter,   setActiveFilter]   = useState<FilterType>("ssn");
   const [commFilter,     setCommFilter]     = useState<CommFilter>("all");
   const [places,         setPlaces]         = useState<Place[]>([]);
@@ -378,36 +378,45 @@ export default function ExplorerTab({ lang, completedSteps, userId }: {
   },[]);
 
   // ✅ Fix localisation iOS Safari
-  // Sur iOS, il faut demander la permission explicitement
-  // Et gérer les erreurs de permission
   const geolocate=useCallback(async()=>{
-    if(!navigator.geolocation){ setLocError(true); return; }
+    if(!navigator.geolocation){ setLocError("unavailable"); return; }
     setLocating(true); setLocError(false);
-    navigator.geolocation.getCurrentPosition(
-      async pos=>{
-        const loc={ lat:pos.coords.latitude,lng:pos.coords.longitude };
-        setUserLocation(loc); setMapCenter(loc); setLocating(false);
-        fetchPlaces(loc,"ssn");
-        try{
-          const res=await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${loc.lat},${loc.lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}`);
-          const data=await res.json();
-          const comps=data.results?.[0]?.address_components||[];
-          const state=comps.find((c:any)=>c.types.includes("administrative_area_level_1"))?.short_name||"";
-          const city=comps.find((c:any)=>c.types.includes("locality"))?.long_name||"";
-          setUserState(state);
-          localStorage.setItem("userState",state); localStorage.setItem("userCity",city);
-          saveLocation(loc,state,city);
-          fetchCommunity(loc,state);
-        }catch{}
-      },
-      err=>{
-        setLocating(false);
-        // ✅ Erreur permission → message clair
-        if(err.code===1) setLocError(true); // PERMISSION_DENIED
-      },
-      // ✅ timeout + enableHighAccuracy pour iOS
-      { timeout:15000, enableHighAccuracy:true, maximumAge:300000 }
-    );
+
+    // Essai 1 : haute précision (GPS)
+    const tryGeo=(highAccuracy:boolean)=>{
+      navigator.geolocation.getCurrentPosition(
+        async pos=>{
+          const loc={ lat:pos.coords.latitude, lng:pos.coords.longitude };
+          setUserLocation(loc); setMapCenter(loc); setLocating(false); setLocError(false);
+          fetchPlaces(loc,"ssn");
+          try{
+            const res=await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${loc.lat},${loc.lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}`);
+            const data=await res.json();
+            const comps=data.results?.[0]?.address_components||[];
+            const state=comps.find((c:any)=>c.types.includes("administrative_area_level_1"))?.short_name||"";
+            const city=comps.find((c:any)=>c.types.includes("locality"))?.long_name||"";
+            setUserState(state);
+            localStorage.setItem("userState",state); localStorage.setItem("userCity",city);
+            saveLocation(loc,state,city);
+            fetchCommunity(loc,state);
+          }catch{}
+        },
+        err=>{
+          if(err.code===1){
+            // PERMISSION_DENIED → message clair
+            setLocating(false); setLocError("permission");
+          } else if(highAccuracy){
+            // Timeout ou position unavailable → réessai sans haute précision
+            tryGeo(false);
+          } else {
+            // Échec définitif → message générique
+            setLocating(false); setLocError("failed");
+          }
+        },
+        { timeout: highAccuracy?12000:20000, enableHighAccuracy:highAccuracy, maximumAge:300000 }
+      );
+    };
+    tryGeo(true);
   },[fetchPlaces,fetchCommunity,saveLocation]);
 
   useEffect(()=>{ geolocate(); },[geolocate]);
@@ -433,7 +442,25 @@ export default function ExplorerTab({ lang, completedSteps, userId }: {
 
   const locBtn = lang==="fr"?"📍 Activer la localisation":lang==="es"?"📍 Activar ubicación":"📍 Enable location";
   const locBtnLoading = lang==="fr"?"Localisation...":lang==="es"?"Ubicando...":"Locating...";
-  const locErrMsg = lang==="fr"?"❌ Permission refusée. Va dans Réglages → Safari → Localisation → Autoriser.":lang==="es"?"❌ Permiso denegado. Ve a Ajustes → Safari → Ubicación → Permitir.":"❌ Permission denied. Go to Settings → Safari → Location → Allow.";
+
+  const locErrMessages: Record<string, Record<Lang, string>> = {
+    permission: {
+      fr:"❌ Permission refusée. Va dans Réglages → Safari → Localisation → Autoriser.",
+      en:"❌ Permission denied. Go to Settings → Safari → Location → Allow.",
+      es:"❌ Permiso denegado. Ve a Ajustes → Safari → Ubicación → Permitir.",
+    },
+    failed: {
+      fr:"📍 Impossible de te localiser. Essaie de te rapprocher d'une fenêtre ou active le WiFi.",
+      en:"📍 Can't locate you. Try moving near a window or enable WiFi.",
+      es:"📍 No se puede localizarte. Intenta acercarte a una ventana o activa el WiFi.",
+    },
+    unavailable: {
+      fr:"❌ La géolocalisation n'est pas disponible sur ce navigateur.",
+      en:"❌ Geolocation is not available on this browser.",
+      es:"❌ La geolocalización no está disponible en este navegador.",
+    },
+  };
+  const locErrMsg = locError ? (locErrMessages[locError as string]?.[lang] || locErrMessages.failed[lang]) : "";
 
   return (
     <div style={{ marginTop:8 }}>
@@ -467,8 +494,16 @@ export default function ExplorerTab({ lang, completedSteps, userId }: {
 
           {/* Message d'erreur localisation */}
           {locError&&(
-            <div style={{ background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:12,padding:"12px 14px",marginBottom:12,fontSize:12,color:"#ef4444",lineHeight:1.6 }}>
-              {locErrMsg}
+            <div style={{ background:locError==="permission"?"rgba(239,68,68,0.08)":"rgba(232,184,75,0.08)", border:`1px solid ${locError==="permission"?"rgba(239,68,68,0.25)":"rgba(232,184,75,0.25)"}`, borderRadius:12, padding:"12px 14px", marginBottom:12 }}>
+              <div style={{ fontSize:12, color:locError==="permission"?"#ef4444":"#e8b84b", lineHeight:1.6, marginBottom:locError!=="permission"?10:0 }}>
+                {locErrMsg}
+              </div>
+              {/* Si pas un problème de permission → bouton réessayer */}
+              {locError!=="permission"&&(
+                <button onClick={geolocate} style={{ padding:"8px 14px", background:"rgba(232,184,75,0.1)", border:"1px solid rgba(232,184,75,0.3)", borderRadius:9, color:"#e8b84b", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                  🔄 {lang==="fr"?"Réessayer":lang==="es"?"Reintentar":"Try again"}
+                </button>
+              )}
             </div>
           )}
 
@@ -564,7 +599,7 @@ export default function ExplorerTab({ lang, completedSteps, userId }: {
               📍 {locating?locBtnLoading:locBtn}
             </button>
           )}
-          {locError&&<div style={{ fontSize:12,color:"#ef4444",lineHeight:1.6,padding:"8px 0" }}>{locErrMsg}</div>}
+          {locError&&<div style={{ fontSize:12, color:locError==="permission"?"#ef4444":"#e8b84b", lineHeight:1.6, padding:"8px 0" }}>{locErrMsg}</div>}
           {loadingComm&&<div style={{ textAlign:"center" as const,padding:"20px",color:"#555",fontSize:13 }}>...</div>}
         </>
       )}
