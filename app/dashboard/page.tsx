@@ -759,16 +759,50 @@ export default function Dashboard() {
     try {
       const snap = await getDoc(doc(db, "users", user.uid));
       const data = snap.exists() ? snap.data() : {};
-      await setDoc(doc(db, "deleted_users", user.uid), { ...data, deletedAt: new Date().toISOString(), originalUid: user.uid, originalEmail: user.email });
-      await updateDoc(doc(db, "users", user.uid), { deleted: true, deletedAt: new Date().toISOString(), name: "***", email: "***", location: null, communityVisible: false });
+      await setDoc(doc(db, "deleted_users", user.uid), {
+        ...data,
+        deletedAt: new Date().toISOString(),
+        originalUid: user.uid,
+        originalEmail: user.email,
+      });
+      await updateDoc(doc(db, "users", user.uid), {
+        deleted: true,
+        deletedAt: new Date().toISOString(),
+        name: "***", email: "***",
+        location: null, communityVisible: false,
+      });
       await deleteUser(user);
       localStorage.clear();
       window.location.href = "/home";
     } catch (err: any) {
-      setDeleteError(err.code === "auth/requires-recent-login"
-        ? (lang === "fr" ? "Reconnecte-toi d'abord" : "Please sign in again first")
-        : (lang === "fr" ? "Erreur — réessaie" : "Error — try again"));
-      setDeleting(false);
+      if (err.code === "auth/requires-recent-login") {
+        // ✅ Re-authentification Google automatique
+        setDeleting(false);
+        setDeleteError(
+          lang === "fr"
+            ? "⏳ Re-connexion requise — clique sur continuer"
+            : "⏳ Re-login required — click continue"
+        );
+        try {
+          const { GoogleAuthProvider, reauthenticateWithPopup } = await import("firebase/auth");
+          const provider = new GoogleAuthProvider();
+          await reauthenticateWithPopup(user, provider);
+          // Réessayer la suppression
+          setDeleting(true);
+          setDeleteError("");
+          await deleteUser(user);
+          localStorage.clear();
+          window.location.href = "/home";
+        } catch (reAuthErr: any) {
+          setDeleteError(
+            lang === "fr" ? "Reconnexion échouée — réessaie" : "Re-login failed — try again"
+          );
+          setDeleting(false);
+        }
+      } else {
+        setDeleteError(lang === "fr" ? "Erreur — réessaie" : "Error — try again");
+        setDeleting(false);
+      }
     }
   };
 
@@ -806,7 +840,12 @@ export default function Dashboard() {
           userName={userName}
           userStatus={userStatus}
           arrival={userArrival}
-          onDone={() => { setShowWelcome(false); setShowLightCheck(true); }}
+          onDone={() => {
+            setShowWelcome(false);
+            // ✅ Toujours montrer lightCheck après animation bienvenue
+            // (même si déjà vu — car c'est la première vraie confirmation)
+            setShowLightCheck(true);
+          }}
         />
       )}
 
@@ -905,10 +944,21 @@ export default function Dashboard() {
                   userName={userName}
                   arrivalDate={arrivalDate}
                   userId={userId}
-                  onConfirmed={() => {
+                  onConfirmed={async () => {
                     setArrivalConfirmed(true);
-                    setUserStatus("new");
-                    // Déclencher animation bienvenue après confirmation
+                    // ✅ Recharger completedSteps depuis Firebase
+                    try {
+                      const snap = await getDoc(doc(db, "users", userId));
+                      if (snap.exists()) {
+                        const data = snap.data() as any;
+                        setCompletedSteps(data?.completedSteps || []);
+                        setArrivalDate(data?.arrivalDate || null);
+                        const days = data?.daysInUSA || 0;
+                        const status = days < 30 ? "new" : days < 365 ? "settling" : "established";
+                        setUserStatus(status as UserStatus);
+                      }
+                    } catch {}
+                    // ✅ Déclencher animation + lightCheck
                     setTimeout(() => setShowWelcome(true), 500);
                   }}
                 />
