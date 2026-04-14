@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useLoadScript, GoogleMap, Marker } from "@react-google-maps/api";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, collection, getDocs } from "firebase/firestore";
@@ -655,6 +655,17 @@ export default function ExplorerTab({
   lang: Lang; completedSteps?: string[]; userId?: string; userArrival?: string; userState?: string;
 }) {
   const [subTab, setSubTab] = useState<ExplorerSubTab>("services");
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  const changeSubTab = (tab: ExplorerSubTab) => {
+    setSubTab(tab);
+    setTimeout(() => {
+      // Scroll la page principale vers le haut du contenu Explorer
+      const scrollEl = document.querySelector('[style*="overflow-y"]') as HTMLElement;
+      if (scrollEl) scrollEl.scrollTo({ top: 0, behavior: "smooth" });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }, 30);
+  };
   const [mapMode, setMapMode] = useState<MapMode>("gps");
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [userState, setUserState] = useState(propUserState || "");
@@ -809,7 +820,7 @@ export default function ExplorerTab({
           return (
             <div
               key={t.id}
-              onClick={() => setSubTab(t.id as ExplorerSubTab)}
+              onClick={() => changeSubTab(t.id as ExplorerSubTab)}
               style={{
                 borderRadius: 14, padding: "16px 14px", cursor: "pointer",
                 background: isActive ? `linear-gradient(135deg,${t.color}22,${t.color}10)` : "#141d2e",

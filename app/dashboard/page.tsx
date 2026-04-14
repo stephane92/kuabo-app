@@ -10,7 +10,7 @@ import ExplorerTab   from "../components/ExplorerTab";
 import ProfileTab    from "./components/ProfileTab";
 import HomeTab, { BottomNav } from "./components/HomeTab";
 import JobsTab       from "./components/JobsTab";
-import FCMSetup      from "../components/FCMSetup"; // ✅ NOUVEAU
+import FCMSetup      from "../components/FCMSetup";
 import { SearchModal, StepModal, ArmyGuideModal, PhaseUnlockOverlay } from "./components/Modals";
 import DemoGuide     from "./components/DemoGuide";
 import { PHASE_STEPS } from "./components/data";
@@ -360,11 +360,23 @@ export default function Dashboard() {
   const [deleting,         setDeleting]         = useState(false);
   const [deleteError,      setDeleteError]      = useState("");
   const [adminPopupMsg,    setAdminPopupMsg]    = useState<any>(null);
+  // ✅ NOUVEAU — position GPS pour le bouton "près de moi" dans les magasins
+  const [userLocationState, setUserLocationState] = useState<{lat:number;lng:number}|null>(null);
 
   const streak                        = useStreak(userId);
   const { currentPhase, phaseProgress } = getPhaseStats(completedSteps);
 
   useEffect(() => { pageRef.current?.scrollTo({ top: 0, behavior: "auto" }); }, [activeTab]);
+
+  // ✅ NOUVEAU — récupère la position GPS au chargement
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => setUserLocationState({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => {} // silencieux si refus
+      );
+    }
+  }, []);
 
   useEffect(() => {
     const timeout = setTimeout(() => setReady(true), 5000);
@@ -410,7 +422,6 @@ export default function Dashboard() {
         const pendingDelete = localStorage.getItem("kuabo_pending_delete");
         if (pendingDelete === "true") { localStorage.removeItem("kuabo_pending_delete"); setTimeout(() => setShowDeleteModal(true), 1000); }
 
-        // ✅ Mettre à jour lastSeen pour les notifications inactif
         updateDoc(doc(db, "users", user.uid), { lastSeen: new Date().toISOString() }).catch(() => {});
 
         try {
@@ -527,12 +538,10 @@ export default function Dashboard() {
   return (
     <div style={{ background:"#0b0f1a", height:"100dvh", overflow:"hidden", color:"#f4f1ec" }}>
 
-      {/* ✅ FCM SETUP — désactivé iOS, crash Safari */}
       {userId && typeof window !== "undefined" && !/iPhone|iPad|iPod/.test(navigator.userAgent) && <FCMSetup userId={userId} lang={lang} />}
 
       {showDemo && ready && <DemoGuide lang={lang} userName={userName} onTabChange={tab=>setActiveTab(tab)} onHighlight={()=>{}}/>}
 
-      {/* Popup message admin */}
       {adminPopupMsg && (
         <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,.88)",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(8px)",padding:"0 20px" }} onClick={()=>setAdminPopupMsg(null)}>
           <div style={{ background:"#0f1521",border:`1.5px solid ${adminPopupMsg.type==="urgent"?"rgba(239,68,68,.4)":"rgba(232,184,75,.3)"}`,borderRadius:22,padding:"28px 22px",width:"100%",maxWidth:380,animation:"alertPop .5s cubic-bezier(.34,1.56,.64,1)" }} onClick={e=>e.stopPropagation()}>
@@ -641,14 +650,33 @@ export default function Dashboard() {
                   setTimeout(() => setShowWelcome(true), 500);
                 }}/>
               )}
-              <HomeTab lang={lang} userId={userId} completedSteps={completedSteps} currentPhase={currentPhase} phaseProgress={phaseProgress} arrivalDate={arrivalDate} armyStatus={armyStatus} userState={userState} userCity={userCity} userCountry={userCountry} streak={streak} userStatus={userStatus} onOpenStep={setActiveStepModal} onViewArmyGuide={()=>setShowArmyGuide(true)}/>
+              {/* ✅ HomeTab avec les 2 nouveaux props */}
+              <HomeTab
+                lang={lang}
+                userId={userId}
+                completedSteps={completedSteps}
+                arrivalConfirmed={arrivalConfirmed}
+                currentPhase={currentPhase}
+                phaseProgress={phaseProgress}
+                arrivalDate={arrivalDate}
+                armyStatus={armyStatus}
+                userState={userState}
+                userCity={userCity}
+                userCountry={userCountry}
+                streak={streak}
+                userStatus={userStatus}
+                onOpenStep={setActiveStepModal}
+                onViewArmyGuide={()=>setShowArmyGuide(true)}
+                onGoToExplorer={() => setActiveTab("explorer")}
+                userLocation={userLocationState}
+              />
             </>
           )}
           {activeTab==="explorer" && <ExplorerTab lang={lang} completedSteps={completedSteps} userId={userId} userArrival={userArrival} userState={userState}/>}
           {activeTab==="jobs"     && <JobsTab lang={lang} userId={userId}/>}
           {activeTab==="profile"  && (
             <div style={{ marginTop:4 }}>
-              <ProfileTab userName={userName} arrivalConfirmed={arrivalConfirmed} arrivalDate={arrivalDate} streak={streak}  userEmail={userEmail} userCountry={userCountry} userState={userState} userCity={userCity} lang={lang} completedSteps={completedSteps} armyStatus={armyStatus} userArrival={userArrival} onArmyChange={setArmyStatus} changeLang={changeLang} onLogout={handleLogout} onDeleteAccount={()=>setShowDeleteModal(true)}
+              <ProfileTab userName={userName} arrivalConfirmed={arrivalConfirmed} arrivalDate={arrivalDate} streak={streak} userEmail={userEmail} userCountry={userCountry} userState={userState} userCity={userCity} lang={lang} completedSteps={completedSteps} armyStatus={armyStatus} userArrival={userArrival} onArmyChange={setArmyStatus} changeLang={changeLang} onLogout={handleLogout} onDeleteAccount={()=>setShowDeleteModal(true)}
                 onStatusChanged={(newArrival, newStatus) => {
                   setUserArrival(newArrival);
                   setUserStatus(newStatus as UserStatus);
