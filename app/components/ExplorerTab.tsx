@@ -335,46 +335,72 @@ function BudgetSection({ lang, userState }: { lang:Lang; userState:string }) {
         )}
       </div>
 
-      {/* ── GUIDE MAGASINS ── */}
-      <div style={{ fontSize:11,color:"#555",letterSpacing:".08em",textTransform:"uppercase" as const,marginBottom:12,fontWeight:600 }}>
+      {/* ── GUIDE MAGASINS — grille 2 colonnes style Spotify ── */}
+      <div style={{ fontSize:11,color:"#555",letterSpacing:".08em",textTransform:"uppercase" as const,marginBottom:14,fontWeight:600 }}>
         🛍️ {L.storeTitle}
       </div>
-      <div style={{ fontSize:12,color:"#aaa",marginBottom:12 }}>{L.storeNote}</div>
 
-      <div style={{ display:"flex",flexDirection:"column" as const,gap:10 }}>
+      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12 }}>
         {STORES.map(store=>{
           const isExpanded = expandedStore === store.name;
+
+          // Couleurs de fond par magasin
+          const bgMap: Record<string,string> = {
+            "Walmart":              "linear-gradient(140deg,#0057a8,#1565c0,#0046a0)",
+            "Aldi":                 "linear-gradient(140deg,#b71c1c,#e53935,#c62828)",
+            "Dollar Tree / Dollar General": "linear-gradient(140deg,#1b5e20,#2e7d32,#388e3c)",
+            "Target":               "linear-gradient(140deg,#7f0000,#b71c1c,#c62828)",
+            "Costco":               "linear-gradient(140deg,#0d47a1,#1565c0,#0057a8)",
+            "CVS / Walgreens":      "linear-gradient(140deg,#880e4f,#ad1457,#c2185b)",
+          };
+          const bg = bgMap[store.name] || `linear-gradient(140deg,${store.color},${store.color}cc)`;
+
           return (
-            <div key={store.name} style={{ background:"#141d2e",border:"1px solid #1e2a3a",borderRadius:14,overflow:"hidden" }}>
-              {/* Header store */}
-              <div onClick={()=>setExpandedStore(isExpanded?null:store.name)}
-                style={{ padding:"14px",display:"flex",alignItems:"center",gap:12,cursor:"pointer" }}>
-                <div style={{ width:46,height:46,borderRadius:12,background:`${store.color}15`,border:`1px solid ${store.color}30`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0 }}>
+            <div key={store.name}
+              onClick={()=>setExpandedStore(isExpanded?null:store.name)}
+              style={{ borderRadius:18,overflow:"hidden",cursor:"pointer",background:"#141d2e",border:"1px solid #1e2a3a" }}>
+
+              {/* IMAGE / fond coloré avec icône grande */}
+              <div style={{
+                height:120,position:"relative",
+                background:bg,
+                display:"flex",alignItems:"center",justifyContent:"center",
+                overflow:"hidden",
+              }}>
+                {/* Glow coin */}
+                <div style={{ position:"absolute",top:-16,right:-16,width:70,height:70,borderRadius:"50%",background:"rgba(255,255,255,.15)",filter:"blur(14px)" }}/>
+                {/* Icône grande */}
+                <div style={{ fontSize:48,position:"relative",zIndex:1,filter:"drop-shadow(0 4px 14px rgba(0,0,0,.45))" }}>
                   {store.icon}
                 </div>
-                <div style={{ flex:1,minWidth:0 }}>
-                  <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:2 }}>
-                    <div style={{ fontSize:14,fontWeight:700,color:"#f4f1ec" }}>{store.name}</div>
-                    <div style={{ fontSize:11,color:store.color,fontWeight:600,background:`${store.color}15`,padding:"2px 8px",borderRadius:8 }}>{store.price}</div>
-                  </div>
-                  <div style={{ fontSize:11,color:"#aaa" }}>{store.tag}</div>
-                  <div style={{ fontSize:11,color:"#555",marginTop:2 }}>{store.rating}</div>
+                {/* Badge prix */}
+                <div style={{
+                  position:"absolute",bottom:8,right:8,zIndex:2,
+                  background:"rgba(0,0,0,.65)",backdropFilter:"blur(6px)",
+                  border:"1px solid rgba(255,255,255,.12)",
+                  borderRadius:8,padding:"2px 8px",
+                  fontSize:11,fontWeight:800,color:"#22c55e",
+                }}>
+                  {store.price}
                 </div>
-                <div style={{ fontSize:16,color:"#555",transition:"transform 0.2s",transform:isExpanded?"rotate(90deg)":"rotate(0deg)" }}>›</div>
               </div>
 
-              {/* Expanded content */}
+              {/* Infos en bas */}
+              <div style={{ padding:"11px 12px 13px" }}>
+                <div style={{ fontSize:14,fontWeight:800,color:"#f4f1ec",marginBottom:3 }}>{store.name}</div>
+                <div style={{ fontSize:11,color:"#aaa" }}>{store.tag}</div>
+              </div>
+
+              {/* Expanded */}
               {isExpanded && (
-                <div style={{ padding:"0 14px 14px",borderTop:"1px solid #1e2a3a" }}>
-                  <div style={{ paddingTop:12,fontSize:13,color:"#aaa",lineHeight:1.7,marginBottom:12 }}>
-                    {store.desc}
-                  </div>
-                  <div style={{ background:"rgba(232,184,75,.05)",border:"1px solid rgba(232,184,75,.15)",borderRadius:10,padding:"12px 14px" }}>
-                    <div style={{ fontSize:10,color:"#e8b84b",fontWeight:700,letterSpacing:".08em",textTransform:"uppercase" as const,marginBottom:8 }}>
+                <div style={{ padding:"0 12px 12px",borderTop:"1px solid #1e2a3a" }}>
+                  <div style={{ fontSize:12,color:"#aaa",lineHeight:1.7,marginBottom:10,paddingTop:10 }}>{store.desc}</div>
+                  <div style={{ background:"rgba(232,184,75,.05)",border:"1px solid rgba(232,184,75,.15)",borderRadius:10,padding:"10px 12px" }}>
+                    <div style={{ fontSize:10,color:"#e8b84b",fontWeight:700,textTransform:"uppercase" as const,letterSpacing:".08em",marginBottom:6 }}>
                       💡 {lang==="fr"?"Astuces":lang==="es"?"Consejos":"Tips"}
                     </div>
                     {store.tips.split("\n").map((tip,i)=>(
-                      <div key={i} style={{ fontSize:12,color:"#f4f1ec",lineHeight:1.7 }}>{tip}</div>
+                      <div key={i} style={{ fontSize:11,color:"#f4f1ec",lineHeight:1.7 }}>{tip}</div>
                     ))}
                   </div>
                 </div>
