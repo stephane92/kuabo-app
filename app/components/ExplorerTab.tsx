@@ -101,6 +101,26 @@ type StoreInfo = {
   searchQuery: string; // query pour Google Places
 };
 
+// Sites officiels par magasin
+const STORE_WEBSITES: Record<string, string> = {
+  "Walmart": "https://www.walmart.com",
+  "Aldi": "https://www.aldi.us",
+  "Dollar Tree": "https://www.dollartree.com",
+  "Target": "https://www.target.com",
+  "Costco": "https://www.costco.com",
+  "CVS / Walgreens": "https://www.cvs.com",
+};
+
+// Type Google Places par magasin — pour chercher exactement le bon store
+const STORE_PLACE_TYPES: Record<string, string> = {
+  "Walmart": "Walmart superstore",
+  "Aldi": "Aldi supermarket",
+  "Dollar Tree": "Dollar Tree",
+  "Target": "Target store",
+  "Costco": "Costco wholesale",
+  "CVS / Walgreens": "CVS pharmacy",
+};
+
 function StoreModal({ store, lang, userLocation, onClose }: {
   store: StoreInfo | null;
   lang: Lang;
@@ -111,130 +131,175 @@ function StoreModal({ store, lang, userLocation, onClose }: {
   const [loadingNearby, setLoadingNearby] = useState(false);
   const [showNearby, setShowNearby] = useState(false);
 
+  // Reset quand on change de magasin
+  useEffect(() => {
+    setNearbyStores([]);
+    setShowNearby(false);
+    setLoadingNearby(false);
+  }, [store?.name]);
+
   const L = {
-    fr: { close: "Fermer", tips: "Astuces", nearbyBtn: "Voir les", nearSuffix: "près de moi", loading: "Recherche...", noResult: "Aucun résultat trouvé", directions: "Itinéraire →" },
-    en: { close: "Close", tips: "Tips", nearbyBtn: "See", nearSuffix: "near me", loading: "Searching...", noResult: "No results found", directions: "Directions →" },
-    es: { close: "Cerrar", tips: "Consejos", nearbyBtn: "Ver", nearSuffix: "cerca de mí", loading: "Buscando...", noResult: "Sin resultados", directions: "Cómo llegar →" },
+    fr: { close: "Fermer", tips: "Astuces", nearbyBtn: "Voir les", nearSuffix: "près de moi", hideResults: "Fermer les résultats", loading: "Recherche en cours...", noResult: "Aucun résultat trouvé", directions: "Itinéraire →", website: "Site officiel →" },
+    en: { close: "Close", tips: "Tips", nearbyBtn: "See", nearSuffix: "near me", hideResults: "Hide results", loading: "Searching...", noResult: "No results found", directions: "Directions →", website: "Official website →" },
+    es: { close: "Cerrar", tips: "Consejos", nearbyBtn: "Ver", nearSuffix: "cerca de mí", hideResults: "Ocultar resultados", loading: "Buscando...", noResult: "Sin resultados", directions: "Cómo llegar →", website: "Sitio oficial →" },
   }[lang];
 
-  const fetchNearby = async () => {
+  const toggleNearby = async () => {
+    // Si déjà affiché → ferme les résultats
+    if (showNearby) {
+      setShowNearby(false);
+      setNearbyStores([]);
+      return;
+    }
     if (!store || !userLocation) return;
     setLoadingNearby(true);
     setShowNearby(true);
     try {
+      // ✅ Utilise le vrai nom du magasin pour la recherche Places
+      const searchTerm = STORE_PLACE_TYPES[store.name] || store.name;
       const res = await fetch("/api/places", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lat: userLocation.lat, lng: userLocation.lng, type: "food", query: store.searchQuery }),
+        body: JSON.stringify({
+          lat: userLocation.lat,
+          lng: userLocation.lng,
+          type: "store",
+          query: searchTerm,
+          keyword: store.name, // filtre strict par nom
+        }),
       });
       const data = await res.json();
-      setNearbyStores((data.places || []).slice(0, 5));
+      // ✅ Filtre les résultats pour ne garder que ceux qui correspondent au magasin
+      const filtered = (data.places || [])
+        .filter((p: Place) => p.name.toLowerCase().includes(store.name.split(" ")[0].toLowerCase()))
+        .slice(0, 5);
+      setNearbyStores(filtered.length > 0 ? filtered : (data.places || []).slice(0, 5));
     } catch { setNearbyStores([]); }
     setLoadingNearby(false);
   };
 
   if (!store) return null;
 
+  const officialUrl = STORE_WEBSITES[store.name];
+
   return (
     <div
       style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.88)", zIndex: 600, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)", padding: "0 16px" }}
       onClick={onClose}
     >
+      {/* ✅ Flex column pour que le bouton Close soit toujours visible */}
       <div
-        style={{ background: "#0f1521", border: "1px solid #1e2a3a", borderRadius: 22, width: "100%", maxWidth: 420, maxHeight: "88vh", overflowY: "auto", animation: "alertPop 0.3s cubic-bezier(.34,1.56,.64,1)" }}
+        style={{ background: "#0f1521", border: "1px solid #1e2a3a", borderRadius: 22, width: "100%", maxWidth: 420, maxHeight: "88vh", display: "flex", flexDirection: "column" as const, animation: "alertPop 0.3s cubic-bezier(.34,1.56,.64,1)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Image cover Cloudinary */}
-        <div style={{ position: "relative", height: 180, borderRadius: "22px 22px 0 0", overflow: "hidden" }}>
-          {store.cloudinaryUrl ? (
-            <img
-              src={store.cloudinaryUrl}
-              alt={store.name}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-            />
-          ) : (
-            <div style={{ width: "100%", height: "100%", background: store.color, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontSize: 64 }}>{store.emoji}</span>
+        {/* Zone scrollable */}
+        <div style={{ overflowY: "auto", flex: 1, borderRadius: "22px 22px 0 0" }}>
+          {/* Image cover */}
+          <div style={{ position: "relative", height: 180, borderRadius: "22px 22px 0 0", overflow: "hidden", flexShrink: 0 }}>
+            {store.cloudinaryUrl ? (
+              <img src={store.cloudinaryUrl} alt={store.name} style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+            ) : (
+              <div style={{ width: "100%", height: "100%", background: store.color, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ fontSize: 64 }}>{store.emoji}</span>
+              </div>
+            )}
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 40%, rgba(15,21,33,0.95))" }} />
+            <button onClick={onClose} style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%", background: "rgba(0,0,0,0.5)", border: "none", color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+            <div style={{ position: "absolute", bottom: 12, left: 16 }}>
+              {/* ✅ Titre en blanc lisible */}
+              <div style={{ fontSize: 22, fontWeight: 800, color: "#ffffff" }}>{store.name}</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)" }}>{store.tag}</div>
             </div>
-          )}
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 40%, rgba(15,21,33,0.95))" }} />
-          <button
-            onClick={onClose}
-            style={{ position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%", background: "rgba(0,0,0,0.5)", border: "none", color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-          >✕</button>
-          <div style={{ position: "absolute", bottom: 12, left: 16 }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "#f4f1ec" }}>{store.name}</div>
-            <div style={{ fontSize: 12, color: "#aaa" }}>{store.tag}</div>
+            <div style={{ position: "absolute", bottom: 12, right: 16, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(6px)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, padding: "2px 10px", fontSize: 12, fontWeight: 800, color: "#22c55e" }}>
+              {store.price}
+            </div>
           </div>
-          <div style={{ position: "absolute", bottom: 12, right: 16, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(6px)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, padding: "2px 10px", fontSize: 12, fontWeight: 800, color: "#22c55e" }}>
-            {store.price}
+
+          <div style={{ padding: "20px 20px 16px" }}>
+            {/* Description */}
+            <div style={{ fontSize: 13, color: "#aaa", lineHeight: 1.7, marginBottom: 16 }}>{store.desc}</div>
+
+            {/* ✅ Bouton site officiel */}
+            {officialUrl && (
+              <button
+                onClick={() => window.open(officialUrl, "_blank")}
+                style={{ width: "100%", padding: "12px", marginBottom: 12, background: "rgba(45,212,191,0.08)", border: "1px solid rgba(45,212,191,0.3)", borderRadius: 12, color: "#2dd4bf", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+              >
+                🌐 {L.website}
+              </button>
+            )}
+
+            {/* Tips */}
+            <div style={{ background: "rgba(232,184,75,0.05)", border: "1px solid rgba(232,184,75,0.18)", borderRadius: 12, padding: "14px", marginBottom: 16 }}>
+              <div style={{ fontSize: 10, color: "#e8b84b", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: ".08em", marginBottom: 8 }}>💡 {L.tips}</div>
+              {store.tips.split("\n").map((tip, i) => (
+                <div key={i} style={{ fontSize: 12, color: "#f4f1ec", lineHeight: 1.7 }}>{tip}</div>
+              ))}
+            </div>
+
+            {/* ✅ Bouton toggle "Voir près de moi" / "Fermer résultats" */}
+            {userLocation && (
+              <button
+                onClick={toggleNearby}
+                disabled={loadingNearby}
+                style={{
+                  width: "100%", padding: "13px", marginBottom: showNearby ? 12 : 0,
+                  background: showNearby
+                    ? "rgba(239,68,68,0.08)"
+                    : "linear-gradient(135deg,rgba(232,184,75,0.15),rgba(232,184,75,0.08))",
+                  border: `1px solid ${showNearby ? "rgba(239,68,68,0.3)" : "rgba(232,184,75,0.3)"}`,
+                  borderRadius: 12,
+                  color: showNearby ? "#ef4444" : "#e8b84b",
+                  fontSize: 14, fontWeight: 700, cursor: loadingNearby ? "wait" : "pointer", fontFamily: "inherit",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  transition: "all 0.2s",
+                }}
+              >
+                {loadingNearby
+                  ? `🔍 ${L.loading}`
+                  : showNearby
+                  ? `✕ ${L.hideResults}`
+                  : `📍 ${L.nearbyBtn} ${store.name} ${L.nearSuffix}`}
+              </button>
+            )}
+
+            {/* ✅ Résultats proches — toggle */}
+            {showNearby && !loadingNearby && (
+              <div style={{ marginBottom: 4 }}>
+                {nearbyStores.length === 0 ? (
+                  <div style={{ textAlign: "center" as const, padding: "16px", color: "#555", fontSize: 13 }}>{L.noResult}</div>
+                ) : (
+                  nearbyStores.map((p, i) => (
+                    <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: i < nearbyStores.length - 1 ? "1px solid #1e2a3a" : "none" }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "#f4f1ec", marginBottom: 2 }}>{p.name}</div>
+                        <div style={{ fontSize: 11, color: "#aaa", display: "flex", gap: 6, flexWrap: "wrap" as const }}>
+                          <span style={{ color: p.open === true ? "#22c55e" : p.open === false ? "#ef4444" : "#555", fontWeight: 600 }}>
+                            {p.open === true ? (lang === "fr" ? "Ouvert" : "Open") : p.open === false ? (lang === "fr" ? "Fermé" : "Closed") : "?"}
+                          </span>
+                          <span>·</span><span>{p.distance}</span>
+                          {p.rating && <><span>·</span><span>⭐ {p.rating}</span></>}
+                        </div>
+                        <div style={{ fontSize: 10, color: "#555", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{p.address}</div>
+                      </div>
+                      <button
+                        onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.name+" "+p.address)}&destination_place_id=${p.id}`, "_blank")}
+                        style={{ padding: "7px 12px", background: "rgba(232,184,75,0.1)", border: "1px solid rgba(232,184,75,0.3)", borderRadius: 8, color: "#e8b84b", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" as const, flexShrink: 0 }}
+                      >{L.directions}</button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        <div style={{ padding: "20px" }}>
-          {/* Description */}
-          <div style={{ fontSize: 13, color: "#aaa", lineHeight: 1.7, marginBottom: 16 }}>{store.desc}</div>
-
-          {/* Tips */}
-          <div style={{ background: "rgba(232,184,75,0.05)", border: "1px solid rgba(232,184,75,0.18)", borderRadius: 12, padding: "14px", marginBottom: 16 }}>
-            <div style={{ fontSize: 10, color: "#e8b84b", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: ".08em", marginBottom: 8 }}>💡 {L.tips}</div>
-            {store.tips.split("\n").map((tip, i) => (
-              <div key={i} style={{ fontSize: 12, color: "#f4f1ec", lineHeight: 1.7 }}>{tip}</div>
-            ))}
-          </div>
-
-          {/* Bouton "Voir les X près de moi" */}
-          {userLocation && (
-            <button
-              onClick={fetchNearby}
-              disabled={loadingNearby}
-              style={{
-                width: "100%", padding: "13px", marginBottom: 16,
-                background: "linear-gradient(135deg,rgba(232,184,75,0.15),rgba(232,184,75,0.08))",
-                border: "1px solid rgba(232,184,75,0.3)",
-                borderRadius: 12, color: "#e8b84b",
-                fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              }}
-            >
-              {loadingNearby ? `🔍 ${L.loading}` : `📍 ${L.nearbyBtn} ${store.name} ${L.nearSuffix}`}
-            </button>
-          )}
-
-          {/* Résultats proches */}
-          {showNearby && (
-            <div style={{ marginBottom: 16 }}>
-              {loadingNearby ? (
-                <div style={{ textAlign: "center" as const, padding: "16px", color: "#555", fontSize: 13 }}>🔍 {L.loading}</div>
-              ) : nearbyStores.length === 0 ? (
-                <div style={{ textAlign: "center" as const, padding: "16px", color: "#555", fontSize: 13 }}>{L.noResult}</div>
-              ) : (
-                nearbyStores.map((p) => (
-                  <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid #1e2a3a" }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "#f4f1ec", marginBottom: 2 }}>{p.name}</div>
-                      <div style={{ fontSize: 11, color: "#aaa", display: "flex", gap: 6 }}>
-                        <span style={{ color: p.open === true ? "#22c55e" : p.open === false ? "#ef4444" : "#555", fontWeight: 600 }}>
-                          {p.open === true ? (lang === "fr" ? "Ouvert" : "Open") : p.open === false ? (lang === "fr" ? "Fermé" : "Closed") : "?"}
-                        </span>
-                        <span>·</span><span>{p.distance}</span>
-                        {p.rating && <><span>·</span><span>⭐ {p.rating}</span></>}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.name)}&destination_place_id=${p.id}`, "_blank")}
-                      style={{ padding: "7px 12px", background: "rgba(232,184,75,0.1)", border: "1px solid rgba(232,184,75,0.3)", borderRadius: 8, color: "#e8b84b", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" as const }}
-                    >{L.directions}</button>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-
+        {/* ✅ Bouton Fermer STICKY en bas — toujours visible */}
+        <div style={{ padding: "12px 20px 16px", borderTop: "1px solid #1e2a3a", background: "#0f1521", borderRadius: "0 0 22px 22px", flexShrink: 0 }}>
           <button
             onClick={onClose}
-            style={{ width: "100%", padding: "12px", background: "#141d2e", border: "1px solid #1e2a3a", borderRadius: 12, color: "#aaa", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
+            style={{ width: "100%", padding: "13px", background: "#141d2e", border: "1px solid #1e2a3a", borderRadius: 12, color: "#f4f1ec", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
           >{L.close}</button>
         </div>
       </div>
@@ -434,7 +499,7 @@ function BudgetSection({ lang, userState, userLocation }: { lang: Lang; userStat
       </div>
 
       {/* ── MAGASINS — grille 2×3 avec images Cloudinary ── */}
-      <div style={{ fontSize: 11, color: "#555", letterSpacing: ".08em", textTransform: "uppercase" as const, marginBottom: 14, fontWeight: 600 }}>
+      <div style={{ fontSize: 13, color: "#f4f1ec", fontWeight: 700, marginBottom: 14 }}>
         🛍️ {L.storeTitle}
       </div>
 
