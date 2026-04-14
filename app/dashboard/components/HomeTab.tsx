@@ -152,6 +152,27 @@ type Place = { id: string; name: string; address: string; lat: number; lng: numb
 type StoreInfo = { name: string; emoji: string; cloudinaryUrl: string; color: string; tag: string; desc: string; tips: string; price: string; searchQuery: string; };
 
 // ══════════════════════════════════════════════
+// STORE WEBSITES + PLACE TYPES
+// ══════════════════════════════════════════════
+const STORE_WEBSITES: Record<string, string> = {
+  "Walmart": "https://www.walmart.com",
+  "Aldi": "https://www.aldi.us",
+  "Dollar Tree": "https://www.dollartree.com",
+  "Target": "https://www.target.com",
+  "Costco": "https://www.costco.com",
+  "CVS / Walgreens": "https://www.cvs.com",
+};
+
+const STORE_PLACE_TYPES: Record<string, string> = {
+  "Walmart": "Walmart superstore",
+  "Aldi": "Aldi supermarket",
+  "Dollar Tree": "Dollar Tree",
+  "Target": "Target store",
+  "Costco": "Costco wholesale",
+  "CVS / Walgreens": "CVS pharmacy",
+};
+
+// ══════════════════════════════════════════════
 // STORE MODAL
 // ══════════════════════════════════════════════
 function StoreModal({ store, lang, userLocation, onClose, onGoToExplorer }: {
@@ -162,74 +183,134 @@ function StoreModal({ store, lang, userLocation, onClose, onGoToExplorer }: {
   const [nearbyStores, setNearbyStores] = useState<Place[]>([]);
   const [loadingNearby, setLoadingNearby] = useState(false);
   const [showNearby, setShowNearby] = useState(false);
+
+  // Reset quand on change de magasin
+  useEffect(() => {
+    setNearbyStores([]);
+    setShowNearby(false);
+    setLoadingNearby(false);
+  }, [store?.name]);
+
   const L = {
-    fr: { close:"Fermer", tips:"Astuces", nearbyBtn:"Voir les", nearSuffix:"près de moi", loading:"Recherche...", noResult:"Aucun résultat", directions:"Itinéraire →", mapBtn:"Voir sur la carte Explorer →" },
-    en: { close:"Close", tips:"Tips", nearbyBtn:"See", nearSuffix:"near me", loading:"Searching...", noResult:"No results", directions:"Directions →", mapBtn:"See on Explorer map →" },
-    es: { close:"Cerrar", tips:"Consejos", nearbyBtn:"Ver", nearSuffix:"cerca de mí", loading:"Buscando...", noResult:"Sin resultados", directions:"Cómo llegar →", mapBtn:"Ver en mapa Explorer →" },
+    fr: { close:"Fermer", tips:"Astuces", nearbyBtn:"Voir les", nearSuffix:"près de moi", hideResults:"Fermer les résultats", loading:"Recherche en cours...", noResult:"Aucun résultat trouvé", directions:"Itinéraire →", mapBtn:"Voir sur la carte Explorer →", website:"Site officiel →" },
+    en: { close:"Close", tips:"Tips", nearbyBtn:"See", nearSuffix:"near me", hideResults:"Hide results", loading:"Searching...", noResult:"No results found", directions:"Directions →", mapBtn:"See on Explorer map →", website:"Official website →" },
+    es: { close:"Cerrar", tips:"Consejos", nearbyBtn:"Ver", nearSuffix:"cerca de mí", hideResults:"Ocultar resultados", loading:"Buscando...", noResult:"Sin resultados", directions:"Cómo llegar →", mapBtn:"Ver en mapa Explorer →", website:"Sitio oficial →" },
   }[lang];
-  const fetchNearby = async () => {
+
+  const toggleNearby = async () => {
+    if (showNearby) { setShowNearby(false); setNearbyStores([]); return; }
     if (!store || !userLocation) return;
     setLoadingNearby(true); setShowNearby(true);
     try {
-      const res = await fetch("/api/places", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ lat:userLocation.lat, lng:userLocation.lng, type:"food", query:store.searchQuery }) });
+      const searchTerm = STORE_PLACE_TYPES[store.name] || store.name;
+      const res = await fetch("/api/places", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lat: userLocation.lat, lng: userLocation.lng, type: "store", query: searchTerm, keyword: store.name }),
+      });
       const data = await res.json();
-      setNearbyStores((data.places || []).slice(0, 5));
+      const filtered = (data.places || [])
+        .filter((p: Place) => p.name.toLowerCase().includes(store.name.split(" ")[0].toLowerCase()))
+        .slice(0, 5);
+      setNearbyStores(filtered.length > 0 ? filtered : (data.places || []).slice(0, 5));
     } catch { setNearbyStores([]); }
     setLoadingNearby(false);
   };
+
   if (!store) return null;
+  const officialUrl = STORE_WEBSITES[store.name];
+
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.88)", zIndex:700, display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(8px)", padding:"0 16px" }} onClick={onClose}>
-      <div style={{ background:"#0f1521", border:"1px solid #1e2a3a", borderRadius:22, width:"100%", maxWidth:420, maxHeight:"88vh", overflowY:"auto", animation:"alertPop 0.3s cubic-bezier(.34,1.56,.64,1)" }} onClick={e => e.stopPropagation()}>
-        <div style={{ position:"relative", height:180, borderRadius:"22px 22px 0 0", overflow:"hidden" }}>
-          <img src={store.cloudinaryUrl} alt={store.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} onError={e => { (e.currentTarget as HTMLImageElement).style.display="none"; }} />
-          <div style={{ position:"absolute", inset:0, background:"linear-gradient(to bottom,transparent 40%,rgba(15,21,33,0.95))" }} />
-          <button onClick={onClose} style={{ position:"absolute", top:12, right:12, width:32, height:32, borderRadius:"50%", background:"rgba(0,0,0,0.5)", border:"none", color:"#fff", fontSize:16, cursor:"pointer" }}>✕</button>
-          <div style={{ position:"absolute", bottom:12, left:16 }}>
-            <div style={{ fontSize:22, fontWeight:800, color:"#f4f1ec" }}>{store.name}</div>
-            <div style={{ fontSize:12, color:"#aaa" }}>{store.tag}</div>
-          </div>
-          <div style={{ position:"absolute", bottom:12, right:16, background:"rgba(0,0,0,0.65)", borderRadius:8, padding:"2px 10px", fontSize:12, fontWeight:800, color:"#22c55e" }}>{store.price}</div>
-        </div>
-        <div style={{ padding:"20px" }}>
-          <div style={{ fontSize:13, color:"#aaa", lineHeight:1.7, marginBottom:16 }}>{store.desc}</div>
-          <div style={{ background:"rgba(232,184,75,0.05)", border:"1px solid rgba(232,184,75,0.18)", borderRadius:12, padding:"14px", marginBottom:16 }}>
-            <div style={{ fontSize:10, color:"#e8b84b", fontWeight:700, textTransform:"uppercase" as const, letterSpacing:".08em", marginBottom:8 }}>💡 {L.tips}</div>
-            {store.tips.split("\n").map((tip, i) => <div key={i} style={{ fontSize:12, color:"#f4f1ec", lineHeight:1.7 }}>{tip}</div>)}
-          </div>
-          {userLocation && (
-            <button onClick={fetchNearby} disabled={loadingNearby}
-              style={{ width:"100%", padding:"13px", marginBottom:12, background:"linear-gradient(135deg,rgba(232,184,75,0.15),rgba(232,184,75,0.08))", border:"1px solid rgba(232,184,75,0.3)", borderRadius:12, color:"#e8b84b", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-              {loadingNearby ? `🔍 ${L.loading}` : `📍 ${L.nearbyBtn} ${store.name} ${L.nearSuffix}`}
-            </button>
-          )}
-          <button onClick={() => { onClose(); onGoToExplorer(); }}
-            style={{ width:"100%", padding:"11px", marginBottom:16, background:"rgba(45,212,191,0.08)", border:"1px solid rgba(45,212,191,0.25)", borderRadius:12, color:"#2dd4bf", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
-            🗺️ {L.mapBtn}
-          </button>
-          {showNearby && (
-            <div style={{ marginBottom:16 }}>
-              {loadingNearby ? <div style={{ textAlign:"center" as const, padding:"16px", color:"#555" }}>🔍 {L.loading}</div>
-              : nearbyStores.length === 0 ? <div style={{ textAlign:"center" as const, padding:"16px", color:"#555" }}>{L.noResult}</div>
-              : nearbyStores.map(p => (
-                <div key={p.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 0", borderBottom:"1px solid #1e2a3a" }}>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:13, fontWeight:600, color:"#f4f1ec", marginBottom:2 }}>{p.name}</div>
-                    <div style={{ fontSize:11, color:"#aaa", display:"flex", gap:6 }}>
-                      <span style={{ color:p.open===true?"#22c55e":p.open===false?"#ef4444":"#555", fontWeight:600 }}>{p.open===true?(lang==="fr"?"Ouvert":"Open"):p.open===false?(lang==="fr"?"Fermé":"Closed"):"?"}</span>
-                      <span>·</span><span>{p.distance}</span>
-                      {p.rating && <><span>·</span><span>⭐ {p.rating}</span></>}
-                    </div>
-                  </div>
-                  <button onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.name)}&destination_place_id=${p.id}`, "_blank")}
-                    style={{ padding:"7px 12px", background:"rgba(232,184,75,0.1)", border:"1px solid rgba(232,184,75,0.3)", borderRadius:8, color:"#e8b84b", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" as const }}>
-                    {L.directions}
-                  </button>
-                </div>
-              ))}
+      {/* ✅ Flex column — close toujours visible en bas */}
+      <div style={{ background:"#0f1521", border:"1px solid #1e2a3a", borderRadius:22, width:"100%", maxWidth:420, maxHeight:"88vh", display:"flex", flexDirection:"column" as const, animation:"alertPop 0.3s cubic-bezier(.34,1.56,.64,1)" }} onClick={e => e.stopPropagation()}>
+
+        {/* Zone scrollable */}
+        <div style={{ overflowY:"auto", flex:1, borderRadius:"22px 22px 0 0" }}>
+          {/* Cover */}
+          <div style={{ position:"relative", height:180, borderRadius:"22px 22px 0 0", overflow:"hidden", flexShrink:0 }}>
+            <img src={store.cloudinaryUrl} alt={store.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} onError={e => { (e.currentTarget as HTMLImageElement).style.display="none"; }} />
+            <div style={{ position:"absolute", inset:0, background:"linear-gradient(to bottom,transparent 40%,rgba(15,21,33,0.95))" }} />
+            <button onClick={onClose} style={{ position:"absolute", top:12, right:12, width:32, height:32, borderRadius:"50%", background:"rgba(0,0,0,0.5)", border:"none", color:"#fff", fontSize:16, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
+            <div style={{ position:"absolute", bottom:12, left:16 }}>
+              {/* ✅ Titre blanc */}
+              <div style={{ fontSize:22, fontWeight:800, color:"#ffffff" }}>{store.name}</div>
+              <div style={{ fontSize:12, color:"rgba(255,255,255,0.75)" }}>{store.tag}</div>
             </div>
-          )}
-          <button onClick={onClose} style={{ width:"100%", padding:"12px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#aaa", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>{L.close}</button>
+            <div style={{ position:"absolute", bottom:12, right:16, background:"rgba(0,0,0,0.65)", borderRadius:8, padding:"2px 10px", fontSize:12, fontWeight:800, color:"#22c55e" }}>{store.price}</div>
+          </div>
+
+          <div style={{ padding:"20px 20px 16px" }}>
+            <div style={{ fontSize:13, color:"#aaa", lineHeight:1.7, marginBottom:14 }}>{store.desc}</div>
+
+            {/* ✅ Site officiel */}
+            {officialUrl && (
+              <button onClick={() => window.open(officialUrl, "_blank")}
+                style={{ width:"100%", padding:"11px", marginBottom:12, background:"rgba(45,212,191,0.08)", border:"1px solid rgba(45,212,191,0.25)", borderRadius:12, color:"#2dd4bf", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+                🌐 {L.website}
+              </button>
+            )}
+
+            {/* Bouton Explorer carte */}
+            <button onClick={() => { onClose(); onGoToExplorer(); }}
+              style={{ width:"100%", padding:"11px", marginBottom:14, background:"rgba(167,139,250,0.08)", border:"1px solid rgba(167,139,250,0.25)", borderRadius:12, color:"#a78bfa", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+              🗺️ {L.mapBtn}
+            </button>
+
+            {/* Tips */}
+            <div style={{ background:"rgba(232,184,75,0.05)", border:"1px solid rgba(232,184,75,0.18)", borderRadius:12, padding:"14px", marginBottom:14 }}>
+              <div style={{ fontSize:10, color:"#e8b84b", fontWeight:700, textTransform:"uppercase" as const, letterSpacing:".08em", marginBottom:8 }}>💡 {L.tips}</div>
+              {store.tips.split("\n").map((tip, i) => <div key={i} style={{ fontSize:12, color:"#f4f1ec", lineHeight:1.7 }}>{tip}</div>)}
+            </div>
+
+            {/* ✅ Bouton toggle "Voir près de moi" ↔ "Fermer résultats" */}
+            {userLocation && (
+              <button onClick={toggleNearby} disabled={loadingNearby}
+                style={{
+                  width:"100%", padding:"13px",
+                  background: showNearby ? "rgba(239,68,68,0.08)" : "linear-gradient(135deg,rgba(232,184,75,0.15),rgba(232,184,75,0.08))",
+                  border: `1px solid ${showNearby ? "rgba(239,68,68,0.3)" : "rgba(232,184,75,0.3)"}`,
+                  borderRadius:12, color: showNearby ? "#ef4444" : "#e8b84b",
+                  fontSize:14, fontWeight:700, cursor:loadingNearby?"wait":"pointer", fontFamily:"inherit",
+                  display:"flex", alignItems:"center", justifyContent:"center", gap:8, transition:"all 0.2s",
+                  marginBottom: showNearby ? 12 : 0,
+                }}>
+                {loadingNearby ? `🔍 ${L.loading}` : showNearby ? `✕ ${L.hideResults}` : `📍 ${L.nearbyBtn} ${store.name} ${L.nearSuffix}`}
+              </button>
+            )}
+
+            {/* ✅ Résultats — toggle */}
+            {showNearby && !loadingNearby && (
+              <div style={{ marginTop:4 }}>
+                {nearbyStores.length === 0
+                  ? <div style={{ textAlign:"center" as const, padding:"16px", color:"#555", fontSize:13 }}>{L.noResult}</div>
+                  : nearbyStores.map((p, i) => (
+                    <div key={p.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 0", borderBottom: i < nearbyStores.length-1 ? "1px solid #1e2a3a" : "none" }}>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:13, fontWeight:600, color:"#f4f1ec", marginBottom:2 }}>{p.name}</div>
+                        <div style={{ fontSize:11, color:"#aaa", display:"flex", gap:6, flexWrap:"wrap" as const }}>
+                          <span style={{ color:p.open===true?"#22c55e":p.open===false?"#ef4444":"#555", fontWeight:600 }}>
+                            {p.open===true?(lang==="fr"?"Ouvert":"Open"):p.open===false?(lang==="fr"?"Fermé":"Closed"):"?"}
+                          </span>
+                          <span>·</span><span>{p.distance}</span>
+                          {p.rating && <><span>·</span><span>⭐ {p.rating}</span></>}
+                        </div>
+                        {p.address && <div style={{ fontSize:10, color:"#555", marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{p.address}</div>}
+                      </div>
+                      <button onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.name+" "+p.address)}&destination_place_id=${p.id}`, "_blank")}
+                        style={{ padding:"7px 12px", background:"rgba(232,184,75,0.1)", border:"1px solid rgba(232,184,75,0.3)", borderRadius:8, color:"#e8b84b", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" as const, flexShrink:0 }}>
+                        {L.directions}
+                      </button>
+                    </div>
+                  ))
+                }
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ✅ Bouton Fermer STICKY toujours visible */}
+        <div style={{ padding:"12px 20px 16px", borderTop:"1px solid #1e2a3a", background:"#0f1521", borderRadius:"0 0 22px 22px", flexShrink:0 }}>
+          <button onClick={onClose} style={{ width:"100%", padding:"13px", background:"#141d2e", border:"1px solid #1e2a3a", borderRadius:12, color:"#f4f1ec", fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>{L.close}</button>
         </div>
       </div>
     </div>
@@ -665,25 +746,67 @@ function CountdownSection({ arrivalDate, lang, completedSteps, onOpenStep }: {
 }
 
 // ══════════════════════════════════════════════
-// ARMY BANNER — avec banner image, bouton texte blanc lisible
+// ARMY BANNER — banner image + site officiel + bases militaires proches
 // Affiché SEULEMENT si army / army_interest / army_unsure
 // ══════════════════════════════════════════════
-function ArmyBanner({ armyStatus, lang, onViewGuide }: { armyStatus: string; lang: Lang; onViewGuide: () => void }) {
-  // ✅ Ne rien afficher si DV classique (pas de statut army)
+function ArmyBanner({ armyStatus, lang, onViewGuide, userLocation }: {
+  armyStatus: string; lang: Lang; onViewGuide: () => void;
+  userLocation?: { lat: number; lng: number } | null;
+}) {
   if (!armyStatus || !["army","army_interest","army_unsure"].includes(armyStatus)) return null;
 
   const { ARMY_GUIDE: AG } = require("./data");
   const guide = AG[armyStatus]; if (!guide) return null;
   const g = guide[lang];
-  const color = armyStatus==="army" ? "#22c55e" : "#2dd4bf";
+  const color = armyStatus === "army" ? "#22c55e" : "#2dd4bf";
+
+  const [nearbyBases, setNearbyBases] = useState<Place[]>([]);
+  const [loadingBases, setLoadingBases] = useState(false);
+  const [showBases, setShowBases] = useState(false);
 
   const badge = {
-    fr:{ army:"🎖️ Soldat actif", army_interest:"🤔 J'y pense", army_unsure:"❓ Pas encore décidé" },
-    en:{ army:"🎖️ Active soldier", army_interest:"🤔 Thinking about it", army_unsure:"❓ Not decided yet" },
-    es:{ army:"🎖️ Soldado activo", army_interest:"🤔 Lo estoy pensando", army_unsure:"❓ Aún no decidido" },
+    fr: { army:"🎖️ Soldat actif", army_interest:"🤔 J'y pense", army_unsure:"❓ Pas encore décidé" },
+    en: { army:"🎖️ Active soldier", army_interest:"🤔 Thinking about it", army_unsure:"❓ Not decided yet" },
+    es: { army:"🎖️ Soldado activo", army_interest:"🤔 Lo estoy pensando", army_unsure:"❓ Aún no decidido" },
   }[lang][armyStatus as "army"|"army_interest"|"army_unsure"];
 
-  const btnLabel = { fr:"Voir mon guide Army →", en:"View my Army guide →", es:"Ver mi guía Army →" }[lang];
+  const L = {
+    fr: { guide:"Voir mon guide Army →", website:"Site officiel goarmy.com →", basesBtn:"Voir les bases militaires près de moi", hideBtn:"Fermer les bases", loading:"Recherche...", noResult:"Aucune base trouvée", directions:"Itinéraire →", recruiter:"Trouver un recruteur Army" },
+    en: { guide:"View my Army guide →", website:"Official goarmy.com →", basesBtn:"See military bases near me", hideBtn:"Hide bases", loading:"Searching...", noResult:"No base found", directions:"Directions →", recruiter:"Find an Army recruiter" },
+    es: { guide:"Ver mi guía Army →", website:"Sitio oficial goarmy.com →", basesBtn:"Ver bases militares cerca de mí", hideBtn:"Ocultar bases", loading:"Buscando...", noResult:"Sin bases encontradas", directions:"Cómo llegar →", recruiter:"Encontrar reclutador Army" },
+  }[lang];
+
+  const toggleBases = async () => {
+    if (showBases) { setShowBases(false); setNearbyBases([]); return; }
+    if (!userLocation) return;
+    setLoadingBases(true); setShowBases(true);
+    try {
+      // ✅ Recherche précise : bases militaires + recruteurs Army
+      const res = await fetch("/api/places", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lat: userLocation.lat, lng: userLocation.lng,
+          type: "military",
+          query: "US Army recruiting office military base",
+          keyword: "Army",
+        }),
+      });
+      const data = await res.json();
+      // Filtre pour ne garder que les vrais résultats militaires
+      const filtered = (data.places || [])
+        .filter((p: Place) =>
+          p.name.toLowerCase().includes("army") ||
+          p.name.toLowerCase().includes("military") ||
+          p.name.toLowerCase().includes("recruit") ||
+          p.name.toLowerCase().includes("national guard") ||
+          p.name.toLowerCase().includes("fort") ||
+          p.name.toLowerCase().includes("base")
+        )
+        .slice(0, 5);
+      setNearbyBases(filtered.length > 0 ? filtered : (data.places || []).slice(0, 5));
+    } catch { setNearbyBases([]); }
+    setLoadingBases(false);
+  };
 
   return (
     <div style={{ background:`${color}06`, border:`1px solid ${color}25`, borderRadius:18, marginBottom:14, overflow:"hidden" }}>
@@ -695,13 +818,75 @@ function ArmyBanner({ armyStatus, lang, onViewGuide }: { armyStatus: string; lan
           <div style={{ fontSize:16, fontWeight:800, color:"#f4f1ec" }}>{badge}</div>
         </div>
       </div>
+
       {/* Corps */}
       <div style={{ padding:"14px 16px" }}>
-        <div style={{ fontSize:13, color:"#aaa", lineHeight:1.6, marginBottom:12 }}>{g.desc}</div>
-        {/* ✅ Bouton Army — fond vert foncé, texte BLANC bien lisible */}
-        <button onClick={onViewGuide} style={{ width:"100%", padding:"13px", background:color, border:"none", borderRadius:12, color:"#fff", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", letterSpacing:".02em" }}>
-          {btnLabel}
+        <div style={{ fontSize:13, color:"#aaa", lineHeight:1.6, marginBottom:14 }}>{g.desc}</div>
+
+        {/* ✅ Bouton guide — fond coloré texte BLANC */}
+        <button onClick={onViewGuide}
+          style={{ width:"100%", padding:"12px", background:color, border:"none", borderRadius:12, color:"#fff", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", marginBottom:10 }}>
+          {L.guide}
         </button>
+
+        {/* ✅ Site officiel goarmy.com */}
+        <button onClick={() => window.open("https://www.goarmy.com", "_blank")}
+          style={{ width:"100%", padding:"11px", background:"rgba(34,197,94,0.08)", border:"1px solid rgba(34,197,94,0.25)", borderRadius:12, color:"#22c55e", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit", marginBottom:10, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+          🌐 {L.website}
+        </button>
+
+        {/* ✅ Bouton bases militaires proches — toggle */}
+        {userLocation && (
+          <button onClick={toggleBases} disabled={loadingBases}
+            style={{
+              width:"100%", padding:"11px",
+              background: showBases ? "rgba(239,68,68,0.08)" : `rgba(${color === "#22c55e" ? "34,197,94" : "45,212,191"},0.08)`,
+              border: `1px solid ${showBases ? "rgba(239,68,68,0.3)" : color + "40"}`,
+              borderRadius:12, color: showBases ? "#ef4444" : color,
+              fontSize:13, fontWeight:600, cursor:loadingBases?"wait":"pointer", fontFamily:"inherit",
+              display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+              marginBottom: showBases ? 12 : 0, transition:"all 0.2s",
+            }}>
+            {loadingBases ? `🔍 ${L.loading}` : showBases ? `✕ ${L.hideBtn}` : `🪖 ${L.basesBtn}`}
+          </button>
+        )}
+
+        {/* Résultats bases militaires */}
+        {showBases && !loadingBases && (
+          <div style={{ marginTop:4 }}>
+            {nearbyBases.length === 0 ? (
+              <div style={{ textAlign:"center" as const, padding:"14px", color:"#555", fontSize:13 }}>
+                {L.noResult}
+                <br/>
+                <button onClick={() => window.open("https://www.goarmy.com/locate-a-recruiter.html", "_blank")}
+                  style={{ marginTop:10, padding:"8px 16px", background:"rgba(34,197,94,0.1)", border:"1px solid rgba(34,197,94,0.3)", borderRadius:10, color:"#22c55e", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                  🔍 {L.recruiter}
+                </button>
+              </div>
+            ) : (
+              nearbyBases.map((p, i) => (
+                <div key={p.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 0", borderBottom: i < nearbyBases.length-1 ? "1px solid #1e2a3a" : "none" }}>
+                  <div style={{ width:36, height:36, borderRadius:10, background:"rgba(34,197,94,0.1)", border:"1px solid rgba(34,197,94,0.25)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>🪖</div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:13, fontWeight:600, color:"#f4f1ec", marginBottom:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{p.name}</div>
+                    <div style={{ fontSize:11, color:"#aaa", display:"flex", gap:6, flexWrap:"wrap" as const }}>
+                      <span style={{ color:p.open===true?"#22c55e":p.open===false?"#ef4444":"#555", fontWeight:600 }}>
+                        {p.open===true?(lang==="fr"?"Ouvert":"Open"):p.open===false?(lang==="fr"?"Fermé":"Closed"):"?"}
+                      </span>
+                      <span>·</span><span>{p.distance}</span>
+                      {p.rating && <><span>·</span><span>⭐ {p.rating}</span></>}
+                    </div>
+                    {p.address && <div style={{ fontSize:10, color:"#555", marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const }}>{p.address}</div>}
+                  </div>
+                  <button onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.name+" "+p.address)}&destination_place_id=${p.id}`, "_blank")}
+                    style={{ padding:"7px 10px", background:"rgba(34,197,94,0.1)", border:"1px solid rgba(34,197,94,0.3)", borderRadius:8, color:"#22c55e", fontSize:10, fontWeight:600, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" as const, flexShrink:0 }}>
+                    →
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -961,7 +1146,7 @@ export default function HomeTab({
       <CountdownSection arrivalDate={arrivalDate} lang={lang} completedSteps={completedSteps} onOpenStep={onOpenStep} />
 
       {/* 5. Army avec banner — seulement si army/interest/unsure */}
-      <ArmyBanner armyStatus={armyStatus} lang={lang} onViewGuide={onViewArmyGuide} />
+      <ArmyBanner armyStatus={armyStatus} lang={lang} onViewGuide={onViewArmyGuide} userLocation={userLocation} />
 
       {/* 6. AI */}
       <KuaboAIButton lang={lang} completedSteps={completedSteps} userState={userState} userCity={userCity} />
